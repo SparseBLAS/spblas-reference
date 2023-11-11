@@ -5,10 +5,14 @@
 
 namespace spblas {
 
+template <typename T, typename I, typename O>
+class csr_builder;
+
 template <typename T, std::integral I = index_t, std::integral O = I>
 class csr_view {
 public:
   using scalar_type = T;
+  using scalar_reference = T&;
   using index_type = I;
   using offset_type = O;
 
@@ -33,6 +37,8 @@ public:
   index<I> shape() const noexcept { return shape_; }
 
   O size() const noexcept { return nnz_; }
+
+  friend csr_builder<T, I, O>;
 
 private:
   std::span<T> values_;

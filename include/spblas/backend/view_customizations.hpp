@@ -70,6 +70,15 @@ auto tag_invoke(__backend::values_fn_, V&& v) {
 
 // Customization point implementations for mdspan
 
+template <matrix M>
+  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+struct tensor_traits<M> {
+  using scalar_type = typename std::remove_cvref_t<M>::value_type;
+  using scalar_reference = typename std::remove_cvref_t<M>::reference;
+  using index_type = typename std::remove_cvref_t<M>::index_type;
+  using offset_type = typename std::remove_cvref_t<M>::size_type;
+};
+
 namespace __backend {
 
 template <matrix M>
@@ -112,6 +121,18 @@ auto tag_invoke(__backend::rows_fn_,
         return __ranges::views::zip(column_indices, values);
       });
   return __ranges::views::zip(row_indices, rows);
+}
+
+template <matrix M>
+  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+tensor_scalar_reference_t<M> tag_invoke(__backend::lookup_fn_, M&& m,
+                                        tensor_index_t<M> i,
+                                        tensor_index_t<M> j) {
+#ifdef __cpp_multidimensional_subscript
+  return m[i, j];
+#else
+  return m(i, j);
+#endif
 }
 
 } // namespace __backend

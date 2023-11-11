@@ -22,18 +22,9 @@ int main(int argc, char** argv) {
   md::mdspan b(b_values.data(), k, n);
   md::mdspan c(c_values.data(), m, n);
 
-  auto s = spblas::__backend::shape(c);
+  multiply(a, b, c);
 
-  scale(45, b);
-
-  fmt::print("{}, {}\n", s[0], s[1]);
-
-  fmt::print("{}\n", spblas::__backend::values(b));
-
-  std::vector<float> v(n, 1);
-  std::vector<float> v_out(k, 0);
-
-  multiply(b, v, v_out);
+  fmt::print("{}\n", spblas::__backend::values(c));
 
   return 0;
 }
