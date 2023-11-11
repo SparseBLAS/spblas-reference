@@ -34,7 +34,8 @@ auto try_tag_invoke(int) //
 template <typename CPO, typename... Args>
 no_type try_tag_invoke(...) noexcept(false);
 
-template <template <typename...> class T, typename... Args> struct defer {
+template <template <typename...> class T, typename... Args>
+struct defer {
   using type = T<Args...>;
 };
 
@@ -46,7 +47,8 @@ inline constexpr _tag_invoke::_fn tag_invoke{};
 }
 using namespace _tag_invoke_cpo;
 
-template <auto& CPO> using tag_t = std::remove_cvref_t<decltype(CPO)>;
+template <auto& CPO>
+using tag_t = std::remove_cvref_t<decltype(CPO)>;
 
 using _tag_invoke::tag_invoke_result_t;
 

@@ -4,7 +4,7 @@ int main(int argc, char** argv) {
   using namespace spblas;
 
   auto&& [values, rowptr, colind, shape, nnz] =
-        generate_csr<float>(100, 100, 10);
+      generate_csr<float>(100, 100, 10);
 
   csr_view<float> v(values, rowptr, colind, shape, nnz);
 

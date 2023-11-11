@@ -1,13 +1,11 @@
 #pragma once
 
-#include <spblas/detail/detail.hpp>
 #include <span>
+#include <spblas/detail/detail.hpp>
 
 namespace spblas {
 
-template <typename T,
-          std::integral I = index_t,
-          std::integral O = index_t>
+template <typename T, std::integral I = index_t, std::integral O = index_t>
 class csr_view {
 public:
   using scalar_type = T;
@@ -15,37 +13,26 @@ public:
   using offset_type = O;
 
   csr_view(T* values, O* rowptr, I* colind, index<I> shape, O nnz)
-    : values_(values, nnz), rowptr_(rowptr, shape[0]+1), colind_(colind, nnz),
-      shape_(shape), nnz_(nnz) {}
+      : values_(values, nnz), rowptr_(rowptr, shape[0] + 1),
+        colind_(colind, nnz), shape_(shape), nnz_(nnz) {}
 
-  template <__ranges::contiguous_range V,
-            __ranges::contiguous_range R,
+  template <__ranges::contiguous_range V, __ranges::contiguous_range R,
             __ranges::contiguous_range C>
   csr_view(V&& values, R&& rowptr, C&& colind, index<I> shape, O nnz)
-    : values_(__ranges::data(values), __ranges::size(values)),
-      rowptr_(__ranges::data(rowptr), __ranges::size(rowptr)),
-      colind_(__ranges::data(colind), __ranges::size(colind)),
-      shape_(shape), nnz_(nnz) {}
+      : values_(__ranges::data(values), __ranges::size(values)),
+        rowptr_(__ranges::data(rowptr), __ranges::size(rowptr)),
+        colind_(__ranges::data(colind), __ranges::size(colind)), shape_(shape),
+        nnz_(nnz) {}
 
-  std::span<T> values() const noexcept {
-    return values_;
-  }
+  std::span<T> values() const noexcept { return values_; }
 
-  std::span<I> rowptr() const noexcept {
-    return rowptr_;
-  }
+  std::span<I> rowptr() const noexcept { return rowptr_; }
 
-  std::span<O> colind() const noexcept {
-    return colind_;
-  }
+  std::span<O> colind() const noexcept { return colind_; }
 
-  index<I> shape() const noexcept {
-    return shape_;
-  }
+  index<I> shape() const noexcept { return shape_; }
 
-  O size() const noexcept {
-    return nnz_;
-  }
+  O size() const noexcept { return nnz_; }
 
 private:
   std::span<T> values_;

@@ -13,6 +13,8 @@ namespace __ranges = std::ranges;
 }
 
 #else
-static_assert(false, "spblas requires support for std::ranges.  Compile with C++20 or later.");
+static_assert(
+    false,
+    "spblas requires support for std::ranges.  Compile with C++20 or later.");
 
 #endif

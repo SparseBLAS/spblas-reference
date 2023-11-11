@@ -1,7 +1,7 @@
 #pragma once
 
-#include <spblas/concepts.hpp>
 #include <spblas/backend/backend.hpp>
+#include <spblas/concepts.hpp>
 
 #include <algorithm>
 
@@ -10,16 +10,14 @@ namespace spblas {
 namespace {
 
 template <typename Scalar, typename T>
-requires(matrix<T> || vector<T>)
+  requires(matrix<T> || vector<T>)
 void scale_impl_(Scalar alpha, T&& t) {
   auto&& values = __backend::values(t);
   std::for_each(__ranges::begin(values), __ranges::end(values),
-                [&](auto&& v) {
-                  v *= alpha;
-                });
+                [&](auto&& v) { v *= alpha; });
 }
 
-}
+} // namespace
 
 template <typename Scalar, matrix M>
 void scale(Scalar alpha, M&& m) {

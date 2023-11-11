@@ -28,7 +28,8 @@ concept TupleLike =
       return (TupleElementGettable<T, I, Args> && ...);
     }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<T>>>());
 
-template <std::integral T = std::size_t> class index {
+template <std::integral T = std::size_t>
+class index {
 public:
   using index_type = T;
 
@@ -62,7 +63,8 @@ public:
   constexpr index(Tuple tuple)
       : first(std::get<0>(tuple)), second(std::get<1>(tuple)) {}
 
-  template <std::integral U> constexpr index(std::initializer_list<U> tuple) {
+  template <std::integral U>
+  constexpr index(std::initializer_list<U> tuple) {
     assert(tuple.size() == 2);
     first = *tuple.begin();
     second = *(tuple.begin() + 1);

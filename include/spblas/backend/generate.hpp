@@ -11,7 +11,8 @@
 namespace spblas {
 
 template <typename T = float, typename I = index_t, typename O = index_t>
-auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz, std::size_t seed = 0) {
+auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz,
+                  std::size_t seed = 0) {
   std::vector<T> values;
   std::vector<I> colind;
 
@@ -51,7 +52,8 @@ auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz, std::size_t see
 }
 
 template <typename T = float, typename I = index_t, typename O = index_t>
-auto generate_csc(std::size_t m, std::size_t n, std::size_t nnz, std::size_t seed = 0) {
+auto generate_csc(std::size_t m, std::size_t n, std::size_t nnz,
+                  std::size_t seed = 0) {
   auto&& [values, colptr, rowind, shape_, nnz_] =
       generate_csr<T, I, O>(n, m, nnz, seed);
   return std::tuple(std::move(values), std::move(colptr), std::move(rowind),
@@ -59,7 +61,8 @@ auto generate_csc(std::size_t m, std::size_t n, std::size_t nnz, std::size_t see
 }
 
 template <typename T = float, typename I = index_t, typename O = index_t>
-auto generate_dcsr(std::size_t m, std::size_t n, std::size_t nnz, std::size_t seed = 0) {
+auto generate_dcsr(std::size_t m, std::size_t n, std::size_t nnz,
+                   std::size_t seed = 0) {
   auto&& [values, rowptr_, colind, shape, _] =
       generate_csr<T, I, O>(m, n, nnz, seed);
 
@@ -88,7 +91,8 @@ auto generate_dcsr(std::size_t m, std::size_t n, std::size_t nnz, std::size_t se
 }
 
 template <typename T = float, typename I = int>
-auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz, std::size_t seed = 0) {
+auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz,
+                  std::size_t seed = 0) {
   std::vector<T> values;
   std::vector<I> rowind;
   std::vector<I> colind;
@@ -151,4 +155,4 @@ auto generate_dense(std::size_t m, std::size_t n, std::size_t seed = 0) {
   return std::tuple(v, spblas::index(m, n));
 }
 
-} // namespace mc
+} // namespace spblas
