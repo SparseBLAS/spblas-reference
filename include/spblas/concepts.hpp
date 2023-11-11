@@ -5,7 +5,8 @@
 namespace spblas {
 
 template <typename M>
-concept matrix = __detail::is_csr_view_v<M>;
+concept matrix = __detail::is_csr_view_v<M> ||
+                 __detail::is_matrix_instantiation_of_mdspan_v<M>;
 
 template <typename V>
 concept vector = __ranges::contiguous_range<V>;

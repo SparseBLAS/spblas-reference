@@ -68,4 +68,52 @@ auto tag_invoke(__backend::values_fn_, V&& v) {
 
 } // namespace __backend
 
+// Customization point implementations for mdspan
+
+namespace __backend {
+
+template <matrix M>
+  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+auto tag_invoke(__backend::shape_fn_, M&& m) {
+  using index_type = decltype(m.extent(0));
+  return index<index_type>(m.extent(0), m.extent(1));
+}
+
+template <typename T, typename Extents, typename LayoutPolicy,
+          typename AccessorPolicy>
+  requires(std::is_same_v<AccessorPolicy, __mdspan::default_accessor<T>> &&
+           (std::is_same_v<LayoutPolicy, __mdspan::layout_right> ||
+            std::is_same_v<LayoutPolicy, __mdspan::layout_left>))
+auto tag_invoke(__backend::values_fn_,
+                __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy> m) {
+  auto size = shape(m)[0] * shape(m)[1];
+  return std::span(m.data_handle(), size);
+}
+
+// Generic implementation of rows customization point
+// for any mdspan.
+template <typename T, typename Extents, typename LayoutPolicy,
+          typename AccessorPolicy>
+auto tag_invoke(__backend::rows_fn_,
+                __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy> m) {
+  using index_type = decltype(m.extent(0));
+  using reference =
+      __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy>::reference;
+
+  auto row_indices = __ranges::views::iota(index_type(0), m.extent(0));
+
+  auto rows =
+      row_indices | __ranges::views::transform([=](auto row_index) {
+        auto column_indices = __ranges::views::iota(index_type(0), m.extent(1));
+        auto values = column_indices | __ranges::views::transform(
+                                           [=](auto column_index) -> reference {
+                                             return m[row_index, column_index];
+                                           });
+        return __ranges::views::zip(column_indices, values);
+      });
+  return __ranges::views::zip(row_indices, rows);
+}
+
+} // namespace __backend
+
 } // namespace spblas

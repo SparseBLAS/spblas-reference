@@ -10,7 +10,7 @@
 
 namespace spblas {
 
-template <typename T = float, typename I = index_t, typename O = index_t>
+template <typename T = float, typename I = index_t, typename O = I>
 auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz,
                   std::size_t seed = 0) {
   std::vector<T> values;
@@ -51,7 +51,7 @@ auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz,
   return std::tuple(values, rowptr, colind, spblas::index<I>(m, n), I(nnz));
 }
 
-template <typename T = float, typename I = index_t, typename O = index_t>
+template <typename T = float, typename I = index_t, typename O = I>
 auto generate_csc(std::size_t m, std::size_t n, std::size_t nnz,
                   std::size_t seed = 0) {
   auto&& [values, colptr, rowind, shape_, nnz_] =
@@ -60,7 +60,7 @@ auto generate_csc(std::size_t m, std::size_t n, std::size_t nnz,
                     spblas::index<I>(m, n), I(nnz));
 }
 
-template <typename T = float, typename I = index_t, typename O = index_t>
+template <typename T = float, typename I = index_t, typename O = I>
 auto generate_dcsr(std::size_t m, std::size_t n, std::size_t nnz,
                    std::size_t seed = 0) {
   auto&& [values, rowptr_, colind, shape, _] =
@@ -90,7 +90,7 @@ auto generate_dcsr(std::size_t m, std::size_t n, std::size_t nnz,
   return std::tuple(values, rowind, rowptr, colind, shape, num_rows, nnz);
 }
 
-template <typename T = float, typename I = int>
+template <typename T = float, typename I = index_t>
 auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz,
                   std::size_t seed = 0) {
   std::vector<T> values;

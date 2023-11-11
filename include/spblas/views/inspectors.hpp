@@ -1,5 +1,6 @@
 #pragma once
 
+#include <spblas/detail/mdspan.hpp>
 #include <spblas/views/views.hpp>
 
 namespace spblas {
@@ -24,8 +25,6 @@ static constexpr bool is_csr_view_v =
 
 // Inspector for mdspan
 
-#ifdef USE_MDSPAN
-
 template <typename T>
 struct is_matrix_instantiation_of_mdspan {
   static constexpr bool value = false;
@@ -35,15 +34,13 @@ template <typename T, typename Extents, typename LayoutPolicy,
           typename AccessorPolicy>
   requires(Extents::rank() == 2)
 struct is_matrix_instantiation_of_mdspan<
-    mdspan<T, Extents, LayoutPolicy, AccessorPolicy>> {
+    __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy>> {
   static constexpr bool value = true;
 };
 
 template <typename T>
 static constexpr bool is_matrix_instantiation_of_mdspan_v =
     is_matrix_instantiation_of_mdspan<std::remove_cvref_t<T>>::value;
-
-#endif
 
 } // namespace __detail
 

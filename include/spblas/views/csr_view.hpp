@@ -5,7 +5,7 @@
 
 namespace spblas {
 
-template <typename T, std::integral I = index_t, std::integral O = index_t>
+template <typename T, std::integral I = index_t, std::integral O = I>
 class csr_view {
 public:
   using scalar_type = T;
