@@ -5,6 +5,7 @@
 
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
+#include <spblas/detail/operation_info_t.hpp>
 
 #include <algorithm>
 
@@ -48,8 +49,8 @@ void multiply(A&& a, B&& b, C&& c) {
 
 // SpGEMM (Gustavson's Algorithm)
 template <matrix A, matrix B, matrix C>
-requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
-         __detail::is_csr_view_v<C>)
+  requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
+           __detail::is_csr_view_v<C>)
 void multiply(A&& a, B&& b, C&& c) {
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -76,16 +77,17 @@ void multiply(A&& a, B&& b, C&& c) {
     try {
       c_builder.insert_row(i, c_row.get());
     } catch (...) {
-      throw std::runtime_error("matrix: ran out of memory.  CSR output view has insufficient memory.");
+      throw std::runtime_error("matrix: ran out of memory.  CSR output view "
+                               "has insufficient memory.");
     }
   }
 }
 
 // SpGEMM (Gustavson's Algorithm)
 template <matrix A, matrix B, matrix C>
-requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
-         __detail::is_csr_view_v<C>)
-void multiply_inspect(A&& a, B&& b, C&& c) {
+  requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
+           __detail::is_csr_view_v<C>)
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
       __backend::shape(a)[1] != __backend::shape(b)[0]) {
@@ -94,19 +96,28 @@ void multiply_inspect(A&& a, B&& b, C&& c) {
   }
 
   using T = tensor_scalar_t<C>;
+  using I = tensor_index_t<C>;
 
-  __backend::spa_accumulator<T> c_row(__backend::shape(c)[1]);
+  std::size_t nnz = 0;
+  __backend::spa_set<std::size_t> c_row(__backend::shape(c)[1]);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
     auto&& b_rows = __backend::rows(b);
     for (auto&& [k, a_v] : a_row) {
       for (auto&& [j, b_v] : std::get<1>(__backend::rows(b)[k])) {
-        c_row[j] += a_v * b_v;
+        c_row.insert(j);
       }
     }
-    c_row.sort();
+    nnz += c_row.size();
   }
+
+  return operation_info_t{__backend::shape(c), nnz};
+}
+
+template <matrix A, matrix B, matrix C>
+void multiply_execute(operation_info_t info, A&& a, B&& b, C&& c) {
+  multiply(a, b, c);
 }
 
 } // namespace spblas
