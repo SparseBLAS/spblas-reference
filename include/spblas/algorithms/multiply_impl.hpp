@@ -64,22 +64,27 @@ void multiply(A&& a, B&& b, C&& c) {
   __backend::spa_accumulator<T> c_row(__backend::shape(c)[1]);
   __backend::csr_builder c_builder(c);
 
-  for (auto&& [i, a_row] : __backend::rows(a)) {
-    c_row.clear();
-    auto&& b_rows = __backend::rows(b);
-    for (auto&& [k, a_v] : a_row) {
-      for (auto&& [j, b_v] : std::get<1>(__backend::rows(b)[k])) {
-        c_row[j] += a_v * b_v;
+  if (c.size() == 0) {
+    for (auto&& [i, a_row] : __backend::rows(a)) {
+      c_row.clear();
+      auto&& b_rows = __backend::rows(b);
+      for (auto&& [k, a_v] : a_row) {
+        for (auto&& [j, b_v] : std::get<1>(__backend::rows(b)[k])) {
+          c_row[j] += a_v * b_v;
+        }
+      }
+      c_row.sort();
+
+      try {
+        c_builder.insert_row(i, c_row.get());
+      } catch (...) {
+        throw std::runtime_error("matrix: ran out of memory.  CSR output view "
+                                 "has insufficient memory.");
       }
     }
-    c_row.sort();
-
-    try {
-      c_builder.insert_row(i, c_row.get());
-    } catch (...) {
-      throw std::runtime_error("matrix: ran out of memory.  CSR output view "
-                               "has insufficient memory.");
-    }
+  } else {
+    throw std::runtime_error(
+        "multiply: C already has values --- not implemented.");
   }
 }
 
@@ -103,12 +108,21 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
+
+    if (c.size() > 0) {
+
+      for (auto&& [j, c_v] : std::get<1>(__backend::rows(c)[i])) {
+        c_row.insert(j);
+      }
+    }
+
     auto&& b_rows = __backend::rows(b);
     for (auto&& [k, a_v] : a_row) {
       for (auto&& [j, b_v] : std::get<1>(__backend::rows(b)[k])) {
         c_row.insert(j);
       }
     }
+
     nnz += c_row.size();
   }
 
