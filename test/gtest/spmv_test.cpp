@@ -2,7 +2,7 @@
 
 #include <spblas/spblas.hpp>
 
-TEST(CsrView, Spmv) {
+TEST(CsrView, SpMV) {
 
   using T = int;
   using I = int;
