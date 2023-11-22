@@ -43,13 +43,23 @@ public:
     nnz_ = nnz;
   }
 
-  std::span<T> values() const noexcept { return values_; }
-  std::span<I> rowptr() const noexcept { return rowptr_; }
-  std::span<O> colind() const noexcept { return colind_; }
+  std::span<T> values() const noexcept {
+    return values_;
+  }
+  std::span<I> rowptr() const noexcept {
+    return rowptr_;
+  }
+  std::span<O> colind() const noexcept {
+    return colind_;
+  }
 
-  index<I> shape() const noexcept { return shape_; }
+  index<I> shape() const noexcept {
+    return shape_;
+  }
 
-  O size() const noexcept { return nnz_; }
+  O size() const noexcept {
+    return nnz_;
+  }
 
   friend class csr_builder<T, I, O>;
 

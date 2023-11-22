@@ -3,4 +3,5 @@ BasedOnStyle: LLVM
 PointerAlignment: Left
 ColumnLimit: 80
 AlwaysBreakTemplateDeclarations: Yes
+AllowShortFunctionsOnASingleLine: Empty
 ---

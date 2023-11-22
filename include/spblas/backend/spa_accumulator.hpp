@@ -29,11 +29,17 @@ public:
     stored_.clear();
   }
 
-  I size() const { return stored_.size(); }
+  I size() const {
+    return stored_.size();
+  }
 
-  bool empty() { return size() == 0; }
+  bool empty() {
+    return size() == 0;
+  }
 
-  void sort() { std::sort(stored_.begin(), stored_.end()); }
+  void sort() {
+    std::sort(stored_.begin(), stored_.end());
+  }
 
   auto get() {
     std::span data(data_);
@@ -62,7 +68,9 @@ public:
     }
   }
 
-  bool contains(T key) { return set_[key]; }
+  bool contains(T key) {
+    return set_[key];
+  }
 
   void clear() {
     for (auto&& pos : stored_) {
@@ -71,11 +79,17 @@ public:
     stored_.clear();
   }
 
-  T size() const { return stored_.size(); }
+  T size() const {
+    return stored_.size();
+  }
 
-  bool empty() { return size() == 0; }
+  bool empty() {
+    return size() == 0;
+  }
 
-  auto get() const { return std::span(stored_); }
+  auto get() const {
+    return std::span(stored_);
+  }
 
 private:
   std::vector<bool> set_;

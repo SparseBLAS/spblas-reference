@@ -57,9 +57,15 @@ public:
       : m_(m), n_(n), nnz_(nnz), values_(values), rowptr_(rowptr),
         colind_(colind) {}
 
-  T* values_data() { return values_; }
-  I* rowptr_data() { return rowptr_; }
-  I* colind_data() { return colind_; }
+  T* values_data() {
+    return values_;
+  }
+  I* rowptr_data() {
+    return rowptr_;
+  }
+  I* colind_data() {
+    return colind_;
+  }
 
 private:
   T* values_;

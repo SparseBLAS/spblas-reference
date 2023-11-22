@@ -9,7 +9,9 @@ namespace __backend {
 template <typename T, std::integral I = index_t, std::integral O = I>
 class csr_builder {
 public:
-  csr_builder(csr_view<T, I, O> view) : view_(view) { view_.rowptr()[0] = 0; }
+  csr_builder(csr_view<T, I, O> view) : view_(view) {
+    view_.rowptr()[0] = 0;
+  }
 
   template <__ranges::forward_range Row>
   void insert_row(I row_index, Row&& row) {
