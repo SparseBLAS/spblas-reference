@@ -1,18 +1,20 @@
 #pragma once
 
+#include <functional>
 #include <span>
+#include <tuple>
 #include <vector>
 
 namespace spblas {
 
 namespace __backend {
 
-template <typename T>
+template <typename T, std::integral I>
 class spa_accumulator {
 public:
-  spa_accumulator(std::size_t count) : data_(count), set_(count, false) {}
+  spa_accumulator(I count) : data_(count), set_(count, false) {}
 
-  T& operator[](std::size_t pos) {
+  T& operator[](I pos) {
     if (!set_[pos]) {
       stored_.push_back(pos);
       set_[pos] = true;
@@ -27,29 +29,31 @@ public:
     stored_.clear();
   }
 
-  std::size_t size() const { return data_.size(); }
+  I size() const { return stored_.size(); }
+
+  bool empty() { return size() == 0; }
 
   void sort() { std::sort(stored_.begin(), stored_.end()); }
 
-  auto get() const {
+  auto get() {
     std::span data(data_);
     std::span stored(stored_);
 
     return stored | __ranges::views::transform([=](auto idx) {
-             return std::tuple{idx, data[idx]};
+             return std::make_tuple(idx, std::reference_wrapper(data[idx]));
            });
   }
 
 private:
   std::vector<T> data_;
   std::vector<bool> set_;
-  std::vector<std::size_t> stored_;
+  std::vector<I> stored_;
 };
 
 template <std::integral T>
 class spa_set {
 public:
-  spa_set(std::size_t count) : set_(count, false) {}
+  spa_set(T count) : set_(count, false) {}
 
   void insert(T key) {
     if (!set_[key]) {
@@ -67,11 +71,15 @@ public:
     stored_.clear();
   }
 
-  std::size_t size() const { return stored_.size(); }
+  T size() const { return stored_.size(); }
+
+  bool empty() { return size() == 0; }
+
+  auto get() const { return std::span(stored_); }
 
 private:
   std::vector<bool> set_;
-  std::vector<std::size_t> stored_;
+  std::vector<T> stored_;
 };
 
 } // namespace __backend

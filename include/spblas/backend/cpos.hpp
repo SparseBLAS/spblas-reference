@@ -48,6 +48,18 @@ struct lookup_fn_ {
 
 inline constexpr auto lookup = lookup_fn_{};
 
+struct lookup_row_fn_ {
+  template <typename T, typename... Args>
+    requires(spblas::is_tag_invocable_v<lookup_row_fn_, T, Args...>)
+  constexpr tag_invoke_result_t<lookup_row_fn_, T, Args...>
+  operator()(T&& t, Args&&... args) const {
+    return spblas::tag_invoke(lookup_row_fn_{}, std::forward<T>(t),
+                              std::forward<Args>(args)...);
+  }
+};
+
+inline constexpr auto lookup_row = lookup_row_fn_{};
+
 } // namespace __backend
 
 } // namespace spblas

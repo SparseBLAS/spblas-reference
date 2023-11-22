@@ -60,11 +60,12 @@ void multiply(A&& a, B&& b, C&& c) {
   }
 
   using T = tensor_scalar_t<C>;
-
-  __backend::spa_accumulator<T> c_row(__backend::shape(c)[1]);
-  __backend::csr_builder c_builder(c);
+  using I = tensor_index_t<C>;
 
   if (c.size() == 0) {
+    __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
+    __backend::csr_builder c_builder(c);
+
     for (auto&& [i, a_row] : __backend::rows(a)) {
       c_row.clear();
       auto&& b_rows = __backend::rows(b);
@@ -82,6 +83,8 @@ void multiply(A&& a, B&& b, C&& c) {
                                  "has insufficient memory.");
       }
     }
+    c.update(c.values(), c.rowptr(), c.colind(), c.shape(),
+             c.rowptr()[c.shape()[0]]);
   } else {
     throw std::runtime_error(
         "multiply: C already has values --- not implemented.");
@@ -104,7 +107,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   using I = tensor_index_t<C>;
 
   std::size_t nnz = 0;
-  __backend::spa_set<std::size_t> c_row(__backend::shape(c)[1]);
+  __backend::spa_set<I> c_row(__backend::shape(c)[1]);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();

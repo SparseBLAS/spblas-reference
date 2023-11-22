@@ -34,6 +34,15 @@ public:
     colind_ = colind;
   }
 
+  void update(std::span<T> values, std::span<I> rowptr, std::span<O> colind,
+              index<I> shape, O nnz) {
+    values_ = values;
+    rowptr_ = rowptr;
+    colind_ = colind;
+    shape_ = shape;
+    nnz_ = nnz;
+  }
+
   std::span<T> values() const noexcept { return values_; }
   std::span<I> rowptr() const noexcept { return rowptr_; }
   std::span<O> colind() const noexcept { return colind_; }
@@ -42,7 +51,7 @@ public:
 
   O size() const noexcept { return nnz_; }
 
-  friend csr_builder<T, I, O>;
+  friend class csr_builder<T, I, O>;
 
 private:
   std::span<T> values_;

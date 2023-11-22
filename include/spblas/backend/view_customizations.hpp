@@ -22,7 +22,7 @@ namespace {
 
 template <matrix M>
   requires(__detail::is_csr_view_v<M>)
-auto row(M&& m, std::size_t row_index) {
+auto row(M&& m, typename std::remove_cvref_t<M>::index_type row_index) {
   using O = typename std::remove_cvref_t<M>::offset_type;
   O first = m.rowptr()[row_index];
   O last = m.rowptr()[row_index + 1];
@@ -48,6 +48,14 @@ auto tag_invoke(__backend::rows_fn_, M&& m) {
                         [=](auto row_index) { return row(m, row_index); });
 
   return __ranges::views::zip(row_indices, row_values);
+}
+
+template <matrix M>
+  requires(__detail::is_csr_view_v<M>)
+auto tag_invoke(__backend::lookup_row_fn_, M&& m,
+                typename std::remove_cvref_t<M>::index_type row_index) {
+  using I = typename std::remove_cvref_t<M>::index_type;
+  return row(m, row_index);
 }
 
 // Customization point implementations for contiguous_range

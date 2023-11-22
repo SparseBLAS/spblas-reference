@@ -6,7 +6,7 @@ namespace spblas {
 
 namespace __backend {
 
-template <typename T, typename I, typename O>
+template <typename T, std::integral I = index_t, std::integral O = I>
 class csr_builder {
 public:
   csr_builder(csr_view<T, I, O> view) : view_(view) { view_.rowptr()[0] = 0; }
@@ -28,14 +28,6 @@ public:
     }
     view_.rowptr()[i_ + 1] = j_ptr_;
     i_++;
-  }
-
-  void complete() {
-    while (i_ < view_.shape()[0]) {
-      view_.rowptr()[i_ + 1] = j_ptr_;
-      i_++;
-    }
-    view_.nnz_ = j_ptr_;
   }
 
 private:
