@@ -4,7 +4,8 @@
 #include <ranges>
 #endif
 
-#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L &&                \
+    defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
 
 namespace spblas {
 
@@ -15,6 +16,6 @@ namespace __ranges = std::ranges;
 #else
 static_assert(
     false,
-    "spblas requires support for std::ranges.  Compile with C++20 or later.");
+    "spblas requires support for std::ranges.  Compile with C++23 or later.");
 
 #endif

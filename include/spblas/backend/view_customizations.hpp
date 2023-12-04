@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spblas/backend/cpos.hpp>
+#include <spblas/detail/ranges.hpp>
 
 namespace spblas {
 
