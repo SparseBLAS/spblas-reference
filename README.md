@@ -115,7 +115,7 @@ brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build -DCMAKE_EXE_LIN
 ```
 
 ```bash
-# Linking errr when compiling with GCC on recent versions of Mac OS without
+# Linking error when compiling with GCC on recent versions of Mac OS without
 # enabling legacy linking.
 0  0x1002ff648  __assert_rtn + 72
 1  0x100233fac  ld::AtomPlacement::findAtom(unsigned char, unsigned long long, ld::AtomPlacement::AtomLoc const*&, long long&) const + 1204
