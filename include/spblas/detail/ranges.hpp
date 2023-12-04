@@ -1,15 +1,23 @@
 #pragma once
 
-#if __has_include(<ranges>)
-#include <ranges>
-#endif
-
 #if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L &&                \
     defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
+
+#include <ranges>
 
 namespace spblas {
 
 namespace __ranges = std::ranges;
+
+}
+
+#elif __has_include(<range/v3/all.hpp>)
+
+#include <range/v3/all.hpp>
+
+namespace spblas {
+
+namespace __ranges = ::ranges;
 
 }
 

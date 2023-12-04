@@ -114,7 +114,7 @@ template <typename T, typename Extents, typename LayoutPolicy,
           typename AccessorPolicy>
 auto tag_invoke(__backend::rows_fn_,
                 __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy> m) {
-  using index_type = decltype(m.extent(0));
+  using index_type = tensor_index_t<decltype(m)>;
   using reference =
       __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy>::reference;
 
@@ -123,10 +123,11 @@ auto tag_invoke(__backend::rows_fn_,
   auto rows =
       row_indices | __ranges::views::transform([=](auto row_index) {
         auto column_indices = __ranges::views::iota(index_type(0), m.extent(1));
-        auto values = column_indices | __ranges::views::transform(
-                                           [=](auto column_index) -> reference {
-                                             return m[row_index, column_index];
-                                           });
+        auto values =
+            column_indices |
+            __ranges::views::transform([=](auto column_index) -> reference {
+              return __backend::lookup(m, row_index, column_index);
+            });
         return __ranges::views::zip(column_indices, values);
       });
   return __ranges::views::zip(row_indices, rows);
@@ -137,7 +138,8 @@ template <matrix M>
 tensor_scalar_reference_t<M> tag_invoke(__backend::lookup_fn_, M&& m,
                                         tensor_index_t<M> i,
                                         tensor_index_t<M> j) {
-#ifdef __cpp_multidimensional_subscript
+#if defined(__cpp_multidimensional_subscript) &&                               \
+    __cpp_multidimensional_subscript >= 202211L
   return m[i, j];
 #else
   return m(i, j);

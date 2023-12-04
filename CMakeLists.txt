@@ -6,6 +6,30 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
+# Check whether compiler supports ranges and std::ranges::zip.
+# If not, use range-v3 instead of standard library's ranges.
+
+include(CheckCXXSymbolExists)
+check_cxx_symbol_exists(__cpp_lib_ranges "ranges" HAS_RANGES)
+check_cxx_symbol_exists(__cpp_lib_ranges_zip "ranges" HAS_ZIP)
+
+if (HAS_RANGES AND HAS_ZIP)
+  set(USE_RANGE_V3 OFF)
+  message(STATUS "Standard library supports both ranges and std::views::zip, using standard library.")
+else()
+  set(USE_RANGE_V3 ON)
+  message(STATUS "NOTE: Standard library does not include ranges and/or std::views::zip. Using range-v3.")
+endif()
+
+if (USE_RANGE_V3)
+  include(FetchContent)
+  FetchContent_Declare(
+    range-v3
+    GIT_REPOSITORY https://github.com/BenBrock/range-v3.git
+    GIT_TAG 5300fe3)
+  FetchContent_MakeAvailable(range-v3)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
   googletest

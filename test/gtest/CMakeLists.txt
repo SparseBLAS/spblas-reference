@@ -9,5 +9,9 @@ add_executable(
 
 target_link_libraries(spblas-tests spblas fmt mdspan GTest::gtest_main)
 
+if(USE_RANGE_V3)
+  target_link_libraries(spblas-tests range-v3)
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(spblas-tests)
