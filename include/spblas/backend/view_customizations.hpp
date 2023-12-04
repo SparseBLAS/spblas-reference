@@ -28,10 +28,15 @@ auto row(M&& m, typename std::remove_cvref_t<M>::index_type row_index) {
   O first = m.rowptr()[row_index];
   O last = m.rowptr()[row_index + 1];
 
-  __ranges::subrange column_indices(__ranges::next(m.colind().data(), first),
-                                    __ranges::next(m.colind().data(), last));
-  __ranges::subrange row_values(__ranges::next(m.values().data(), first),
-                                __ranges::next(m.values().data(), last));
+  using column_iter_t = decltype(m.colind().data());
+  using value_iter_t = decltype(m.values().data());
+
+  __ranges::subrange<column_iter_t> column_indices(
+      __ranges::next(m.colind().data(), first),
+      __ranges::next(m.colind().data(), last));
+  __ranges::subrange<value_iter_t> row_values(
+      __ranges::next(m.values().data(), first),
+      __ranges::next(m.values().data(), last));
 
   return __ranges::views::zip(column_indices, row_values);
 }
@@ -138,8 +143,7 @@ template <matrix M>
 tensor_scalar_reference_t<M> tag_invoke(__backend::lookup_fn_, M&& m,
                                         tensor_index_t<M> i,
                                         tensor_index_t<M> j) {
-#if defined(__cpp_multidimensional_subscript) &&                               \
-    __cpp_multidimensional_subscript >= 202211L
+#if defined(__cpp_multidimensional_subscript)
   return m[i, j];
 #else
   return m(i, j);
