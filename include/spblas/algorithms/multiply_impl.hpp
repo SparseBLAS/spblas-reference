@@ -70,7 +70,8 @@ void multiply(A&& a, B&& b, C&& c) {
       c_row.clear();
       auto&& b_rows = __backend::rows(b);
       for (auto&& [k, a_v] : a_row) {
-        for (auto&& [j, b_v] : std::get<1>(__backend::rows(b)[k])) {
+        auto b_row = std::get<1>(b_rows[k]);
+        for (auto&& [j, b_v] : b_row) {
           c_row[j] += a_v * b_v;
         }
       }
@@ -113,7 +114,6 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
     c_row.clear();
 
     if (c.size() > 0) {
-
       for (auto&& [j, c_v] : std::get<1>(__backend::rows(c)[i])) {
         c_row.insert(j);
       }
@@ -121,7 +121,8 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 
     auto&& b_rows = __backend::rows(b);
     for (auto&& [k, a_v] : a_row) {
-      for (auto&& [j, b_v] : std::get<1>(__backend::rows(b)[k])) {
+      auto b_row = std::get<1>(b_rows[k]);
+      for (auto&& [j, b_v] : b_row) {
         c_row.insert(j);
       }
     }
