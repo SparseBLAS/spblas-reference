@@ -11,11 +11,31 @@ jobs:
   checks:
     runs-on: 'ubuntu-latest'
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-        cache: 'pip'
-      - run: pip install -r requirements.txt
-      - name: Checks
-        uses: pre-commit/action@v3.0.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+        - run: pip install -r requirements.txt
+        - name: Checks
+            uses: pre-commit/action@v3.0.0
+
+  gcc:
+    runs-on: 'ubuntu-latest'
+    strategy:
+      matrix:
+        include:
+          - cxx: g++-13
+          - cxx: g++-12
+          - cxx: g++-11
+    name: ${{ matrix.cxx }}
+    env:
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+    - name: CMake
+      run: cmake -B build
+    - name: Build
+      run: make -C build
+    - name: Test
+      run: ./build/test/gtest/spblas-tests
