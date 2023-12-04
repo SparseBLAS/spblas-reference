@@ -94,9 +94,9 @@ brock@slothius:~/src/spblas-reference$
 ```
 
 ### Selecting Compiler
-The project requires a compiler C++20 support and some C++23 support.  To
-build with a different compiler than the default, provide the desired compiler
-to CMake using the environment variable `CXX`.
+The project requires a compiler with C++20 and some C++23 support.  To
+build with a different compiler than the system default, provide the desired
+compiler to CMake using the environment variable `CXX`.
 
 ```bash
 brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build
@@ -136,12 +136,12 @@ make: *** [all] Error 2
 ```
 
 ### C++ Standard Library Features
-The internal library implementation currently depends upon some C++23 features
-that some compilers may not support.  To work around this, the CMake will
-automatically detect if you are compiling with a sufficiently new version of
-the C++ standard library.  If it is missing required features, it will
-automatically download the [range-v3](https://github.com/ericniebler/range-v3)
-library and use it instead of the standard library's implementation of ranges.
+The internal library implementation currently depends upon C++23 features
+that some compilers may not support.  To work around this, the CMake build
+system will automatically detect whether you are compiling with a sufficiently
+new version of the C++ standard library.  If it is missing required features,
+it will automatically download the [range-v3](https://github.com/ericniebler/range-v3)
+library and use it instead of your standard library's implementation of ranges.
 
 ### Issues
 If you have any issues building the library, please create a GitHub issue in
