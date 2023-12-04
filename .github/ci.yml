@@ -1,0 +1,21 @@
+name: "CI Test"
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: 'ubuntu-latest'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+      - run: pip install -r requirements.txt
+      - name: Checks
+        uses: pre-commit/action@v3.0.0
