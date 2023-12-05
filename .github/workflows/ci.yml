@@ -1,4 +1,4 @@
-name: "CI Test"
+name: "CI"
 
 on:
   push:
@@ -7,19 +7,19 @@ on:
 
   pull_request:
 
-jobs:
-  checks:
-    runs-on: 'ubuntu-latest'
-    steps:
-    - uses: actions/checkout@v4
-    - name: Ubuntu dependencies
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-        cache: 'pip'
-    - run: pip install -r requirements.txt
-    - name: Checks
-      uses: pre-commit/action@v3.0.0
+  jobs:
+    checks:
+      runs-on: 'ubuntu-latest'
+      steps:
+      - uses: actions/checkout@v4
+      - name: Ubuntu dependencies
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+      - name: Checks
+        uses: pre-commit/action@v3.0.0
 
   gcc:
     runs-on: 'ubuntu-latest'
