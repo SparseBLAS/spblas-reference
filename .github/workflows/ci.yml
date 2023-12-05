@@ -28,9 +28,7 @@ jobs:
         - cxx: g++-13
         - cxx: g++-12
         - cxx: g++-11
-        - cxx: clang++-17
-        - cxx: clang++-16
-        - cxx: clang++-15
+        - cxx: clang++
     name: ${{ matrix.cxx }}
     env:
       CXX: ${{ matrix.cxx }}
