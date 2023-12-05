@@ -33,6 +33,6 @@ jobs:
     - name: CMake
       run: cmake -B build
     - name: Build
-      run: make -C build
+      run: make -C build -j `nproc`
     - name: Test
       run: ./build/test/gtest/spblas-tests
