@@ -23,7 +23,7 @@ void multiply(A&& a, B&& b, C&& c) {
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
     auto&& [i, k] = idx;
-    c[i] += a_v * b[k];
+    __backend::lookup(c, i) += a_v * __backend::lookup(b, k);
   });
 }
 

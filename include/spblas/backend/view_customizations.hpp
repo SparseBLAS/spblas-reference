@@ -64,20 +64,27 @@ auto tag_invoke(__backend::lookup_row_fn_, M&& m,
   return row(m, row_index);
 }
 
-// Customization point implementations for contiguous_range
+// Customization point implementations for vectors
 
 namespace __backend {
 
 template <vector V>
-  requires(__ranges::contiguous_range<V>)
+  requires(__ranges::random_access_range<V>)
 auto tag_invoke(__backend::shape_fn_, V&& v) {
   return __ranges::size(v);
 }
 
 template <vector V>
-  requires(__ranges::contiguous_range<V>)
+  requires(__ranges::random_access_range<V>)
 auto tag_invoke(__backend::values_fn_, V&& v) {
   return __ranges::views::all(std::forward<V>(v));
+}
+
+template <vector V>
+  requires(__ranges::random_access_range<V>)
+__ranges::range_reference_t<V> tag_invoke(__backend::lookup_fn_, V&& v,
+                                          __ranges::range_size_t<V> i) {
+  return *(__ranges::begin(v) + i);
 }
 
 } // namespace __backend
