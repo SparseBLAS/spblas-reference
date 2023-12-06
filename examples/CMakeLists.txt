@@ -1,10 +1,6 @@
 function(add_example example_name)
   add_executable(${example_name} ${example_name}.cpp)
-  target_link_libraries(${example_name} spblas fmt mdspan)
-
-  if(USE_RANGE_V3)
-    target_link_libraries(${example_name} range-v3)
-  endif()
+  target_link_libraries(${example_name} spblas fmt)
 endfunction()
 
 add_example(simple_spmv)

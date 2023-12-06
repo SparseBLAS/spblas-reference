@@ -7,11 +7,7 @@ add_executable(
   spgemm_test.cpp
 )
 
-target_link_libraries(spblas-tests spblas fmt mdspan GTest::gtest_main)
-
-if(USE_RANGE_V3)
-  target_link_libraries(spblas-tests range-v3)
-endif()
+target_link_libraries(spblas-tests spblas fmt GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(spblas-tests)
