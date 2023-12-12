@@ -20,6 +20,10 @@ void multiply(A&& a, B&& b, C&& c) {
         "multiply: matrix and vector dimensions are incompatible.");
   }
 
+  for (std::size_t i = 0; i < __backend::shape(c)[0]; i++) {
+    // TODO: some types may not support double.
+    __backend::lookup(c, i) = 0.0;
+  }
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
     auto&& [i, k] = idx;
@@ -37,7 +41,11 @@ void multiply(A&& a, B&& b, C&& c) {
     throw std::invalid_argument(
         "multiply: matrix dimensions are incompatible.");
   }
-
+  for (std::size_t j = 0; j < __backend::shape(c)[1]; j++) {
+    for (std::size_t i = 0; j < __backend::shape(c)[0]; i++) {
+      __backend::lookup(c, i, j) = 0.0;
+    }
+  }
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
     auto&& [i, k] = idx;
