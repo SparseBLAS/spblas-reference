@@ -155,4 +155,19 @@ auto generate_dense(std::size_t m, std::size_t n, std::size_t seed = 0) {
   return std::tuple(v, spblas::index(m, n));
 }
 
+template <typename T = float>
+auto generate_gaussian(std::size_t m, std::size_t n, std::size_t seed = 0) {
+  std::vector<T> v;
+  v.reserve(m * n);
+
+  std::mt19937 g(seed);
+  std::normal_distribution d{0.0, 1.0};
+
+  for (std::size_t i = 0; i < m * n; i++) {
+    v.push_back(d(g));
+  }
+
+  return std::tuple(v, spblas::index(m, n));
+}
+
 } // namespace spblas
