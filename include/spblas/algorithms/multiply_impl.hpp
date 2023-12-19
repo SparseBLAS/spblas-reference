@@ -98,6 +98,12 @@ void multiply(A&& a, B&& b, C&& c) {
            c.rowptr()[c.shape()[0]]);
 }
 
+// Trivial for SpMV!
+template <matrix A, vector B, vector C>
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  return operation_info_t{{c.size(), 1}, c.size()};
+}
+
 // C = AB
 // SpGEMM (Gustavson's Algorithm)
 template <matrix A, matrix B, matrix C>

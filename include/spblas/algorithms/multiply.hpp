@@ -8,6 +8,9 @@ namespace spblas {
 template <matrix A, vector B, vector C>
 void multiply(A&& a, B&& b, C&& c);
 
+template <matrix A, vector B, vector C>
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c);
+
 template <matrix A, matrix B, matrix C>
 void multiply(A&& a, B&& b, C&& c);
 
