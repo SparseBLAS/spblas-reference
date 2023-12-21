@@ -18,6 +18,16 @@ void for_each(M&& m, F&& f) {
   }
 }
 
+template <vector V, typename F>
+  requires(__backend::lookupable<V> && __ranges::random_access_range<V>)
+void for_each(V&& v, F&& f) {
+  using index_type = __ranges::range_size_t<V>;
+  for (index_type i = 0; i < __backend::shape(v); i++) {
+    auto&& value = __backend::lookup(v, i);
+    f(std::make_tuple(i, std::reference_wrapper(value)));
+  }
+}
+
 } // namespace __backend
 
 } // namespace spblas

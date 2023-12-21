@@ -11,6 +11,7 @@
 
 namespace spblas {
 
+// C = AB
 // SpMV
 template <matrix A, vector B, vector C>
 void multiply(A&& a, B&& b, C&& c) {
@@ -20,6 +21,11 @@ void multiply(A&& a, B&& b, C&& c) {
         "multiply: matrix and vector dimensions are incompatible.");
   }
 
+  __backend::for_each(c, [](auto&& e) {
+    auto&& [_, v] = e;
+    v = 0;
+  });
+
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
     auto&& [i, k] = idx;
@@ -27,6 +33,7 @@ void multiply(A&& a, B&& b, C&& c) {
   });
 }
 
+// C = AB
 // SpMM
 template <matrix A, matrix B, matrix C>
   requires(__backend::lookupable<B> && __backend::lookupable<C>)
@@ -37,6 +44,11 @@ void multiply(A&& a, B&& b, C&& c) {
     throw std::invalid_argument(
         "multiply: matrix dimensions are incompatible.");
   }
+
+  __backend::for_each(c, [](auto&& e) {
+    auto&& [_, v] = e;
+    v = 0;
+  });
 
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
@@ -62,32 +74,27 @@ void multiply(A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
 
-  if (c.size() == 0) {
-    __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
-    __backend::csr_builder c_builder(c);
+  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
+  __backend::csr_builder c_builder(c);
 
-    for (auto&& [i, a_row] : __backend::rows(a)) {
-      c_row.clear();
-      for (auto&& [k, a_v] : a_row) {
-        for (auto&& [j, b_v] : __backend::lookup_row(b, k)) {
-          c_row[j] += a_v * b_v;
-        }
-      }
-      c_row.sort();
-
-      try {
-        c_builder.insert_row(i, c_row.get());
-      } catch (...) {
-        throw std::runtime_error("matrix: ran out of memory.  CSR output view "
-                                 "has insufficient memory.");
+  for (auto&& [i, a_row] : __backend::rows(a)) {
+    c_row.clear();
+    for (auto&& [k, a_v] : a_row) {
+      for (auto&& [j, b_v] : __backend::lookup_row(b, k)) {
+        c_row[j] += a_v * b_v;
       }
     }
-    c.update(c.values(), c.rowptr(), c.colind(), c.shape(),
-             c.rowptr()[c.shape()[0]]);
-  } else {
-    throw std::runtime_error(
-        "multiply: C already has values --- not implemented.");
+    c_row.sort();
+
+    try {
+      c_builder.insert_row(i, c_row.get());
+    } catch (...) {
+      throw std::runtime_error("matrix: ran out of memory.  CSR output view "
+                               "has insufficient memory.");
+    }
   }
+  c.update(c.values(), c.rowptr(), c.colind(), c.shape(),
+           c.rowptr()[c.shape()[0]]);
 }
 
 // SpGEMM (Gustavson's Algorithm)
@@ -110,12 +117,6 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
-
-    if (c.size() > 0) {
-      for (auto&& [j, c_v] : __backend::lookup_row(c, i)) {
-        c_row.insert(j);
-      }
-    }
 
     for (auto&& [k, a_v] : a_row) {
       for (auto&& [j, b_v] : __backend::lookup_row(b, k)) {

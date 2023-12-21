@@ -19,6 +19,11 @@ public:
         j_ptr_ + __ranges::size(row) > __ranges::size(view_.colind())) {
       throw std::runtime_error("csr_builder: not enough space in CSR.");
     }
+
+    if (row_index + 1 >= __ranges::size(view_.rowptr())) {
+      throw std::runtime_error("csr_builder: not enough rows in CSR.");
+    }
+
     while (i_ < row_index) {
       view_.rowptr()[i_ + 1] = j_ptr_;
     }
