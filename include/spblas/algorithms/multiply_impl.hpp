@@ -59,6 +59,7 @@ void multiply(A&& a, B&& b, C&& c) {
   });
 }
 
+// C = AB
 // SpGEMM (Gustavson's Algorithm)
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
@@ -97,6 +98,7 @@ void multiply(A&& a, B&& b, C&& c) {
            c.rowptr()[c.shape()[0]]);
 }
 
+// C = AB
 // SpGEMM (Gustavson's Algorithm)
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
@@ -130,6 +132,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   return operation_info_t{__backend::shape(c), nnz};
 }
 
+// C = AB
 template <matrix A, matrix B, matrix C>
 void multiply_execute(operation_info_t info, A&& a, B&& b, C&& c) {
   multiply(a, b, c);
