@@ -66,6 +66,15 @@ auto tag_invoke(__backend::lookup_row_fn_, M&& m,
 
 // Customization point implementations for vectors
 
+template <vector V>
+  requires(__ranges::random_access_range<V>)
+struct tensor_traits<V> {
+  using scalar_type = __ranges::range_value_t<V>;
+  using scalar_reference = __ranges::range_reference_t<V>;
+  using index_type = __ranges::range_size_t<V>;
+  using offset_type = __ranges::range_size_t<V>;
+};
+
 namespace __backend {
 
 template <vector V>
