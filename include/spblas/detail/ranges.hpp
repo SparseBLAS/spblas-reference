@@ -7,9 +7,16 @@
 
 namespace spblas {
 
-namespace __ranges = std::ranges;
+namespace __ranges = ::std::ranges;
+
+namespace __detail {
+
+template <typename T>
+concept view = ::std::ranges::view<T>;
 
 }
+
+} // namespace spblas
 
 #elif __has_include(<range/v3/all.hpp>)
 
@@ -19,7 +26,14 @@ namespace spblas {
 
 namespace __ranges = ::ranges;
 
+namespace __detail {
+
+template <typename T>
+concept view = ::ranges::view_<T>;
+
 }
+
+} // namespace spblas
 
 #else
 static_assert(

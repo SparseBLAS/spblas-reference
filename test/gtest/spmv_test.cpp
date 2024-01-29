@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
 
+#include "util.hpp"
 #include <spblas/spblas.hpp>
 
 TEST(CsrView, SpMV) {
   using T = int;
   using I = int;
 
-  for (auto&& [m, n, nnz] :
-       {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
-        std::tuple(40, 40, 1000)}) {
+  for (auto&& [m, n, nnz] : util::dims) {
     auto [values, rowptr, colind, shape, _] =
         spblas::generate_csr<T, I>(m, n, nnz);
 

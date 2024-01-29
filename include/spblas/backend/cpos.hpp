@@ -6,6 +6,16 @@ namespace spblas {
 
 namespace __backend {
 
+struct size_fn_ {
+  template <typename T>
+    requires(spblas::is_tag_invocable_v<size_fn_, T>)
+  constexpr auto operator()(T&& t) const {
+    return spblas::tag_invoke(size_fn_{}, std::forward<T>(t));
+  }
+};
+
+inline constexpr auto size = size_fn_{};
+
 struct shape_fn_ {
   template <typename T>
     requires(spblas::is_tag_invocable_v<shape_fn_, T>)

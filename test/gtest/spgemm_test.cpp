@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "util.hpp"
 #include <spblas/spblas.hpp>
 
 #include <fmt/core.h>
@@ -9,9 +10,7 @@ TEST(CsrView, SpGEMM) {
   using T = int;
   using I = int;
 
-  for (auto&& [m, k, nnz] :
-       {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
-        std::tuple(40, 40, 1000)}) {
+  for (auto&& [m, k, nnz] : util::dims) {
     for (auto&& n : {m, k}) {
       auto [a_values, a_rowptr, a_colind, a_shape, a_nnz] =
           spblas::generate_csr<T, I>(m, k, nnz);

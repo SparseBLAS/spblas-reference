@@ -9,6 +9,12 @@ namespace spblas {
 
 template <matrix M>
   requires(__detail::is_csr_view_v<M>)
+auto tag_invoke(__backend::size_fn_, M&& m) {
+  return m.size();
+}
+
+template <matrix M>
+  requires(__detail::is_csr_view_v<M>)
 auto tag_invoke(__backend::shape_fn_, M&& m) {
   return m.shape();
 }
@@ -79,6 +85,12 @@ namespace __backend {
 
 template <vector V>
   requires(__ranges::random_access_range<V>)
+auto tag_invoke(__backend::size_fn_, V&& v) {
+  return __ranges::size(v);
+}
+
+template <vector V>
+  requires(__ranges::random_access_range<V>)
 auto tag_invoke(__backend::shape_fn_, V&& v) {
   return __ranges::size(v);
 }
@@ -110,6 +122,12 @@ struct tensor_traits<M> {
 };
 
 namespace __backend {
+
+template <matrix M>
+  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+auto tag_invoke(__backend::size_fn_, M&& m) {
+  return m.extent(0) * m.extent(1);
+}
 
 template <matrix M>
   requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)

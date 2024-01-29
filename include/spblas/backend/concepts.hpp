@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spblas/backend/cpos.hpp>
+#include <spblas/concepts.hpp>
 #include <spblas/detail/types.hpp>
 
 namespace spblas {
