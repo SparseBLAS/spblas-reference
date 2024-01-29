@@ -1,5 +1,7 @@
 #pragma once
 
+#include <version>
+
 #if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L &&                \
     defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
 
