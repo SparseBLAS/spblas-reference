@@ -13,8 +13,9 @@ namespace spblas {
 template <typename S, typename T>
 class scaled_view;
 
+// Scaled view for random access range
 template <typename S, vector V>
-  requires(__detail::view<V>)
+  requires(__detail::view<V> && __ranges::random_access_range<V>)
 class scaled_view<S, V> : public view_base {
 public:
   using scalar_type =
@@ -88,5 +89,61 @@ private:
 
 template <typename S, __ranges::random_access_range R>
 scaled_view(S alpha, R&& r) -> scaled_view<S, __ranges::views::all_t<R>>;
+
+// Scaled view for mdspan
+template <typename S, matrix M>
+  requires(view<M> && __backend::lookupable<M>)
+class scaled_view<S, M> : public view_base {
+public:
+  using scalar_type =
+      decltype(std::declval<S>() * std::declval<tensor_scalar_t<M>>());
+  using scalar_reference = scalar_type;
+  using index_type = tensor_index_t<M>;
+  using offset_type = tensor_offset_t<M>;
+
+  scaled_view(S alpha, M matrix) : alpha_(alpha), matrix_(matrix) {}
+
+  auto shape() const noexcept {
+    return __backend::shape(base());
+  }
+
+  index_type size() const noexcept {
+    return __backend::size(base());
+  }
+
+  S alpha() const noexcept {
+    return alpha_;
+  }
+
+  auto base() {
+    return matrix_;
+  }
+
+  auto base() const {
+    return matrix_;
+  }
+
+private:
+  friend auto tag_invoke(__backend::size_fn_, scaled_view matrix) {
+    return __backend::size(matrix.base());
+  }
+
+  friend auto tag_invoke(__backend::shape_fn_, scaled_view matrix) {
+    return __backend::shape(matrix.base());
+  }
+
+  friend auto tag_invoke(__backend::lookup_fn_, scaled_view matrix,
+                         index_type i, index_type j) {
+    return matrix.alpha() * __backend::lookup(matrix.base(), i, j);
+  }
+
+private:
+  S alpha_;
+  M matrix_;
+};
+
+template <typename S, matrix M>
+  requires(view<M> && __backend::lookupable<M>)
+scaled_view(S s, M m) -> scaled_view<S, M>;
 
 } // namespace spblas
