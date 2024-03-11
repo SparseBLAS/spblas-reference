@@ -46,6 +46,10 @@ endif()
 
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  # We use `enable_testing()` here so that `ninja test` works from the build
+  # directory. Note: you need the standard CMake option `-DENABLE_TESTING=on`.
+  enable_testing()
+
   # Dependencies needed only for examples/test
   # Google test
   FetchContent_Declare(
@@ -64,5 +68,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   FetchContent_MakeAvailable(fmt)
 
   add_subdirectory(examples)
-  add_subdirectory(test)
+  if (ENABLE_TESTING)
+    add_subdirectory(test)
+  endif()
 endif()

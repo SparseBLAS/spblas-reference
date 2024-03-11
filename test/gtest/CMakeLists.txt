@@ -1,5 +1,3 @@
-enable_testing()
-
 add_executable(
   spblas-tests
   spmv_test.cpp
