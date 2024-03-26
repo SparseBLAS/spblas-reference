@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(spblas)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
@@ -11,6 +11,12 @@ add_subdirectory(include)
 
 # Download dependencies
 include(FetchContent)
+
+if (ENABLE_ONEMKL)
+  find_package(MKL REQUIRED)
+  target_link_libraries(spblas INTERFACE MKL::MKL_DPCPP)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_ONEMKL")
+endif()
 
 # mdspan
 FetchContent_Declare(

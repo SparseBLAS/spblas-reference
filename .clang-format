@@ -4,4 +4,5 @@ PointerAlignment: Left
 ColumnLimit: 80
 AlwaysBreakTemplateDeclarations: Yes
 AllowShortFunctionsOnASingleLine: Empty
+SpaceAfterCStyleCast: Yes
 ---
