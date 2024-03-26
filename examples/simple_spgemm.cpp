@@ -24,10 +24,8 @@ int main(int argc, char** argv) {
 
   csr_view<float> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-  fmt::print("Calling multiply_inspect...\n");
   auto info = multiply_inspect(a, b, c);
 
-  fmt::print("Allocating space for C...\n");
   std::vector<float> c_values(info.result_nnz());
   std::vector<spblas::index_t> c_colind(info.result_nnz());
 

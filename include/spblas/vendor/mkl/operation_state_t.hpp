@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/ranges.h>
 #include <oneapi/mkl.hpp>
 
 namespace spblas {
@@ -53,7 +52,6 @@ struct operation_state_t {
   operation_state_t(const operation_state_t& other) = delete;
 
   ~operation_state_t() {
-    fmt::print("Freeing handles, etc...\n");
     oneapi::mkl::sparse::release_matrix_handle(q, &a_handle);
     oneapi::mkl::sparse::release_matrix_handle(q, &b_handle);
     oneapi::mkl::sparse::release_matrix_handle(q, &c_handle);
