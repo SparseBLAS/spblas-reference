@@ -11,9 +11,9 @@ void tag_invoke();
 struct _fn {
   template <typename CPO, typename... Args>
   constexpr auto operator()(CPO cpo, Args&&... args) const
-      noexcept(noexcept(tag_invoke((CPO&&)cpo, (Args&&)args...)))
-          -> decltype(tag_invoke((CPO&&)cpo, (Args&&)args...)) {
-    return tag_invoke((CPO&&)cpo, (Args&&)args...);
+      noexcept(noexcept(tag_invoke((CPO&&) cpo, (Args&&) args...)))
+          -> decltype(tag_invoke((CPO&&) cpo, (Args&&) args...)) {
+    return tag_invoke((CPO&&) cpo, (Args&&) args...);
   }
 };
 

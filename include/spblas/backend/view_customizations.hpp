@@ -122,7 +122,7 @@ template <typename T, typename Extents, typename LayoutPolicy,
           typename AccessorPolicy>
   requires(std::is_same_v<AccessorPolicy, __mdspan::default_accessor<T>> &&
            (std::is_same_v<LayoutPolicy, __mdspan::layout_right> ||
-            std::is_same_v<LayoutPolicy, __mdspan::layout_left>))
+            std::is_same_v<LayoutPolicy, __mdspan::layout_left>) )
 auto tag_invoke(__backend::values_fn_,
                 __mdspan::mdspan<T, Extents, LayoutPolicy, AccessorPolicy> m) {
   auto size = shape(m)[0] * shape(m)[1];
