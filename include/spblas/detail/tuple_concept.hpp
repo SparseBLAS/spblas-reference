@@ -3,6 +3,7 @@
 #include <any>
 #include <concepts>
 #include <iterator>
+#include <tuple>
 
 namespace spblas {
 
