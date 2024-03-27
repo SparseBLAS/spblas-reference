@@ -3,6 +3,9 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+template <spblas::matrix M>
+void matrix_check(M&&) {}
+
 int main(int argc, char** argv) {
   using namespace spblas;
   namespace md = spblas::__mdspan;
@@ -22,9 +25,9 @@ int main(int argc, char** argv) {
   md::mdspan b(b_values.data(), k, n);
   md::mdspan c(c_values.data(), m, n);
 
-  auto view = scaled(1.0f, b);
+  auto a_view = scaled_view(1.2f, a);
 
-  multiply(a, view, c);
+  multiply(a_view, b, c);
 
   fmt::print("{}\n", spblas::__backend::values(c));
 
