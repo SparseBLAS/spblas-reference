@@ -21,22 +21,6 @@ concept lookupable_matrix =
       { lookup(t, i, j) };
     };
 
-/*
-namespace __detail {
-
-template <typename T, std::size_t... Ns>
-decltype(auto) lookupable_impl_(T&& t, Ns... ns) {
-  return lookup(t, ns...);
-}
-
-} // namespace __detail
-
-template <std::size_t N, typename T>
-concept lookupable = requires(T& t) {
-  { __detail::lookupable_impl_(t, std::make_index_sequence<N>{}) }
-};
-*/
-
 template <typename T>
 concept lookupable_vector = requires(T& t, tensor_index_t<T> i) {
   { lookup(t, i) };
