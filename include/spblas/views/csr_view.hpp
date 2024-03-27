@@ -2,6 +2,7 @@
 
 #include <span>
 #include <spblas/detail/detail.hpp>
+#include <spblas/views/view_base.hpp>
 
 namespace spblas {
 
@@ -9,7 +10,7 @@ template <typename T, typename I, typename O>
 class csr_builder;
 
 template <typename T, std::integral I = index_t, std::integral O = I>
-class csr_view {
+class csr_view : public view_base {
 public:
   using scalar_type = T;
   using scalar_reference = T&;

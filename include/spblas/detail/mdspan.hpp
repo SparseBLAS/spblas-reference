@@ -1,5 +1,7 @@
 #pragma once
 
+#include <version>
+
 #if __has_include(<mdspan>)
 #include <mdspan>
 #endif

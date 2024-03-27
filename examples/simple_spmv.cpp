@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
   std::vector<float> b(100, 1);
   std::vector<float> c(100, 0);
 
-  float alpha = 2.0f;
+  float alpha = 1.2f;
   // c = a * alpha * b
   multiply(a, scaled(alpha, b), c);
 

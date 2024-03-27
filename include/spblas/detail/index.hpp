@@ -6,27 +6,9 @@
 #include <limits>
 #include <tuple>
 
+#include <spblas/detail/tuple_concept.hpp>
+
 namespace spblas {
-
-namespace {
-template <typename T, std::size_t I, typename U = std::any>
-concept TupleElementGettable = requires(T tuple) {
-  { std::get<I>(tuple) } -> std::convertible_to<U>;
-};
-} // namespace
-
-template <typename T, typename... Args>
-concept TupleLike =
-    requires {
-      typename std::tuple_size<std::remove_cvref_t<T>>::type;
-      requires std::same_as<
-          std::remove_cvref_t<
-              decltype(std::tuple_size_v<std::remove_cvref_t<T>>)>,
-          std::size_t>;
-    } && sizeof...(Args) == std::tuple_size_v<std::remove_cvref_t<T>> &&
-    []<std::size_t... I>(std::index_sequence<I...>) {
-      return (TupleElementGettable<T, I, Args> && ...);
-    }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<T>>>());
 
 template <std::integral T = std::size_t>
 class index {
@@ -59,9 +41,8 @@ public:
   constexpr index(index_type first, index_type second)
       : first(first), second(second) {}
 
-  template <TupleLike<T, T> Tuple>
-  constexpr index(Tuple tuple)
-      : first(std::get<0>(tuple)), second(std::get<1>(tuple)) {}
+  template <__detail::tuple_like<T, T> Tuple>
+  constexpr index(Tuple tuple) : first(get<0>(tuple)), second(get<1>(tuple)) {}
 
   template <std::integral U>
   constexpr index(std::initializer_list<U> tuple) {
@@ -71,18 +52,6 @@ public:
   }
 
   constexpr bool operator==(const index&) const noexcept = default;
-
-  template <std::size_t Index>
-  constexpr T get() const noexcept
-    requires(Index <= 1)
-  {
-    if constexpr (Index == 0) {
-      return first;
-    }
-    if constexpr (Index == 1) {
-      return second;
-    }
-  }
 
   index() = default;
   ~index() = default;
@@ -94,6 +63,18 @@ public:
   index_type first;
   index_type second;
 };
+
+template <std::size_t Index, std::integral I>
+inline constexpr I get(spblas::index<I> index)
+  requires(Index <= 1)
+{
+  if constexpr (Index == 0) {
+    return index.first;
+  }
+  if constexpr (Index == 1) {
+    return index.second;
+  }
+}
 
 } // namespace spblas
 

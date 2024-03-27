@@ -1,7 +1,8 @@
 #pragma once
 
 #include <spblas/detail/mdspan.hpp>
-#include <spblas/views/views.hpp>
+#include <spblas/views/csr_view.hpp>
+#include <spblas/views/scaled_view.hpp>
 
 namespace spblas {
 
