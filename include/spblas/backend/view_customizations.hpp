@@ -7,13 +7,19 @@ namespace spblas {
 
 // Customization point implementations for csr_view.
 
-template <matrix M>
+template <typename M>
+  requires(__detail::is_csr_view_v<M>)
+auto tag_invoke(__backend::size_fn_, M&& m) {
+  return m.size();
+}
+
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
 auto tag_invoke(__backend::shape_fn_, M&& m) {
   return m.shape();
 }
 
-template <matrix M>
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
 auto tag_invoke(__backend::values_fn_, M&& m) {
   return m.values();
@@ -21,7 +27,7 @@ auto tag_invoke(__backend::values_fn_, M&& m) {
 
 namespace {
 
-template <matrix M>
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
 auto row(M&& m, typename std::remove_cvref_t<M>::index_type row_index) {
   using O = typename std::remove_cvref_t<M>::offset_type;
@@ -43,7 +49,7 @@ auto row(M&& m, typename std::remove_cvref_t<M>::index_type row_index) {
 
 } // namespace
 
-template <matrix M>
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
 auto tag_invoke(__backend::rows_fn_, M&& m) {
   using I = typename std::remove_cvref_t<M>::index_type;
@@ -56,7 +62,7 @@ auto tag_invoke(__backend::rows_fn_, M&& m) {
   return __ranges::views::zip(row_indices, row_values);
 }
 
-template <matrix M>
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
 auto tag_invoke(__backend::lookup_row_fn_, M&& m,
                 typename std::remove_cvref_t<M>::index_type row_index) {
@@ -66,8 +72,7 @@ auto tag_invoke(__backend::lookup_row_fn_, M&& m,
 
 // Customization point implementations for vectors
 
-template <vector V>
-  requires(__ranges::random_access_range<V>)
+template <__ranges::random_access_range V>
 struct tensor_traits<V> {
   using scalar_type = __ranges::range_value_t<V>;
   using scalar_reference = __ranges::range_reference_t<V>;
@@ -77,20 +82,22 @@ struct tensor_traits<V> {
 
 namespace __backend {
 
-template <vector V>
-  requires(__ranges::random_access_range<V>)
+template <__ranges::random_access_range V>
+auto tag_invoke(__backend::size_fn_, V&& v) {
+  return __ranges::size(v);
+}
+
+template <__ranges::random_access_range V>
 auto tag_invoke(__backend::shape_fn_, V&& v) {
   return __ranges::size(v);
 }
 
-template <vector V>
-  requires(__ranges::random_access_range<V>)
+template <__ranges::random_access_range V>
 auto tag_invoke(__backend::values_fn_, V&& v) {
   return __ranges::views::all(std::forward<V>(v));
 }
 
-template <vector V>
-  requires(__ranges::random_access_range<V>)
+template <__ranges::random_access_range V>
 __ranges::range_reference_t<V> tag_invoke(__backend::lookup_fn_, V&& v,
                                           __ranges::range_size_t<V> i) {
   return *(__ranges::begin(v) + i);
@@ -100,7 +107,7 @@ __ranges::range_reference_t<V> tag_invoke(__backend::lookup_fn_, V&& v,
 
 // Customization point implementations for mdspan
 
-template <matrix M>
+template <typename M>
   requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
 struct tensor_traits<M> {
   using scalar_type = typename std::remove_cvref_t<M>::value_type;
@@ -111,7 +118,13 @@ struct tensor_traits<M> {
 
 namespace __backend {
 
-template <matrix M>
+template <typename M>
+  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+auto tag_invoke(__backend::size_fn_, M&& m) {
+  return m.extent(0) * m.extent(1);
+}
+
+template <typename M>
   requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
 auto tag_invoke(__backend::shape_fn_, M&& m) {
   using index_type = decltype(m.extent(0));
@@ -154,7 +167,7 @@ auto tag_invoke(__backend::rows_fn_,
   return __ranges::views::zip(row_indices, rows);
 }
 
-template <matrix M>
+template <typename M>
   requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
 tensor_scalar_reference_t<M> tag_invoke(__backend::lookup_fn_, M&& m,
                                         tensor_index_t<M> i,
