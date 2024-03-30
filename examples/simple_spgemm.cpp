@@ -24,14 +24,14 @@ int main(int argc, char** argv) {
 
   csr_view<float> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-  auto info = multiply_inspect(a, b, c);
+  auto info = multiply_inspect(scaled(1.f, a), b, c);
 
   std::vector<float> c_values(info.result_nnz());
   std::vector<spblas::index_t> c_colind(info.result_nnz());
 
   c.update(c_values, c_rowptr, c_colind);
 
-  multiply_execute(info, a, b, c);
+  multiply_execute(info, scaled(1.f, a), b, c);
 
   for (auto&& [i, row] : spblas::__backend::rows(c)) {
     fmt::print("{}: {}\n", i, row);

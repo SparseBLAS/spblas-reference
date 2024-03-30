@@ -39,7 +39,7 @@ TEST(CsrView, SpMM) {
       }
 
       for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ(c_ref[i], c_values[i]);
+        EXPECT_EQ_(c_ref[i], c_values[i]);
       }
     }
   }
@@ -85,7 +85,7 @@ TEST(CsrView, SpMM_AScaled) {
       }
 
       for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ(c_ref[i], c_values[i]);
+        EXPECT_EQ_(c_ref[i], c_values[i]);
       }
     }
   }
@@ -131,7 +131,7 @@ TEST(CsrView, SpMM_BScaled) {
       }
 
       for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ(c_ref[i], c_values[i]);
+        EXPECT_EQ_(c_ref[i], c_values[i]);
       }
     }
   }

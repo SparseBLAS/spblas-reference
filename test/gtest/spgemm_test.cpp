@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "util.hpp"
+#include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/spblas.hpp>
 
 #include <fmt/core.h>
@@ -37,6 +38,9 @@ TEST(CsrView, SpGEMM) {
       spblas::__backend::spa_accumulator<T, I> c_row_ref(
           spblas::__backend::shape(c)[1]);
 
+      spblas::__backend::spa_accumulator<T, I> c_row_acc(
+          spblas::__backend::shape(c)[1]);
+
       for (auto&& [i, a_row] : spblas::__backend::rows(a)) {
         c_row_ref.clear();
         for (auto&& [k, a_v] : a_row) {
@@ -49,10 +53,15 @@ TEST(CsrView, SpGEMM) {
 
         auto&& c_row = spblas::__backend::lookup_row(c, i);
 
-        EXPECT_EQ(c_row_ref.size(), c_row.size());
+        // Accumulate output into `c_row_acc` so that we can allow
+        // duplicate column indices.
+        c_row_acc.clear();
+        for (auto&& [j, c_v] : c_row) {
+          c_row_acc[j] += c_v;
+        }
 
         for (auto&& [j, c_v] : c_row) {
-          EXPECT_EQ(c_row_ref[j], c_v);
+          EXPECT_EQ_(c_row_ref[j], c_row_acc[j]);
         }
       }
     }
@@ -92,6 +101,9 @@ TEST(CsrView, SpGEMM_AScaled) {
       spblas::__backend::spa_accumulator<T, I> c_row_ref(
           spblas::__backend::shape(c)[1]);
 
+      spblas::__backend::spa_accumulator<T, I> c_row_acc(
+          spblas::__backend::shape(c)[1]);
+
       for (auto&& [i, a_row] : spblas::__backend::rows(a)) {
         c_row_ref.clear();
         for (auto&& [k, a_v] : a_row) {
@@ -104,10 +116,15 @@ TEST(CsrView, SpGEMM_AScaled) {
 
         auto&& c_row = spblas::__backend::lookup_row(c, i);
 
-        EXPECT_EQ(c_row_ref.size(), c_row.size());
+        // Accumulate output into `c_row_acc` so that we can allow
+        // duplicate column indices.
+        c_row_acc.clear();
+        for (auto&& [j, c_v] : c_row) {
+          c_row_acc[j] += c_v;
+        }
 
         for (auto&& [j, c_v] : c_row) {
-          EXPECT_EQ(c_row_ref[j], c_v);
+          EXPECT_EQ_(c_row_ref[j], c_row_acc[j]);
         }
       }
     }
@@ -147,6 +164,9 @@ TEST(CsrView, SpGEMM_BScaled) {
       spblas::__backend::spa_accumulator<T, I> c_row_ref(
           spblas::__backend::shape(c)[1]);
 
+      spblas::__backend::spa_accumulator<T, I> c_row_acc(
+          spblas::__backend::shape(c)[1]);
+
       for (auto&& [i, a_row] : spblas::__backend::rows(a)) {
         c_row_ref.clear();
         for (auto&& [k, a_v] : a_row) {
@@ -159,10 +179,15 @@ TEST(CsrView, SpGEMM_BScaled) {
 
         auto&& c_row = spblas::__backend::lookup_row(c, i);
 
-        EXPECT_EQ(c_row_ref.size(), c_row.size());
+        // Accumulate output into `c_row_acc` so that we can allow
+        // duplicate column indices.
+        c_row_acc.clear();
+        for (auto&& [j, c_v] : c_row) {
+          c_row_acc[j] += c_v;
+        }
 
         for (auto&& [j, c_v] : c_row) {
-          EXPECT_EQ(c_row_ref[j], c_v);
+          EXPECT_EQ_(c_row_ref[j], c_row_acc[j]);
         }
       }
     }

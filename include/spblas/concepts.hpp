@@ -32,8 +32,9 @@ template <typename T>
 concept tensor = matrix<T> || vector<T>;
 
 template <typename T>
-concept view = tensor<T> && (std::derived_from<T, view_base> ||
-                             __detail::is_matrix_instantiation_of_mdspan_v<T> ||
-                             __detail::view<T>);
+concept view =
+    tensor<T> && (std::derived_from<std::remove_cvref_t<T>, view_base> ||
+                  __detail::is_matrix_instantiation_of_mdspan_v<T> ||
+                  __detail::__ranges::view<T>);
 
 } // namespace spblas

@@ -17,8 +17,10 @@ int main(int argc, char** argv) {
   std::vector<float> c(100, 0);
 
   float alpha = 1.2f;
+  auto a_scaled = scaled(alpha, a);
+
   // c = a * alpha * b
-  multiply(a, scaled(alpha, b), c);
+  multiply(a_scaled, b, c);
 
   return 0;
 }

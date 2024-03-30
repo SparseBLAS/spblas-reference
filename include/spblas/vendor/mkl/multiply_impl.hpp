@@ -4,64 +4,82 @@
 
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
+#include <spblas/detail/view_inspectors.hpp>
 
 namespace spblas {
 
 template <matrix A, vector B, vector C>
-  requires __detail::is_csr_view_v<A> && __ranges::contiguous_range<B> &&
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
 void multiply(A&& a, B&& b, C&& c) {
+  auto a_base = __detail::get_ultimate_base(a);
+  auto b_base = __detail::get_ultimate_base(b);
+
+  auto alpha_optional = __detail::get_scaling_factor(a, b);
+  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+
   sycl::queue q(sycl::cpu_selector_v);
   oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
 
   oneapi::mkl::sparse::init_matrix_handle(&a_handle);
 
   oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a)[0], __backend::shape(a)[1],
-      oneapi::mkl::index_base::zero, a.rowptr().data(), a.colind().data(),
-      a.values().data())
+      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
+      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
+      a_base.colind().data(), a_base.values().data())
       .wait();
 
-  oneapi::mkl::sparse::gemv(q, oneapi::mkl::transpose::nontrans, 1.0, a_handle,
-                            __ranges::data(b), 0.0, __ranges::data(c))
+  oneapi::mkl::sparse::gemv(q, oneapi::mkl::transpose::nontrans, alpha,
+                            a_handle, __ranges::data(b_base), 0.0,
+                            __ranges::data(c))
       .wait();
 
   oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
 }
 
 template <matrix A, matrix B, matrix C>
-  requires __detail::is_csr_view_v<A> &&
-           __detail::is_matrix_instantiation_of_mdspan_v<B> &&
+  requires __detail::has_csr_base<A> && __detail::has_mdspan_matrix_base<B> &&
            __detail::is_matrix_instantiation_of_mdspan_v<C> &&
-           std::is_same_v<typename std::remove_cvref_t<B>::layout_type,
-                          __mdspan::layout_right> &&
+           std::is_same_v<
+               typename __detail::ultimate_base_type_t<B>::layout_type,
+               __mdspan::layout_right> &&
            std::is_same_v<typename std::remove_cvref_t<C>::layout_type,
                           __mdspan::layout_right>
 void multiply(A&& a, B&& b, C&& c) {
+  auto a_base = __detail::get_ultimate_base(a);
+  auto b_base = __detail::get_ultimate_base(b);
+
+  auto alpha_optional = __detail::get_scaling_factor(a, b);
+  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+
   sycl::queue q(sycl::cpu_selector_v);
 
   oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
   oneapi::mkl::sparse::init_matrix_handle(&a_handle);
 
   oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a)[0], __backend::shape(a)[1],
-      oneapi::mkl::index_base::zero, a.rowptr().data(), a.colind().data(),
-      a.values().data())
+      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
+      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
+      a_base.colind().data(), a_base.values().data())
       .wait();
 
   oneapi::mkl::sparse::gemm(
       q, oneapi::mkl::layout::row_major, oneapi::mkl::transpose::nontrans,
-      oneapi::mkl::transpose::nontrans, 1.0, a_handle, b.data_handle(),
-      b.extent(1), b.extent(1), 0.0, c.data_handle(), c.extent(1))
+      oneapi::mkl::transpose::nontrans, alpha, a_handle, b_base.data_handle(),
+      b_base.extent(1), b_base.extent(1), 0.0, c.data_handle(), c.extent(1))
       .wait();
 
   oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
 }
 
 template <matrix A, matrix B, matrix C>
-  requires __detail::is_csr_view_v<A> && __detail::is_csr_view_v<B> &&
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  auto a_base = __detail::get_ultimate_base(a);
+  auto b_base = __detail::get_ultimate_base(b);
+
   using oneapi::mkl::transpose;
   using oneapi::mkl::sparse::matmat_request;
   using oneapi::mkl::sparse::matrix_view_descr;
@@ -85,15 +103,15 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   oneapi::mkl::sparse::init_matrix_handle(&c_handle);
 
   oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a)[0], __backend::shape(a)[1],
-      oneapi::mkl::index_base::zero, a.rowptr().data(), a.colind().data(),
-      a.values().data())
+      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
+      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
+      a_base.colind().data(), a_base.values().data())
       .wait();
 
   oneapi::mkl::sparse::set_csr_data(
-      q, b_handle, __backend::shape(b)[0], __backend::shape(b)[1],
-      oneapi::mkl::index_base::zero, b.rowptr().data(), b.colind().data(),
-      b.values().data())
+      q, b_handle, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
+      oneapi::mkl::index_base::zero, b_base.rowptr().data(),
+      b_base.colind().data(), b_base.values().data())
       .wait();
 
   using T = tensor_scalar_t<C>;
@@ -132,15 +150,21 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   sycl::free(c_nnz, q);
 
   return operation_info_t{
-      index<>{__backend::shape(a)[0], __backend::shape(a)[1]}, nnz,
+      index<>{__backend::shape(c)[0], __backend::shape(c)[1]}, nnz,
       __mkl::operation_state_t{a_handle, b_handle, c_handle, nullptr, descr,
                                (void*) c_rowptr, q}};
 }
 
 template <matrix A, matrix B, matrix C>
-  requires __detail::is_csr_view_v<A> && __detail::is_csr_view_v<B> &&
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  auto a_base = __detail::get_ultimate_base(a);
+  auto b_base = __detail::get_ultimate_base(b);
+
+  auto alpha_optional = __detail::get_scaling_factor(a, b);
+  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+
   using oneapi::mkl::sparse::matmat_request;
   sycl::queue q(sycl::cpu_selector_v);
   using I = tensor_index_t<C>;
@@ -170,6 +194,10 @@ void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
         .wait();
 
     sycl::free(c_rowptr, q);
+  }
+
+  if (alpha_optional.has_value()) {
+    scale(alpha, c);
   }
 }
 

@@ -22,9 +22,9 @@ int main(int argc, char** argv) {
   md::mdspan b(b_values.data(), k, n);
   md::mdspan c(c_values.data(), m, n);
 
-  auto a_view = scaled(1.2f, a);
+  auto a_view = scaled(2.f, a);
 
-  multiply(a_view, b, c);
+  multiply(a_view, scaled(2.f, b), c);
 
   fmt::print("{}\n", spblas::__backend::values(c));
 

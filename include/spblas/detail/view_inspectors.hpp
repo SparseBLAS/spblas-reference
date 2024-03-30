@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spblas/detail/concepts.hpp>
+#include <spblas/views/inspectors.hpp>
 
 namespace spblas {
 
@@ -23,10 +24,14 @@ auto get_scaling_factor(T&& t) {
     if constexpr (is_scaled_view_v<T>) {
       auto scaling_factor = t.alpha();
 
+      using scaling_factor_type =
+          decltype(scaling_factor * base_scaling_factor.value());
+
       if (base_scaling_factor.has_value()) {
-        return std::optional(scaling_factor * base_scaling_factor.value());
+        return std::optional<scaling_factor_type>(scaling_factor *
+                                                  base_scaling_factor.value());
       } else {
-        return std::optional(scaling_factor);
+        return std::optional<scaling_factor_type>(scaling_factor);
       }
     } else {
       return base_scaling_factor;
@@ -83,13 +88,19 @@ auto get_ultimate_base(T&& t) {
 }
 
 template <typename T>
-concept has_csr_base =
-    is_csr_view_v<decltype(get_ultimate_base(std::declval<T>()))>;
+using ultimate_base_type_t = decltype(get_ultimate_base(std::declval<T>()));
+
+template <typename T>
+concept has_csr_base = is_csr_view_v<ultimate_base_type_t<T>>;
 
 template <typename T>
 concept has_mdspan_matrix_base =
-    is_matrix_instantiation_of_mdspan<decltype(get_ultimate_base(std::declval<T>()))>;
+    is_matrix_instantiation_of_mdspan_v<ultimate_base_type_t<T>>;
 
-}
+template <typename T>
+concept has_contiguous_range_base =
+    spblas::__ranges::contiguous_range<ultimate_base_type_t<T>>;
 
-}
+} // namespace __detail
+
+} // namespace spblas

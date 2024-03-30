@@ -13,10 +13,14 @@ namespace __ranges = ::std::ranges;
 
 namespace __detail {
 
+namespace __ranges {
+
 template <typename T>
 concept view = ::std::ranges::view<T>;
 
 }
+
+} // namespace __detail
 
 } // namespace spblas
 
@@ -30,10 +34,14 @@ namespace __ranges = ::ranges;
 
 namespace __detail {
 
+namespace __ranges {
+
 template <typename T>
 concept view = ::ranges::view_<T>;
 
 }
+
+} // namespace __detail
 
 } // namespace spblas
 
