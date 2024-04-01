@@ -36,3 +36,17 @@ jobs:
       run: make -C build -j `nproc`
     - name: Test
       run: ./build/test/gtest/spblas-tests
+
+  icpx:
+    runs-on: 'intel-ubuntu-latest'
+    name: oneMKL
+    env:
+      CXX: icpx
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      run: cmake -B build -DENABLE_ONEMKL=ON
+    - name: Build
+      run: make -C build -j `nproc`
+    - name: Test
+      run: ./build/test/gtest/spblas-tests
