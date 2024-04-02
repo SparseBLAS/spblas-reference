@@ -102,6 +102,22 @@ compiler to CMake using the environment variable `CXX`.
 brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build
 ```
 
+### Compiling with a Vendor Backend
+A vendor backend can be enabled by passing in an `-DENABLE_{BACKEND}=ON` switch
+to `cmake`.  Currently, oneMKL is the only supported backend.
+
+### Compiling with oneMKL
+The most straightforward way to build with oneMKL is by installing the (oneAPI
+toolkit)[https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html].
+You can then use the built-in `icpx` compiler to build with the oneMKL backend.
+
+```bash
+# Import oneAPI toolkit into Bash environment.
+brock@slothius:~/src/spblas-reference$ source /opt/intel/oneapi/setvars.sh
+# Compile with icpx and oneMKL backend.
+brock@slothius:~/src/spblas-reference$ CXX=icpx cmake -B build -DENABLE_ONEMKL=ON
+```
+
 #### Compiling with GCC on Mac OS
 There is a known linking issue when compiling with GCC on recent versions of
 Mac OS.  This will cause a link error inside of `ld::AtomPlacement::findAtom()`.
