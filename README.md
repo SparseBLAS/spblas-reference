@@ -107,8 +107,8 @@ A vendor backend can be enabled by passing in an `-DENABLE_{BACKEND}=ON` switch
 to `cmake`.  Currently, oneMKL is the only supported backend.
 
 ### Compiling with oneMKL
-The most straightforward way to build with oneMKL is by installing the (oneAPI
-toolkit)[https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html].
+The most straightforward way to build with oneMKL is by installing the [oneAPI
+toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html).
 You can then use the built-in `icpx` compiler to build with the oneMKL backend.
 
 ```bash
