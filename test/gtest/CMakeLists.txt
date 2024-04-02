@@ -5,6 +5,7 @@ add_executable(
   spmv_test.cpp
   spmm_test.cpp
   spgemm_test.cpp
+  add_test.cpp
 )
 
 target_link_libraries(spblas-tests spblas fmt GTest::gtest_main)

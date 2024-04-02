@@ -6,6 +6,8 @@
 #include <tuple>
 #include <vector>
 
+#include <spblas/detail/ranges.hpp>
+
 namespace spblas {
 
 namespace __backend {

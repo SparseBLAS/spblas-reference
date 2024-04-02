@@ -63,6 +63,8 @@ TEST(CsrView, SpGEMM) {
         for (auto&& [j, c_v] : c_row) {
           EXPECT_EQ_(c_row_ref[j], c_row_acc[j]);
         }
+
+        EXPECT_EQ(c_row_ref.size(), c_row_acc.size());
       }
     }
   }
@@ -126,6 +128,8 @@ TEST(CsrView, SpGEMM_AScaled) {
         for (auto&& [j, c_v] : c_row) {
           EXPECT_EQ_(c_row_ref[j], c_row_acc[j]);
         }
+
+        EXPECT_EQ(c_row_ref.size(), c_row_acc.size());
       }
     }
   }
@@ -189,6 +193,8 @@ TEST(CsrView, SpGEMM_BScaled) {
         for (auto&& [j, c_v] : c_row) {
           EXPECT_EQ_(c_row_ref[j], c_row_acc[j]);
         }
+
+        EXPECT_EQ(c_row_ref.size(), c_row_acc.size());
       }
     }
   }
