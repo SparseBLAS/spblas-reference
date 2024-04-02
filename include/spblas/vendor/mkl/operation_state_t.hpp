@@ -12,7 +12,7 @@ struct operation_state_t {
   oneapi::mkl::sparse::matrix_handle_t c_handle = nullptr;
   oneapi::mkl::sparse::matrix_handle_t d_handle = nullptr;
 
-  oneapi::mkl::sparse::matmat_descr_t descr;
+  oneapi::mkl::sparse::matmat_descr_t descr = nullptr;
 
   void* c_rowptr = nullptr;
 
@@ -52,11 +52,24 @@ struct operation_state_t {
   operation_state_t(const operation_state_t& other) = delete;
 
   ~operation_state_t() {
-    oneapi::mkl::sparse::release_matrix_handle(q, &a_handle);
-    oneapi::mkl::sparse::release_matrix_handle(q, &b_handle);
-    oneapi::mkl::sparse::release_matrix_handle(q, &c_handle);
-    oneapi::mkl::sparse::release_matrix_handle(q, &d_handle);
-    oneapi::mkl::sparse::release_matmat_descr(&descr);
+    release_matrix_handle(a_handle);
+    release_matrix_handle(b_handle);
+    release_matrix_handle(c_handle);
+    release_matrix_handle(d_handle);
+    release_matmat_descr(descr);
+  }
+
+private:
+  void release_matrix_handle(oneapi::mkl::sparse::matrix_handle_t& handle) {
+    if (handle != nullptr) {
+      oneapi::mkl::sparse::release_matrix_handle(q, &handle);
+    }
+  }
+
+  void release_matmat_descr(oneapi::mkl::sparse::matmat_descr_t& descr) {
+    if (descr != nullptr) {
+      oneapi::mkl::sparse::release_matmat_descr(&descr);
+    }
   }
 };
 
