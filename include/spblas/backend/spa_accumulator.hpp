@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <span>
+#include <spblas/detail/ranges.hpp>
 #include <tuple>
 #include <vector>
 
@@ -25,6 +26,7 @@ public:
   void clear() {
     for (auto&& pos : stored_) {
       set_[pos] = false;
+      data_[pos] = 0;
     }
     stored_.clear();
   }

@@ -3,7 +3,9 @@
 #include <spblas/backend/concepts.hpp>
 #include <spblas/backend/cpos.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/ranges.hpp>
 #include <spblas/views/scaled_view.hpp>
+#include <spblas/views/view_base.hpp>
 
 namespace spblas {
 
@@ -16,7 +18,7 @@ class scaled_view;
 
 // Scaled view for random access range
 template <typename S, vector V>
-  requires(__detail::view<V> && __ranges::random_access_range<V>)
+  requires(__detail::__ranges::view<V> && __ranges::random_access_range<V>)
 class scaled_view<S, V> : public view_base {
 public:
   using scalar_type =

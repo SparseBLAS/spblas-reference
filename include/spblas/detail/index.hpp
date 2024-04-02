@@ -41,7 +41,8 @@ public:
   constexpr index(index_type first, index_type second)
       : first(first), second(second) {}
 
-  template <__detail::tuple_like<T, T> Tuple>
+  template <typename Tuple>
+    requires(!std::is_same_v<Tuple, index> && __detail::tuple_like<Tuple, T, T>)
   constexpr index(Tuple tuple) : first(get<0>(tuple)), second(get<1>(tuple)) {}
 
   template <std::integral U>

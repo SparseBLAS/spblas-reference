@@ -11,14 +11,16 @@ int main(int argc, char** argv) {
   csr_view<float> a(values, rowptr, colind, shape, nnz);
 
   // Scale every value of `a` by 5 in place.
-  scale(5.f, a);
+  // scale(5.f, a);
 
   std::vector<float> b(100, 1);
   std::vector<float> c(100, 0);
 
   float alpha = 1.2f;
+  auto a_scaled = scaled(alpha, a);
+
   // c = a * alpha * b
-  multiply(a, scaled(alpha, b), c);
+  multiply(a_scaled, b, c);
 
   return 0;
 }

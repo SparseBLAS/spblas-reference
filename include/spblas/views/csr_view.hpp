@@ -19,7 +19,11 @@ public:
 
   csr_view(T* values, O* rowptr, I* colind, index<I> shape, O nnz)
       : values_(values, nnz), rowptr_(rowptr, shape[0] + 1),
-        colind_(colind, nnz), shape_(shape), nnz_(nnz) {}
+        colind_(colind, nnz), shape_(shape), nnz_(nnz) {
+    if (rowptr_.data() == nullptr) {
+      rowptr_ = std::span<I>((I*) nullptr, (I*) nullptr);
+    }
+  }
 
   template <__ranges::contiguous_range V, __ranges::contiguous_range R,
             __ranges::contiguous_range C>
