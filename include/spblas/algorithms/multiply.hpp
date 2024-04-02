@@ -15,6 +15,6 @@ template <matrix A, matrix B, matrix C>
 operation_info_t multiply_inspect(A&& a, B&& b, C&& c);
 
 template <matrix A, matrix B, matrix C>
-void multiply_execute(operation_info_t info, A&& a, B&& b, C&& c);
+void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c);
 
 } // namespace spblas

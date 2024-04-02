@@ -1,6 +1,8 @@
 #pragma once
 
 #include <spblas/backend/backend.hpp>
+#include <spblas/backend/csr_builder.hpp>
+#include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/concepts.hpp>
 
 namespace spblas {
@@ -102,11 +104,11 @@ operation_info_t add_inspect(A&& a, B&& b, C&& c) {
     nnz += c_row.size();
   }
 
-  return operation_info_t{__backend::shape(c), nnz};
+  return operation_info_t{__backend::shape(c), index_t(nnz)};
 }
 
 template <matrix A, matrix B, matrix C>
-void add_execute(operation_info_t info, A&& a, B&& b, C&& c) {
+void add_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
   add(a, b, c);
 }
 
