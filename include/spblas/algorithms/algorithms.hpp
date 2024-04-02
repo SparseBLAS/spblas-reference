@@ -6,7 +6,7 @@
 
 // #include <spblas/algorithms/multiply.hpp>
 
-#ifndef ENABLE_ONEMKL
+#ifndef SPBLAS_VENDOR_BACKEND
 #include <spblas/algorithms/multiply_impl.hpp>
 #endif
 

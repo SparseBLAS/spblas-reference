@@ -15,7 +15,7 @@ include(FetchContent)
 if (ENABLE_ONEMKL)
   find_package(MKL REQUIRED)
   target_link_libraries(spblas INTERFACE MKL::MKL_DPCPP)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_ONEMKL")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL")
 endif()
 
 # mdspan

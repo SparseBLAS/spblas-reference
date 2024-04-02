@@ -6,6 +6,6 @@
 #include <spblas/backend/generate.hpp>
 #include <spblas/backend/view_customizations.hpp>
 
-#ifdef ENABLE_ONEMKL
+#ifdef SPBLAS_ENABLE_ONEMKL
 #include <spblas/vendor/mkl/mkl.hpp>
 #endif

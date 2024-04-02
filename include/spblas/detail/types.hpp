@@ -3,13 +3,13 @@
 #include <cstddef>
 #include <type_traits>
 
-#ifdef ENABLE_ONEMKL
+#ifdef SPBLAS_ENABLE_ONEMKL
 #include <spblas/vendor/mkl/types.hpp>
 #endif
 
 namespace spblas {
 
-#ifndef ENABLE_ONEMKL
+#ifndef SPBLAS_VENDOR_BACKEND
 using index_t = std::size_t;
 #endif
 
