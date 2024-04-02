@@ -90,7 +90,7 @@ void multiply(A&& a, B&& b, C&& c) {
     try {
       c_builder.insert_row(i, c_row.get());
     } catch (...) {
-      throw std::runtime_error("matrix: ran out of memory.  CSR output view "
+      throw std::runtime_error("multiply: ran out of memory.  CSR output view "
                                "has insufficient memory.");
     }
   }
