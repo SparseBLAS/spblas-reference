@@ -22,8 +22,8 @@ if (ENABLE_ARMPL)
   if (NOT DEFINED ENV{ARMPL_DIR})
     message(FATAL_ERROR "Environment variable ARMPL_DIR must be set when the ArmPL is enabled.")
   endif()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL -I$ENV{ARMPL_DIR}/include")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L$ENV{ARMPL_DIR}/lib -larmpl -lamath -lm")
+  target_include_directories(spblas INTERFACE $ENV{ARMPL_DIR}/include)
+  target_link_libraries(spblas INTERFACE $ENV{ARMPL_DIR}/lib/libarmpl.a $ENV{ARMPL_DIR}/lib/libamath.a m)
 endif()
 
 # mdspan
