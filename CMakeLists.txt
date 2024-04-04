@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 project(spblas)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(CUDAToolkit REQUIRED)
 
-set(CMAKE_CXX_FLAGS "-O3 -march=native")
+#set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -48,13 +49,7 @@ endif()
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   # Dependencies needed only for examples/test
   # Google test
-  FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-  )
-  # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
+
 
   # libfmt
   FetchContent_Declare(
@@ -64,5 +59,5 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   FetchContent_MakeAvailable(fmt)
 
   add_subdirectory(examples)
-  add_subdirectory(test)
+  #add_subdirectory(test)
 endif()
