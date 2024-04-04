@@ -1,6 +1,7 @@
-#include <armpl_sparse.h>
-#undef I
+#include <complex>
+
 #include <spblas/spblas.hpp>
+#include <spblas/vendor/armpl/detail/armpl.hpp>
 
 #include <fmt/ranges.h>
 

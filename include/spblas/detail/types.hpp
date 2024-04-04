@@ -7,6 +7,10 @@
 #include <spblas/vendor/mkl/types.hpp>
 #endif
 
+#ifdef SPBLAS_ENABLE_ARMPL
+#include <spblas/vendor/armpl/types.hpp>
+#endif
+
 namespace spblas {
 
 #ifndef SPBLAS_VENDOR_BACKEND

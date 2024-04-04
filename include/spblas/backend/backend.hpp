@@ -9,3 +9,7 @@
 #ifdef SPBLAS_ENABLE_ONEMKL
 #include <spblas/vendor/mkl/mkl.hpp>
 #endif
+
+#ifdef SPBLAS_ENABLE_ARMPL
+#include <spblas/vendor/armpl/armpl.hpp>
+#endif
