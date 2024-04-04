@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef SPBLAS_ENABLE_ONEMKL
+#if defined(SPBLAS_ENABLE_ONEMKL) || defined(SPBLAS_ENABLE_CUSPARSE)
 #define SPBLAS_VENDOR_BACKEND true
 #endif
 

@@ -6,6 +6,9 @@
 #ifdef SPBLAS_ENABLE_ONEMKL
 #include <spblas/vendor/mkl/operation_state_t.hpp>
 #endif
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/operation_state_t.hpp>
+#endif
 
 namespace spblas {
 
@@ -36,6 +39,10 @@ private:
 #ifdef SPBLAS_ENABLE_ONEMKL
 public:
   __mkl::operation_state_t state_;
+#endif
+#ifdef SPBLAS_ENABLE_CUSPARSE
+public:
+  __cusparse::operation_state_t state;
 #endif
 };
 

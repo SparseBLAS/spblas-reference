@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(spblas)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
@@ -16,6 +16,12 @@ if (ENABLE_ONEMKL)
   find_package(MKL REQUIRED)
   target_link_libraries(spblas INTERFACE MKL::MKL_DPCPP)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL")
+endif()
+
+if (ENABLE_CUSPARSE)
+  find_package(CUDAToolkit REQUIRED)
+  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
 endif()
 
 # mdspan
@@ -69,6 +75,10 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 10.1.1)
   FetchContent_MakeAvailable(fmt)
 
-  add_subdirectory(examples)
-  add_subdirectory(test)
+  if(ENABLE_CUSPARSE)
+    add_subdirectory(cusparse_examples)
+  else()
+    add_subdirectory(examples)
+    add_subdirectory(test)
+  endif()
 endif()
