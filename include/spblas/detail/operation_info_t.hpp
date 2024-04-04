@@ -6,6 +6,9 @@
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 #include <spblas/vendor/onemkl_sycl/operation_state_t.hpp>
 #endif
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/operation_state_t.hpp>
+#endif
 
 #ifdef SPBLAS_ENABLE_ARMPL
 #include <spblas/vendor/armpl/operation_state_t.hpp>
@@ -59,6 +62,11 @@ public:
 #ifdef SPBLAS_ENABLE_ARMPL
 public:
   __armpl::operation_state_t state_;
+#endif
+
+#ifdef SPBLAS_ENABLE_CUSPARSE
+public:
+  __cusparse::operation_state_t state;
 #endif
 };
 
