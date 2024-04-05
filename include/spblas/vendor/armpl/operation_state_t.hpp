@@ -4,7 +4,7 @@
 
 namespace spblas {
 
-namespace __mkl {
+namespace __armpl {
 
 struct operation_state_t {
   armpl_spmat_t a_handle = nullptr;
@@ -46,11 +46,11 @@ struct operation_state_t {
 private:
   void release_matrix_handle(armpl_spmat_t& handle) {
     if (handle != nullptr) {
-      armpl_spmat_destroy(q, &handle);
+      armpl_spmat_destroy(handle);
     }
   }
 };
 
-} // namespace __mkl
+} // namespace __armpl
 
 } // namespace spblas

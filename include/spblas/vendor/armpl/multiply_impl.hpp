@@ -29,8 +29,8 @@ void multiply(A&& a, B&& b, C&& c) {
       ARMPL_SPARSE_CREATE_NOCOPY);
 
   auto stat = __armpl::spmv_exec<tensor_scalar_t<A>>(
-      ARMPL_SPARSE_OPERATION_NOTRANS, alpha, a_handle, __ranges::data(b), 0,
-      __ranges::data(c));
+      ARMPL_SPARSE_OPERATION_NOTRANS, alpha, a_handle, __ranges::data(b_base),
+      0, __ranges::data(c));
 
   armpl_spmat_destroy(a_handle);
 }
@@ -83,6 +83,67 @@ void multiply(A&& a, B&& b, C&& c) {
   armpl_spmat_destroy(a_handle);
   armpl_spmat_destroy(b_handle);
   armpl_spmat_destroy(c_handle);
+}
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C>
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  auto a_base = __detail::get_ultimate_base(a);
+  auto b_base = __detail::get_ultimate_base(b);
+
+  auto alpha_optional = __detail::get_scaling_factor(a, b);
+  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+
+  armpl_spmat_t a_handle, b_handle, c_handle;
+
+  __armpl::create_spmat_csr<tensor_scalar_t<A>>(
+      &a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
+      a_base.rowptr().data(), a_base.colind().data(), a_base.values().data(),
+      ARMPL_SPARSE_CREATE_NOCOPY);
+
+  __armpl::create_spmat_csr<tensor_scalar_t<B>>(
+      &b_handle, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
+      b_base.rowptr().data(), b_base.colind().data(), a_base.values().data(),
+      ARMPL_SPARSE_CREATE_NOCOPY);
+
+  c_handle =
+      armpl_spmat_create_null(__backend::shape(c)[0], __backend::shape(c)[1]);
+
+  __armpl::spmm_exec<tensor_scalar_t<A>>(ARMPL_SPARSE_OPERATION_NOTRANS,
+                                         ARMPL_SPARSE_OPERATION_NOTRANS, alpha,
+                                         a_handle, b_handle, 0, c_handle);
+
+  armpl_int_t index_base, m, n, nnz;
+  armpl_spmat_query(c_handle, &index_base, &m, &n, &nnz);
+
+  return operation_info_t(
+      index<>{__backend::shape(c)[0], __backend::shape(c)[1]}, nnz,
+      __armpl::operation_state_t{a_handle, b_handle, c_handle, nullptr});
+}
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C>
+void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  auto a_handle = info.state_.a_handle;
+  auto b_handle = info.state_.b_handle;
+  auto c_handle = info.state_.c_handle;
+
+  armpl_int_t m, n;
+  auto nnz = info.result_nnz();
+  armpl_int_t *rowptr, *colind;
+  tensor_scalar_t<C>* values;
+  __armpl::export_spmat_csr<tensor_scalar_t<C>>(c_handle, 0, &m, &n, &rowptr,
+                                                &colind, &values);
+
+  std::copy(values, values + nnz, c.values().begin());
+  std::copy(colind, colind + nnz, c.colind().begin());
+  std::copy(rowptr, rowptr + m + 1, c.rowptr().begin());
+
+  free(values);
+  free(rowptr);
+  free(colind);
 }
 
 } // namespace spblas

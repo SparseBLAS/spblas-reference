@@ -81,6 +81,22 @@ template <>
 inline constexpr auto export_spmat_dense<std::complex<double>> =
     &armpl_spmat_export_dense_z;
 
+template <typename T>
+armpl_status_t (*export_spmat_csr)(armpl_const_spmat_t, armpl_int_t,
+                                   armpl_int_t*, armpl_int_t*,
+                                   const armpl_int_t**, const armpl_int_t**,
+                                   const T**);
+template <>
+inline constexpr auto export_spmat_csr<float> = &armpl_spmat_export_csr_s;
+template <>
+inline constexpr auto export_spmat_csr<double> = &armpl_spmat_export_csr_d;
+template <>
+inline constexpr auto export_spmat_csr<std::complex<float>> =
+    &armpl_spmat_export_csr_c;
+template <>
+inline constexpr auto export_spmat_csr<std::complex<double>> =
+    &armpl_spmat_export_csr_z;
+
 } // namespace __armpl
 
 } // namespace spblas
