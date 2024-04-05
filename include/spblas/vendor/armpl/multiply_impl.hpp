@@ -71,6 +71,15 @@ void multiply(A&& a, B&& b, C&& c) {
                                          ARMPL_SPARSE_OPERATION_NOTRANS, alpha,
                                          a_handle, b_handle, 0, c_handle);
 
+  armpl_int_t m, n;
+  tensor_scalar_t<C>* armpl_values;
+  __armpl::export_spmat_dense<tensor_scalar_t<C>>(c_handle, ARMPL_ROW_MAJOR, &m,
+                                                  &n, &armpl_values);
+
+  std::copy(armpl_values, armpl_values + (m * n), c.data_handle());
+
+  free(armpl_values);
+
   armpl_spmat_destroy(a_handle);
   armpl_spmat_destroy(b_handle);
   armpl_spmat_destroy(c_handle);
