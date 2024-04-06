@@ -6,8 +6,6 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
-#include <fmt/ranges.h>
-
 namespace spblas {
 
 template <matrix A, vector B, vector C>
