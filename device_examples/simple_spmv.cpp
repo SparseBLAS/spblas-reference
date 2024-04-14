@@ -46,5 +46,10 @@ int main(int argc, char** argv) {
     std::cout << c.at(i) << " ";
   }
   std::cout << std::endl;
+  cudaFree(dvalues);
+  cudaFree(drowptr);
+  cudaFree(dcolind);
+  cudaFree(db);
+  cudaFree(dc);
   return 0;
 }
