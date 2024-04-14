@@ -1,9 +1,8 @@
-#include <iostream>
-
 #include <spblas/spblas.hpp>
 
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+#include <iostream>
 
 int main(int argc, char** argv) {
   using namespace spblas;
@@ -22,7 +21,7 @@ int main(int argc, char** argv) {
   float *da_values, *db_values;
   int *da_rowptr, *da_colind, *db_rowptr, *db_colind;
   cudaMalloc((void**) &da_values, sizeof(float) * nnz);
-  cudaMemcpy((void**) da_values, a_values.data(), sizeof(float) * nnz,
+  cudaMemcpy(da_values, a_values.data(), sizeof(float) * nnz,
              cudaMemcpyHostToDevice);
   std::span<float> a_values_span(da_values, nnz);
   cudaMalloc((void**) &da_rowptr, sizeof(int) * (m + 1));
@@ -53,31 +52,28 @@ int main(int argc, char** argv) {
 
   int* dc_rowptr;
   cudaMalloc((void**) &dc_rowptr, sizeof(int) * (m + 1));
-  // std::span<int> c_rowptr_span(dc_rowptr, m+1);
+  std::span<int> c_rowptr_span(dc_rowptr, m + 1);
 
   csr_view<float, int> c(nullptr, dc_rowptr, nullptr, {m, n}, 0);
-  auto info = multiply_inspect(a, b, c);
-
-  float* dc_values;
-  int* dc_colind;
-  cudaMalloc((void**) &dc_values, info.result_nnz() * sizeof(float));
-  cudaMalloc((void**) &dc_colind, info.result_nnz() * sizeof(int));
-
-  std::span<int> c_rowptr_span(dc_rowptr, m + 1);
-  std::span<int> c_colind_span(dc_colind, info.result_nnz());
-  std::span<float> c_values_span(dc_values, info.result_nnz());
-  c.update(c_values_span, c_rowptr_span, c_colind_span, {m, n},
-           (int) info.result_nnz());
-
-  multiply_execute(info, a, b, c);
+  multiply(a, b, c);
 
   std::vector<int> c_rowptr(m + 1);
   cudaMemcpy(c_rowptr.data(), dc_rowptr, sizeof(int) * (m + 1),
              cudaMemcpyDeviceToHost);
+
   for (int i = 0; i < m + 1; i++) {
     std::cout << c_rowptr.at(i) << " ";
   }
   std::cout << std::endl;
 
+  cudaFree(da_values);
+  cudaFree(da_rowptr);
+  cudaFree(da_colind);
+  cudaFree(db_values);
+  cudaFree(db_rowptr);
+  cudaFree(db_colind);
+  cudaFree(dc_rowptr);
+  cudaFree(c.values().data());
+  cudaFree(c.colind().data());
   return 0;
 }

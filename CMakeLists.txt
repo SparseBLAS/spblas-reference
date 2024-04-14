@@ -76,7 +76,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   FetchContent_MakeAvailable(fmt)
 
   if(ENABLE_CUSPARSE)
-    add_subdirectory(cusparse_examples)
+    add_subdirectory(device_examples)
   else()
     add_subdirectory(examples)
     add_subdirectory(test)
