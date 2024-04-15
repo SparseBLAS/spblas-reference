@@ -9,3 +9,6 @@
 #ifdef SPBLAS_ENABLE_ONEMKL
 #include <spblas/vendor/mkl/mkl.hpp>
 #endif
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/cusparse.hpp>
+#endif

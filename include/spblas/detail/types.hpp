@@ -6,6 +6,9 @@
 #ifdef SPBLAS_ENABLE_ONEMKL
 #include <spblas/vendor/mkl/types.hpp>
 #endif
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/types.hpp> // easily wrong with different default type?
+#endif
 
 namespace spblas {
 
