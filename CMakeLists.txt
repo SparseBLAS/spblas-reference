@@ -24,6 +24,13 @@ if (ENABLE_CUSPARSE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
 endif()
 
+if (ENABLE_HIPSPARSE)
+  find_package(hipsparse REQUIRED)
+  find_package(hip REQUIRED)
+  target_link_libraries(spblas INTERFACE roc::hipsparse hip::host)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_HIPSPARSE")
+endif()
+
 # mdspan
 FetchContent_Declare(
   mdspan
@@ -75,7 +82,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 10.1.1)
   FetchContent_MakeAvailable(fmt)
 
-  if(ENABLE_CUSPARSE)
+  if(ENABLE_CUSPARSE OR ENABLE_HIPSPARSE)
     add_subdirectory(device_examples)
   else()
     add_subdirectory(examples)

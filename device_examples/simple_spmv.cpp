@@ -4,6 +4,21 @@
 
 #include <iostream>
 
+// TODO: create an allocator? also use custom data type to handle lifetime?
+#ifdef SPBLAS_ENABLE_HIPSPARSE
+#define FREE hipFree
+#define MALLOC hipMalloc
+#define COPY hipMemcpy
+#define D2H hipMemcpyDeviceToHost
+#define H2D hipMemcpyHostToDevice
+#else
+#define FREE cudaFree
+#define MALLOC cudaMalloc
+#define COPY cudaMemcpy
+#define D2H cudaMemcpyDeviceToHost
+#define H2D cudaMemcpyHostToDevice
+#endif
+
 int main(int argc, char** argv) {
   using namespace spblas;
 
@@ -12,14 +27,12 @@ int main(int argc, char** argv) {
 
   float* dvalues;
   int *drowptr, *dcolind;
-  cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
-  cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
-  cudaMalloc((void**) &dcolind, sizeof(int) * nnz);
-  cudaMemcpy(dvalues, values.data(), sizeof(float) * nnz,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(dcolind, colind.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
+  MALLOC((void**) &dvalues, sizeof(float) * nnz);
+  MALLOC((void**) &drowptr, sizeof(int) * (shape[0] + 1));
+  MALLOC((void**) &dcolind, sizeof(int) * nnz);
+  COPY(dvalues, values.data(), sizeof(float) * nnz, H2D);
+  COPY(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1), H2D);
+  COPY(dcolind, colind.data(), sizeof(int) * nnz, H2D);
   csr_view<float, int> a(dvalues, drowptr, dcolind, shape, nnz);
 
   // Scale every value of `a` by 5 in place.
@@ -28,10 +41,10 @@ int main(int argc, char** argv) {
   std::vector<float> b(100, 1);
   std::vector<float> c(100, 0);
   float *db, *dc;
-  cudaMalloc((void**) &db, sizeof(float) * 100);
-  cudaMalloc((void**) &dc, sizeof(float) * 100);
-  cudaMemcpy(db, b.data(), sizeof(float) * 100, cudaMemcpyHostToDevice);
-  cudaMemcpy(dc, c.data(), sizeof(float) * 100, cudaMemcpyHostToDevice);
+  MALLOC((void**) &db, sizeof(float) * 100);
+  MALLOC((void**) &dc, sizeof(float) * 100);
+  COPY(db, b.data(), sizeof(float) * 100, H2D);
+  COPY(dc, c.data(), sizeof(float) * 100, H2D);
 
   std::span<float> b_span(db, 100);
   std::span<float> c_span(dc, 100);
@@ -41,15 +54,15 @@ int main(int argc, char** argv) {
   // multiply(a, scaled(alpha, b), c);
   multiply(a, b_span, c_span);
 
-  cudaMemcpy(c.data(), dc, sizeof(float) * 100, cudaMemcpyDeviceToHost);
+  COPY(c.data(), dc, sizeof(float) * 100, D2H);
   for (int i = 0; i < 100; i++) {
     std::cout << c.at(i) << " ";
   }
   std::cout << std::endl;
-  cudaFree(dvalues);
-  cudaFree(drowptr);
-  cudaFree(dcolind);
-  cudaFree(db);
-  cudaFree(dc);
+  FREE(dvalues);
+  FREE(drowptr);
+  FREE(dcolind);
+  FREE(db);
+  FREE(dc);
   return 0;
 }
