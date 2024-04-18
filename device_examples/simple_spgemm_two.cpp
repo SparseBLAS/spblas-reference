@@ -56,7 +56,18 @@ int main(int argc, char** argv) {
   // std::span<int> c_rowptr_span(dc_rowptr, m+1);
 
   csr_view<float, int> c(nullptr, dc_rowptr, nullptr, {m, n}, 0);
-  auto info = multiply_inspect(a, b, c);
+  operation_info_t info;
+  std::vector<void*> workspace;
+  while (!info.is_prepared()) {
+    multiply_prepare(info, a, b, c);
+    auto size = info.get_last_workspace_requirement();
+    void* ptr = nullptr;
+    cudaMalloc(&ptr, size);
+    workspace.push_back(ptr);
+    info.set_last_workspace(ptr);
+    std::cout << "step " << info.get_step() << " size " << size << std::endl;
+  }
+  info = multiply_inspect(info, a, b, c);
 
   float* dc_values;
   int* dc_colind;
@@ -87,6 +98,9 @@ int main(int argc, char** argv) {
   cudaFree(dc_rowptr);
   cudaFree(dc_values);
   cudaFree(dc_colind);
+  for (int i = 0; i < workspace.size(); i++) {
+    cudaFree(workspace.at(i));
+  }
 
   return 0;
 }
