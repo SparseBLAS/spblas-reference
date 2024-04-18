@@ -12,3 +12,6 @@
 #ifdef SPBLAS_ENABLE_CUSPARSE
 #include <spblas/vendor/cusparse/cusparse.hpp>
 #endif
+#ifdef SPBLAS_ENABLE_HIPSPARSE
+#include <spblas/vendor/hipsparse/hipsparse.hpp>
+#endif

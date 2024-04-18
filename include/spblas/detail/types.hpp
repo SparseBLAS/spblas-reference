@@ -9,6 +9,9 @@
 #ifdef SPBLAS_ENABLE_CUSPARSE
 #include <spblas/vendor/cusparse/types.hpp> // easily wrong with different default type?
 #endif
+#ifdef SPBLAS_ENABLE_HIPSPARSE
+#include <spblas/vendor/hipsparse/types.hpp> // easily wrong with different default type?
+#endif
 
 namespace spblas {
 

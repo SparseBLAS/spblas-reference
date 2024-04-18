@@ -9,6 +9,9 @@
 #ifdef SPBLAS_ENABLE_CUSPARSE
 #include <spblas/vendor/cusparse/operation_state_t.hpp>
 #endif
+#ifdef SPBLAS_ENABLE_HIPSPARSE
+#include <spblas/vendor/hipsparse/operation_state_t.hpp>
+#endif
 
 namespace spblas {
 
@@ -43,6 +46,10 @@ public:
 #ifdef SPBLAS_ENABLE_CUSPARSE
 public:
   __cusparse::operation_state_t state;
+#endif
+#ifdef SPBLAS_ENABLE_HIPSPARSE
+public:
+  __hipsparse::operation_state_t state;
 #endif
 };
 
