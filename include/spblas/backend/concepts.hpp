@@ -13,6 +13,13 @@ concept row_iterable = requires(T& t) { rows(t); };
 template <typename T>
 concept row_lookupable = requires(T& t) { lookup_row(t, tensor_index_t<T>{}); };
 
+// using the allocate function from member function or static function.
+template <typename T>
+concept is_allocator = requires(T& t) {
+  { t.alloc(std::declval<void**>(), size_t()) };
+  { t.free(std::declval<void**>()) };
+};
+
 namespace {
 
 template <typename T>

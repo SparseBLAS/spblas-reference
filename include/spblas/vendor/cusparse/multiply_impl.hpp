@@ -13,11 +13,11 @@
 
 namespace spblas {
 
-template <matrix A, vector B, vector C>
+template <matrix A, vector B, vector C, typename S>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
-           __ranges::contiguous_range<C>
-void multiply(A&& a, B&& b, C&& c) {
+           __ranges::contiguous_range<C> && __backend::is_allocator<S>
+void multiply(A&& a, B&& b, C&& c, S&& s) {
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
   using matrix_type = decltype(a_base);
@@ -53,7 +53,7 @@ void multiply(A&& a, B&& b, C&& c) {
                           mat, vecb, &beta, vecc, cuda_data_type<value_type>(),
                           CUSPARSE_SPMV_ALG_DEFAULT, &buffer_size);
   void* dbuffer;
-  cudaMalloc(&dbuffer, buffer_size);
+  s.alloc(&dbuffer, buffer_size);
 
   cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha_val, mat, vecb,
                &beta, vecc, cuda_data_type<value_type>(),
@@ -61,13 +61,14 @@ void multiply(A&& a, B&& b, C&& c) {
   cudaDeviceSynchronize();
   cusparseDestroyDnVec(vecc);
   cusparseDestroyDnVec(vecb);
-  cudaFree(dbuffer);
+  s.free(dbuffer);
 }
 
-template <matrix A, matrix B, matrix C>
+template <matrix A, matrix B, matrix C, typename S>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
-           __detail::is_csr_view_v<C>)
-void multiply(A&& a, B&& b, C&& c) {
+               __detail::is_csr_view_v<C>,
+           __backend::is_allocator<S>)
+void multiply(A&& a, B&& b, C&& c, S&& s) {
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
   using matrix_type = decltype(a_base);
@@ -122,7 +123,7 @@ void multiply(A&& a, B&& b, C&& c) {
       handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
       CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
       compute_type, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize1, NULL);
-  cudaMalloc((void**) &dBuffer1, bufferSize1);
+  s.alloc(&dBuffer1, bufferSize1);
   // inspect the matrices A and B to understand the memory requirement for
   // the next step
 
@@ -138,7 +139,7 @@ void multiply(A&& a, B&& b, C&& c) {
                          CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
                          &beta, matC, compute_type, CUSPARSE_SPGEMM_DEFAULT,
                          spgemmDesc, &bufferSize2, NULL);
-  cudaMalloc((void**) &dBuffer2, bufferSize2);
+  s.alloc(&dBuffer2, bufferSize2);
 
   // compute the intermediate product of A * B
   cusparseSpGEMM_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
@@ -149,10 +150,10 @@ void multiply(A&& a, B&& b, C&& c) {
   int64_t C_num_rows1, C_num_cols1, C_nnz1;
   cusparseSpMatGetSize(matC, &C_num_rows1, &C_num_cols1, &C_nnz1);
   // allocate matrix C
-  cudaMalloc((void**) &dC_columns,
-             C_nnz1 * sizeof(typename output_type::index_type));
-  cudaMalloc((void**) &dC_values,
-             C_nnz1 * sizeof(typename output_type::scalar_type));
+  s.alloc((void**) &dC_columns,
+          C_nnz1 * sizeof(typename output_type::index_type));
+  s.alloc((void**) &dC_values,
+          C_nnz1 * sizeof(typename output_type::scalar_type));
 
   // NOTE: if 'beta' != 0, the values of C must be update after the allocation
   //       of dC_values, and before the call of cusparseSpGEMM_copy
@@ -183,16 +184,14 @@ void multiply(A&& a, B&& b, C&& c) {
   cusparseDestroySpMat(matB);
   cusparseDestroySpMat(matC);
   cusparseDestroy(handle);
-  cudaFree(dBuffer1);
-  cudaFree(dBuffer2);
+  s.free(dBuffer1);
+  s.free(dBuffer2);
 }
 
-// multiply_prepare() to get the buffer size
-
-template <matrix A, matrix B, matrix C>
+template <matrix A, matrix B, matrix C, typename S>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-           __detail::is_csr_view_v<C>
-operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+           __detail::is_csr_view_v<C> && __backend::is_allocator<S>
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c, S&& s) {
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
   using matrix_type = decltype(a_base);
@@ -242,7 +241,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
                                 matB, &beta, matC, cuda_data_type<value_type>(),
                                 CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
                                 &bufferSize1, NULL);
-  cudaMalloc((void**) &dBuffer1, bufferSize1);
+  s.alloc(&dBuffer1, bufferSize1);
   // inspect the matrices A and B to understand the memory requirement for
   // the next step
 
@@ -259,7 +258,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
                          &beta, matC, cuda_data_type<value_type>(),
                          CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize2,
                          NULL);
-  cudaMalloc((void**) &dBuffer2, bufferSize2);
+  s.alloc(&dBuffer2, bufferSize2);
 
   // compute the intermediate product of A * B
   cusparseSpGEMM_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
@@ -278,8 +277,8 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   cusparseDestroySpMat(matB);
   cusparseDestroySpMat(matC);
   cusparseDestroy(handle);
-  cudaFree(dBuffer1);
-  cudaFree(dBuffer2);
+  s.free(dBuffer1);
+  s.free(dBuffer2);
   return info;
 }
 
