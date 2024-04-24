@@ -5,6 +5,8 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+#include "allocator.hpp"
+
 int main(int argc, char** argv) {
   using namespace spblas;
   namespace md = spblas::__mdspan;
@@ -13,6 +15,8 @@ int main(int argc, char** argv) {
   spblas::index_t n = 10;
   spblas::index_t k = 100;
   spblas::index_t nnz = 100;
+
+  cuda_allocator allocator;
 
   auto&& [a_values, a_rowptr, a_colind, a_shape, as] =
       generate_csr<float, int>(m, k, nnz);
@@ -56,7 +60,7 @@ int main(int argc, char** argv) {
   // std::span<int> c_rowptr_span(dc_rowptr, m+1);
 
   csr_view<float, int> c(nullptr, dc_rowptr, nullptr, {m, n}, 0);
-  auto info = multiply_inspect(a, b, c);
+  auto info = multiply_inspect(a, b, c, allocator);
 
   float* dc_values;
   int* dc_colind;

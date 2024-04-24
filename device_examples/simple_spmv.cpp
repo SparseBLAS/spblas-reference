@@ -4,6 +4,8 @@
 
 #include <iostream>
 
+#include "allocator.hpp"
+
 int main(int argc, char** argv) {
   using namespace spblas;
 
@@ -12,6 +14,8 @@ int main(int argc, char** argv) {
 
   float* dvalues;
   int *drowptr, *dcolind;
+  cuda_allocator allocator;
+
   cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
   cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
   cudaMalloc((void**) &dcolind, sizeof(int) * nnz);
@@ -39,7 +43,7 @@ int main(int argc, char** argv) {
   float alpha = 2.0f;
   // c = a * alpha * b
   // multiply(a, scaled(alpha, b), c);
-  multiply(a, b_span, c_span);
+  multiply(a, b_span, c_span, allocator);
 
   cudaMemcpy(c.data(), dc, sizeof(float) * 100, cudaMemcpyDeviceToHost);
   for (int i = 0; i < 100; i++) {
