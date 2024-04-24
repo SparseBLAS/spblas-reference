@@ -2,7 +2,6 @@
 
 #include <spblas/detail/concepts.hpp>
 #include <spblas/views/inspectors.hpp>
-#include <optional>
 
 namespace spblas {
 

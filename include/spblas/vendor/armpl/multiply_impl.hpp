@@ -108,44 +108,9 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
   c_handle =
       armpl_spmat_create_null(__backend::shape(c)[0], __backend::shape(c)[1]);
 
-#if 0
-/*
-  Turns out, there is a problem with my suggestion here.
-  If either of the structure hints are set
-  (ARMPL_SPARSE_SPMM_STRAT_OPT_PART_STRUCT is used below), then
-  `armpl_spmm_optimize` will only have computed any of the
-  structure *if the rows of B are sorted*. Otherwise, we return early from
-  optimization and execution does everything. Since these are hints,
-  this is OK in our implementation. However, it means we can't rely on
-  calling `optimize` to *always* calculate NNZ for C in this `inspect`
-  function. The only way to guarantee NNZ is to execute.
-
-  If we do the sorting in here then we'll need to sort b_colind, and call
-  armpl::create_spmat_csr without ARMPL_SPARSE_CREATE_NOCOPY (flag=0 instead)
-  in which case b_colind_copy is copied again, along with taking copies of
-  b_rowptr and b_values. Seems excessive!
-*/
-
-  auto alpha_hint = alpha == 0 ? ARMPL_SPARSE_SCALAR_ZERO :
-                    alpha == 1 ? ARMPL_SPARSE_SCALAR_ONE :
-                                 ARMPL_SPARSE_SCALAR_ANY;
-
-  auto beta_hint = ARMPL_SPARSE_SCALAR_ZERO;
-
-  armpl_spmat_hint(c_handle, ARMPL_SPARSE_HINT_SPMM_STRATEGY,
-                   ARMPL_SPARSE_SPMM_STRAT_OPT_PART_STRUCT);
-
-  armpl_spmm_optimize(ARMPL_SPARSE_OPERATION_NOTRANS,
-                      ARMPL_SPARSE_OPERATION_NOTRANS,
-                      ARMPL_SPARSE_SCALAR_ONE, a_handle,
-                      b_handle, ARMPL_SPARSE_SCALAR_ZERO, c_handle);
-
-#else
-
   __armpl::spmm_exec<tensor_scalar_t<A>>(ARMPL_SPARSE_OPERATION_NOTRANS,
                                          ARMPL_SPARSE_OPERATION_NOTRANS, alpha,
                                          a_handle, b_handle, 0, c_handle);
-#endif
 
   armpl_int_t index_base, m, n, nnz;
   armpl_spmat_query(c_handle, &index_base, &m, &n, &nnz);
@@ -167,17 +132,6 @@ void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
   auto nnz = info.result_nnz();
   armpl_int_t *rowptr, *colind;
   tensor_scalar_t<C>* values;
-
-#if 0
-  auto alpha_optional = __detail::get_scaling_factor(a, b);
-  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-
-  // We would do this here instead if B's rows were guaranteed to be sorted
-  __armpl::spmm_exec<tensor_scalar_t<A>>(ARMPL_SPARSE_OPERATION_NOTRANS,
-                                         ARMPL_SPARSE_OPERATION_NOTRANS, alpha,
-                                         a_handle, b_handle, 0, c_handle);
-#endif
-
   __armpl::export_spmat_csr<tensor_scalar_t<C>>(c_handle, 0, &m, &n, &rowptr,
                                                 &colind, &values);
 
