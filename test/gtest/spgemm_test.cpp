@@ -7,6 +7,8 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+#include <algorithm>
+
 TEST(CsrView, SpGEMM) {
   using T = float;
   using I = spblas::index_t;
@@ -18,6 +20,10 @@ TEST(CsrView, SpGEMM) {
 
       auto [b_values, b_rowptr, b_colind, b_shape, b_nnz] =
           spblas::generate_csr<T, I>(k, n, nnz);
+
+      for (int i=0; i<k; i++) {
+        std::sort(&b_colind[b_rowptr[i]], &b_colind[b_rowptr[i+1]]);
+      }
 
       spblas::csr_view<T, I> a(a_values, a_rowptr, a_colind, a_shape, a_nnz);
       spblas::csr_view<T, I> b(b_values, b_rowptr, b_colind, b_shape, b_nnz);
@@ -84,6 +90,10 @@ TEST(CsrView, SpGEMM_AScaled) {
       auto [b_values, b_rowptr, b_colind, b_shape, b_nnz] =
           spblas::generate_csr<T, I>(k, n, nnz);
 
+      for (int i=0; i<k; i++) {
+        std::sort(&b_colind[b_rowptr[i]], &b_colind[b_rowptr[i+1]]);
+      }
+
       spblas::csr_view<T, I> a(a_values, a_rowptr, a_colind, a_shape, a_nnz);
       spblas::csr_view<T, I> b(b_values, b_rowptr, b_colind, b_shape, b_nnz);
 
@@ -148,6 +158,10 @@ TEST(CsrView, SpGEMM_BScaled) {
 
       auto [b_values, b_rowptr, b_colind, b_shape, b_nnz] =
           spblas::generate_csr<T, I>(k, n, nnz);
+
+      for (int i=0; i<k; i++) {
+        std::sort(&b_colind[b_rowptr[i]], &b_colind[b_rowptr[i+1]]);
+      }
 
       spblas::csr_view<T, I> a(a_values, a_rowptr, a_colind, a_shape, a_nnz);
       spblas::csr_view<T, I> b(b_values, b_rowptr, b_colind, b_shape, b_nnz);
