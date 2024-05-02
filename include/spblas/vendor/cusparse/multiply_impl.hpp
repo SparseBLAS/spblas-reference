@@ -338,4 +338,152 @@ void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
   cusparseDestroy(handle);
 }
 
+class allocator {
+public:
+  virtual void alloc(void** ptrptr, size_t size) const = 0;
+
+  virtual void free(void* ptr) const = 0;
+};
+
+class spgemm {
+public:
+  spgemm(std::shared_ptr<allocator> memctrl) : memctrl_(memctrl) {
+    cusparseCreate(&handle);
+    cusparseSpGEMM_createDescr(&spgemmDesc);
+  }
+
+  ~spgemm() {
+    cudaDeviceSynchronize();
+    cusparseSpGEMM_destroyDescr(spgemmDesc);
+    memctrl_->free(dBuffer1);
+    memctrl_->free(dBuffer2);
+    cusparseDestroySpMat(matA);
+    cusparseDestroySpMat(matB);
+    cusparseDestroy(handle);
+  }
+
+  template <matrix A, matrix B, matrix C>
+    requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+             __detail::is_csr_view_v<C>
+  operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+    auto a_base = __detail::get_ultimate_base(a);
+    auto b_base = __detail::get_ultimate_base(b);
+    using matrix_type = decltype(a_base);
+    using input_type = decltype(b_base);
+    using output_type = std::remove_reference_t<decltype(c)>;
+    using value_type = typename matrix_type::scalar_type;
+
+    value_type alpha = 1.0;
+    value_type beta = 0.0;
+
+    cusparseSpMatDescr_t matC;
+    // Create sparse matrix A in CSR format
+    cusparseCreateCsr(&matA, __backend::shape(a_base)[0],
+                      __backend::shape(a_base)[1], a_base.values().size(),
+                      a_base.rowptr().data(), a_base.colind().data(),
+                      a_base.values().data(),
+                      cusparse_index_type<typename matrix_type::offset_type>(),
+                      cusparse_index_type<typename matrix_type::index_type>(),
+                      CUSPARSE_INDEX_BASE_ZERO, cuda_data_type<value_type>());
+    cusparseCreateCsr(&matB, __backend::shape(b_base)[0],
+                      __backend::shape(b_base)[1], b_base.values().size(),
+                      b_base.rowptr().data(), b_base.colind().data(),
+                      b_base.values().data(),
+                      cusparse_index_type<typename input_type::offset_type>(),
+                      cusparse_index_type<typename input_type::index_type>(),
+                      CUSPARSE_INDEX_BASE_ZERO,
+                      cuda_data_type<typename input_type::scalar_type>());
+    cusparseCreateCsr(&matC, __backend::shape(a_base)[0],
+                      __backend::shape(b_base)[1], 0, c.rowptr().data(), NULL,
+                      NULL,
+                      cusparse_index_type<typename output_type::offset_type>(),
+                      cusparse_index_type<typename output_type::index_type>(),
+                      CUSPARSE_INDEX_BASE_ZERO,
+                      cuda_data_type<typename output_type::scalar_type>());
+    //--------------------------------------------------------------------------
+
+    // ask bufferSize1 bytes for external memory
+    cusparseSpGEMM_workEstimation(
+        handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+        CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+        cuda_data_type<value_type>(), CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+        &bufferSize1, NULL);
+    memctrl_->alloc(&dBuffer1, bufferSize1);
+    // inspect the matrices A and B to understand the memory requirement for
+    // the next step
+    cusparseSpGEMM_workEstimation(
+        handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+        CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+        cuda_data_type<value_type>(), CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+        &bufferSize1, dBuffer1);
+
+    // ask bufferSize2 bytes for external memory
+    cusparseSpGEMM_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                           CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
+                           &beta, matC, cuda_data_type<value_type>(),
+                           CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize2,
+                           NULL);
+    memctrl_->alloc(&dBuffer2, bufferSize2);
+
+    // compute the intermediate product of A * B
+    cusparseSpGEMM_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                           CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
+                           &beta, matC, cuda_data_type<value_type>(),
+                           CUSPARSE_SPGEMM_DEFAULT, spgemmDesc, &bufferSize2,
+                           dBuffer2);
+    // get matrix C non-zero entries C_nnz1
+    int64_t C_num_rows1, C_num_cols1, C_nnz1;
+    cusparseSpMatGetSize(matC, &C_num_rows1, &C_num_cols1, &C_nnz1);
+
+    //  new operation_info_t for nvidia
+    auto info = operation_info_t{__backend::shape(c), C_nnz1};
+    // we will recureate a new matC in the execution step
+    cusparseDestroySpMat(matC);
+    return info;
+  }
+
+  template <matrix A, matrix B, matrix C>
+    requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+             __detail::is_csr_view_v<C>
+  void multiply_execute(A&& a, B&& b, C&& c) {
+    auto a_base = __detail::get_ultimate_base(a);
+    auto b_base = __detail::get_ultimate_base(b);
+    using matrix_type = decltype(a_base);
+    using input_type = decltype(b_base);
+    using output_type = std::remove_reference_t<decltype(c)>;
+    using value_type = typename matrix_type::scalar_type;
+
+    auto alpha_optional = __detail::get_scaling_factor(a, b);
+    tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+
+    value_type alpha_val = alpha;
+    value_type beta = 0.0;
+
+    cusparseSpMatDescr_t matC;
+
+    cusparseCreateCsr(&matC, __backend::shape(c)[0], __backend::shape(c)[1],
+                      c.values().size(), c.rowptr().data(), c.colind().data(),
+                      c.values().data(),
+                      cusparse_index_type<typename output_type::offset_type>(),
+                      cusparse_index_type<typename output_type::index_type>(),
+                      CUSPARSE_INDEX_BASE_ZERO,
+                      cuda_data_type<typename output_type::scalar_type>());
+
+    cusparseSpGEMM_copy(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                        CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
+                        &beta, matC, cuda_data_type<value_type>(),
+                        CUSPARSE_SPGEMM_DEFAULT, spgemmDesc);
+
+    cusparseDestroySpMat(matC);
+  }
+
+private:
+  std::shared_ptr<allocator> memctrl_;
+  cusparseHandle_t handle = NULL;
+  cusparseSpMatDescr_t matA, matB;
+  cusparseSpGEMMDescr_t spgemmDesc;
+  void *dBuffer1 = NULL, *dBuffer2 = NULL;
+  size_t bufferSize1 = 0, bufferSize2 = 0;
+};
+
 } // namespace spblas

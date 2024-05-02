@@ -7,6 +7,7 @@
 #include <spblas/vendor/mkl/operation_state_t.hpp>
 #endif
 #ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/backend/concepts.hpp>
 #include <spblas/vendor/cusparse/operation_state_t.hpp>
 #endif
 

@@ -8,3 +8,4 @@ add_example(simple_spmv)
 # add_example(simple_spmm) onemkl seems to contain spmv only? or the concept already for both
 add_example(simple_spgemm)
 add_example(simple_spgemm_two)
+add_example(simple_spgemm_object)
