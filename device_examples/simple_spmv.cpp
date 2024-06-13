@@ -4,7 +4,17 @@
 
 #include <iostream>
 
-#include "allocator.hpp"
+// #include "allocator.hpp"
+class cuda_allocator : public spblas::allocator {
+public:
+  void alloc(void** ptrptr, size_t size) const override {
+    cudaMalloc(ptrptr, size);
+  }
+
+  void free(void* ptr) const override {
+    cudaFree(ptr);
+  }
+};
 
 int main(int argc, char** argv) {
   using namespace spblas;
@@ -14,7 +24,8 @@ int main(int argc, char** argv) {
 
   float* dvalues;
   int *drowptr, *dcolind;
-  cuda_allocator allocator;
+  auto allocator = std::make_shared<const cuda_allocator>();
+  spblas::spmv_handle_t spmv_handle(allocator);
 
   cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
   cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
@@ -43,7 +54,7 @@ int main(int argc, char** argv) {
   float alpha = 2.0f;
   // c = a * alpha * b
   // multiply(a, scaled(alpha, b), c);
-  multiply(a, b_span, c_span, allocator);
+  multiply(spmv_handle, a, b_span, c_span);
 
   cudaMemcpy(c.data(), dc, sizeof(float) * 100, cudaMemcpyDeviceToHost);
   for (int i = 0; i < 100; i++) {

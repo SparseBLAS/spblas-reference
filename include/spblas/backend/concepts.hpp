@@ -5,6 +5,13 @@
 
 namespace spblas {
 
+class allocator {
+public:
+  virtual void alloc(void** ptrptr, size_t size) const = 0;
+
+  virtual void free(void* ptr) const = 0;
+};
+
 namespace __backend {
 
 template <typename T>

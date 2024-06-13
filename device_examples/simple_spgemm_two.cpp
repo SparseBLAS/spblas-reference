@@ -5,7 +5,16 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
-#include "allocator.hpp"
+class cuda_allocator : public spblas::allocator {
+public:
+  void alloc(void** ptrptr, size_t size) const override {
+    cudaMalloc(ptrptr, size);
+  }
+
+  void free(void* ptr) const override {
+    cudaFree(ptr);
+  }
+};
 
 int main(int argc, char** argv) {
   using namespace spblas;
@@ -16,7 +25,8 @@ int main(int argc, char** argv) {
   spblas::index_t k = 100;
   spblas::index_t nnz = 100;
 
-  cuda_allocator allocator;
+  auto allocator = std::make_shared<cuda_allocator>();
+  spblas::spgemm_handle_t spgemm_handle(allocator);
 
   auto&& [a_values, a_rowptr, a_colind, a_shape, as] =
       generate_csr<float, int>(m, k, nnz);
@@ -60,20 +70,21 @@ int main(int argc, char** argv) {
   // std::span<int> c_rowptr_span(dc_rowptr, m+1);
 
   csr_view<float, int> c(nullptr, dc_rowptr, nullptr, {m, n}, 0);
-  auto info = multiply_inspect(a, b, c, allocator);
+  multiply_inspect(spgemm_handle, a, b, c);
+  multiply_compute(spgemm_handle, a, b, c);
 
   float* dc_values;
   int* dc_colind;
-  cudaMalloc((void**) &dc_values, info.result_nnz() * sizeof(float));
-  cudaMalloc((void**) &dc_colind, info.result_nnz() * sizeof(int));
+  cudaMalloc((void**) &dc_values, spgemm_handle.result_nnz() * sizeof(float));
+  cudaMalloc((void**) &dc_colind, spgemm_handle.result_nnz() * sizeof(int));
 
   std::span<int> c_rowptr_span(dc_rowptr, m + 1);
-  std::span<int> c_colind_span(dc_colind, info.result_nnz());
-  std::span<float> c_values_span(dc_values, info.result_nnz());
+  std::span<int> c_colind_span(dc_colind, spgemm_handle.result_nnz());
+  std::span<float> c_values_span(dc_values, spgemm_handle.result_nnz());
   c.update(c_values_span, c_rowptr_span, c_colind_span, {m, n},
-           (int) info.result_nnz());
+           (int) spgemm_handle.result_nnz());
 
-  multiply_execute(info, a, b, c);
+  multiply_execute(spgemm_handle, a, b, c);
 
   std::vector<int> c_rowptr(m + 1);
   cudaMemcpy(c_rowptr.data(), dc_rowptr, sizeof(int) * (m + 1),
