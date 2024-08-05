@@ -21,7 +21,7 @@ public:
       : values_(values, nnz), rowptr_(rowptr, shape[0] + 1),
         colind_(colind, nnz), shape_(shape), nnz_(nnz) {
     if (rowptr_.data() == nullptr) {
-      rowptr_ = std::span<I>((I*) nullptr, (I*) nullptr);
+      rowptr_ = std::span<O>((O*) nullptr, (O*) nullptr);
     }
   }
 
@@ -33,13 +33,13 @@ public:
         colind_(__ranges::data(colind), __ranges::size(colind)), shape_(shape),
         nnz_(nnz) {}
 
-  void update(std::span<T> values, std::span<I> rowptr, std::span<O> colind) {
+  void update(std::span<T> values, std::span<O> rowptr, std::span<I> colind) {
     values_ = values;
     rowptr_ = rowptr;
     colind_ = colind;
   }
 
-  void update(std::span<T> values, std::span<I> rowptr, std::span<O> colind,
+  void update(std::span<T> values, std::span<O> rowptr, std::span<I> colind,
               index<I> shape, O nnz) {
     values_ = values;
     rowptr_ = rowptr;
@@ -51,10 +51,10 @@ public:
   std::span<T> values() const noexcept {
     return values_;
   }
-  std::span<I> rowptr() const noexcept {
+  std::span<O> rowptr() const noexcept {
     return rowptr_;
   }
-  std::span<O> colind() const noexcept {
+  std::span<I> colind() const noexcept {
     return colind_;
   }
 
@@ -70,8 +70,8 @@ public:
 
 private:
   std::span<T> values_;
-  std::span<I> rowptr_;
-  std::span<O> colind_;
+  std::span<O> rowptr_;
+  std::span<I> colind_;
   index<I> shape_;
   O nnz_;
 };
