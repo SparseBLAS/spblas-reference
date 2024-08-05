@@ -9,8 +9,8 @@ set(CMAKE_CXX_FLAGS "-O3 -march=native")
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
 
-if (${CMAKE_VERSION} VERSION_GREATER 3.23.99)
-  cmake_policy(SET CMP0135 NEW) # allows to handling changes to remote content
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.24)
+  cmake_policy(SET CMP0135 NEW) # allows handling of changes to remote content
 endif()
 
 # Download dependencies
