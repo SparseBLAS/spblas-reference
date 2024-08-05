@@ -31,7 +31,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: CMake
-      run: cmake -B build
+      run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt-get update -y
+        sudo apt-get install g++-13
+        cmake -B build
     - name: Build
       run: make -C build -j `nproc`
     - name: Test
