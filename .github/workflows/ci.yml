@@ -17,6 +17,7 @@ jobs:
         python-version: '3.12'
         cache: 'pip'
     - run: pip install -r requirements.txt
+         | apt-get install g++-11 g++-12 g++-13
     - name: Checks
       uses: pre-commit/action@v3.0.0
 
