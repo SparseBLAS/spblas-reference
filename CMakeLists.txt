@@ -32,7 +32,7 @@ if (ENABLE_ARMPL)
 endif()
 if (ENABLE_CUSPARSE)
   find_package(CUDAToolkit REQUIRED)
-  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse)
+  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
 endif()
 
