@@ -34,6 +34,9 @@ if (ENABLE_CUSPARSE)
   find_package(CUDAToolkit REQUIRED)
   target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
+  set(CMAKE_CUDA_STANDARD 17)
+  add_subdirectory(cuspblas)
+  target_link_libraries(spblas INTERFACE cuspblas)
 endif()
 
 # turn on/off debug logging
