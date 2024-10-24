@@ -1,6 +1,8 @@
 #pragma once
 
+#include "add_impl.hpp"
 #include "conversion_impl.hpp"
+#include "filter_impl.hpp"
 #include "multiply_impl.hpp"
 #include "sddmm_impl.hpp"
 #include "trisolve_impl.hpp"
