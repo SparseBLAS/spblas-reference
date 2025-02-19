@@ -34,7 +34,7 @@ jobs:
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update -y
-        sudo apt-get install g++-13
+        sudo apt-get install g++-11 g++-12 g++-13
         cmake -B build
     - name: Build
       run: make -C build -j `nproc`
