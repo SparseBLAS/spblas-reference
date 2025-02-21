@@ -70,7 +70,7 @@ jobs:
 
   intel-llvm-mkl:
     runs-on: 'ubuntu-latest'
-    name: intel-llvm
+    name: intel-llvm-mkl
     env:
       CXX: icpx
     steps:
