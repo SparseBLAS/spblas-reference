@@ -42,7 +42,7 @@ jobs:
       run: ./build/test/gtest/spblas-tests
 
   intel-llvm:
-    runs-on: 'intel-ubuntu-latest'
+    runs-on: 'ubuntu-latest'
     name: intel-llvm
     env:
       CXX: icpx
