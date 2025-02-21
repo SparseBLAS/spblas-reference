@@ -43,7 +43,10 @@ jobs:
 
   intel-llvm:
     runs-on: 'ubuntu-latest'
-    name: intel-llvm
+    strategy:
+      matrix:
+        mkl: [OFF, ON]
+    name: intel-llvm${{ matrix.mkl == 'ON' && '-mkl' || '' }}
     env:
       CXX: icpx
     steps:
@@ -58,34 +61,7 @@ jobs:
     - name: CMake
       run: |
         source /opt/intel/oneapi/setvars.sh
-        cmake -B build
-    - name: Build
-      run: |
-        source /opt/intel/oneapi/setvars.sh
-        make -C build -j `nproc`
-    - name: Test
-      run: |
-        source /opt/intel/oneapi/setvars.sh
-        ./build/test/gtest/spblas-tests
-
-  intel-llvm-mkl:
-    runs-on: 'ubuntu-latest'
-    name: intel-llvm-mkl
-    env:
-      CXX: icpx
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Intel
-      run: |
-          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
-          | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-          sudo apt-get update -y
-          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mkl-devel
-    - name: CMake
-      run: |
-        source /opt/intel/oneapi/setvars.sh
-        cmake -B build -DENABLE_ONEMKL=ON
+        cmake -B build -DENABLE_ONEMKL=${{ matrix.mkl }}
     - name: Build
       run: |
         source /opt/intel/oneapi/setvars.sh
