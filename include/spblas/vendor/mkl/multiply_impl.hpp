@@ -35,6 +35,8 @@ void multiply(A&& a, B&& b, C&& c) {
                             __ranges::data(c))
       .wait();
 
+  c[0] += 1;
+
   oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
 }
 
