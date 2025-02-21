@@ -23,18 +23,18 @@ public:
     return result_nnz_;
   }
 
-  operation_info_t(index<> result_shape, index_t result_nnz)
+  operation_info_t(index<> result_shape, offset_t result_nnz)
       : result_shape_(result_shape), result_nnz_(result_nnz) {}
 
 #ifdef SPBLAS_ENABLE_ONEMKL
-  operation_info_t(index<> result_shape, index_t result_nnz,
+  operation_info_t(index<> result_shape, offset_t result_nnz,
                    __mkl::operation_state_t&& state)
       : result_shape_(result_shape), result_nnz_(result_nnz),
         state_(std::move(state)) {}
 #endif
 
 #ifdef SPBLAS_ENABLE_ARMPL
-  operation_info_t(index<> result_shape, index_t result_nnz,
+  operation_info_t(index<> result_shape, offset_t result_nnz,
                    __armpl::operation_state_t&& state)
       : result_shape_(result_shape), result_nnz_(result_nnz),
         state_(std::move(state)) {}
@@ -42,7 +42,7 @@ public:
 
 private:
   index<> result_shape_;
-  index_t result_nnz_;
+  offset_t result_nnz_;
 
 #ifdef SPBLAS_ENABLE_ONEMKL
 public:

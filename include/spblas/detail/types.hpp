@@ -15,6 +15,7 @@ namespace spblas {
 
 #ifndef SPBLAS_VENDOR_BACKEND
 using index_t = std::size_t;
+using offset_t = index_t;
 #endif
 
 template <typename T>
