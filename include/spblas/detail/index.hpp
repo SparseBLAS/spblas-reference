@@ -7,10 +7,11 @@
 #include <tuple>
 
 #include <spblas/detail/tuple_concept.hpp>
+#include <spblas/detail/types.hpp>
 
 namespace spblas {
 
-template <std::integral T = std::size_t>
+template <std::integral T = spblas::index_t>
 class index {
 public:
   using index_type = T;

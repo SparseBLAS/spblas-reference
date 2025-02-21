@@ -2,81 +2,30 @@
 
 #include <oneapi/mkl.hpp>
 
+#include <spblas/backend/log.hpp>
+
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+//
+// Defines the following APIs for SpGEMM:
+//
+//  C = op(A) * op(B)
+//
+//  where A,B and C are sparse matrices of CSR format
+//
+// operation_info_t multiply_inspect(A, B, C)
+// void multiply_execute(operation_info_t, A, B, C)
+//
+
 namespace spblas {
-
-template <matrix A, vector B, vector C>
-  requires __detail::has_csr_base<A> &&
-           __detail::has_contiguous_range_base<B> &&
-           __ranges::contiguous_range<C>
-void multiply(A&& a, B&& b, C&& c) {
-  auto a_base = __detail::get_ultimate_base(a);
-  auto b_base = __detail::get_ultimate_base(b);
-
-  auto alpha_optional = __detail::get_scaling_factor(a, b);
-  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-
-  sycl::queue q(sycl::cpu_selector_v);
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
-
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
-
-  oneapi::mkl::sparse::gemv(q, oneapi::mkl::transpose::nontrans, alpha,
-                            a_handle, __ranges::data(b_base), 0.0,
-                            __ranges::data(c))
-      .wait();
-
-  oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
-}
-
-template <matrix A, matrix B, matrix C>
-  requires __detail::has_csr_base<A> && __detail::has_mdspan_matrix_base<B> &&
-           __detail::is_matrix_instantiation_of_mdspan_v<C> &&
-           std::is_same_v<
-               typename __detail::ultimate_base_type_t<B>::layout_type,
-               __mdspan::layout_right> &&
-           std::is_same_v<typename std::remove_cvref_t<C>::layout_type,
-                          __mdspan::layout_right>
-void multiply(A&& a, B&& b, C&& c) {
-  auto a_base = __detail::get_ultimate_base(a);
-  auto b_base = __detail::get_ultimate_base(b);
-
-  auto alpha_optional = __detail::get_scaling_factor(a, b);
-  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-
-  sycl::queue q(sycl::cpu_selector_v);
-
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
-
-  oneapi::mkl::sparse::gemm(
-      q, oneapi::mkl::layout::row_major, oneapi::mkl::transpose::nontrans,
-      oneapi::mkl::transpose::nontrans, alpha, a_handle, b_base.data_handle(),
-      b_base.extent(1), b_base.extent(1), 0.0, c.data_handle(), c.extent(1))
-      .wait();
-
-  oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
-}
 
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
 
@@ -145,8 +94,15 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 
   ev3_1.wait(); // sync is required to read c_nnz
 
-  std::int64_t nnz = *c_nnz;
+  index_t nnz = 0;
+  if (*c_nnz <= std::numeric_limits<offset_t>::max()) {
+    nnz = static_cast<offset_t>(*c_nnz);
+  } else {
+    std::cout << "Error: c_nnz value out of range for index_t" << std::endl;
+    nnz = -1;
+  }
 
+  log_info("computed c_nnz = %d", nnz);
   sycl::free(c_nnz, q);
 
   return operation_info_t{
@@ -159,6 +115,8 @@ template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
+
+  log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
 

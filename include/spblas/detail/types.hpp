@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <type_traits>
 
-#ifdef SPBLAS_ENABLE_ONEMKL
-#include <spblas/vendor/mkl/types.hpp>
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+#include <spblas/vendor/onemkl_sycl/types.hpp>
 #endif
 
 #ifdef SPBLAS_ENABLE_ARMPL
@@ -15,6 +15,7 @@ namespace spblas {
 
 #ifndef SPBLAS_VENDOR_BACKEND
 using index_t = std::size_t;
+using offset_t = index_t;
 #endif
 
 template <typename T>
