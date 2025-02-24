@@ -70,10 +70,12 @@ static void spblas_log_(int level, const char* pref, const char* file,
       printf("\x1b[38;5;0m");  // foreground is black
     }
 
-    // printf("[%s] %s:%d: %s()", pref, file, line, func); // print out
-    //               preamble:  [logtype] file:<line#>: functionname() message
+    // print out preamble:  [logtype] file:<line#>: functionname() message
+    // printf("[%s] %s:%d: %s()", pref, file, line, func);
+
+    // print out preamble:  [logtype] file:<line#>: message
     printf("[%s] %s:%d: ", pref, file, line);
-    //               print out preamble:  [logtype] file:<line#>: message
+
     vprintf(fmt, args); // print out message
 
     // end color for log printing
@@ -81,7 +83,7 @@ static void spblas_log_(int level, const char* pref, const char* file,
       printf("\x1b[0m");
     }
     printf("\n");
-  }
+  } // if level <= LOG_LEVEL
   fflush(0);
   va_end(args);
 }
