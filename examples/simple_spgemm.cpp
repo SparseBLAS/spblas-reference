@@ -4,6 +4,7 @@
 
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+#include <fmt/printf.h>
 
 int main(int argc, char** argv) {
   using namespace spblas;
@@ -14,23 +15,24 @@ int main(int argc, char** argv) {
   spblas::index_t k = 100;
   spblas::index_t nnz = 100;
 
-  std::cout << "\n\t###########################################################"
-               "######################"
-            << "\n\t### Running SpGEMM Example:"
-            << "\n\t###"
-            << "\n\t###   C = A * B"
-            << "\n\t###"
-            << "\n\t### with "
-            << "\n\t### A in CSR format of size (" << m << ", " << k
-            << ") with nnz = " << nnz << "\n\t### B in CSR format of size ("
-            << k << ", " << n << ") with nnz = " << nnz
-            << "\n\t### C in CSR format of size (" << m << ", " << n
-            << ") with nnz to be determined"
-            << "\n\t### using float and spblas::index_t (size = "
-            << sizeof(spblas::index_t) << " bytes)"
-            << "\n\t###########################################################"
-               "######################"
-            << std::endl;
+  fmt::print("\n\t###########################################################"
+               "######################");
+  fmt::print("\n\t### Running SpGEMM Example:");
+  fmt::print("\n\t###");
+  fmt::print("\n\t###   C = A * B");
+  fmt::print("\n\t###");
+  fmt::print("\n\t### with ");
+  fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}",
+      m, k, nnz);
+  fmt::print("\n\t### B, in CSR format, of size ({}, {}) with nnz = {}",
+      k, n, nnz);
+  fmt::print("\n\t### C, in CSR format, of size ({}, {}) with nnz to be"
+      " determined", m, n);
+  fmt::print("\n\t### using float and spblas::index_t (size = {} bytes)",
+      sizeof(spblas::index_t) );
+  fmt::print("\n\t###########################################################"
+  "######################");
+  fmt::print("\n");
 
   auto&& [a_values, a_rowptr, a_colind, a_shape, as] =
       generate_csr<float>(m, k, nnz);
@@ -46,7 +48,8 @@ int main(int argc, char** argv) {
 
   auto info = multiply_inspect(scaled(1.f, a), b, c);
 
-  std::cout << "\t\t C_nnz = " << info.result_nnz() << std::endl;
+  fmt::print("\t\t C_nnz = {}", info.result_nnz());
+
   std::vector<float> c_values(info.result_nnz());
   std::vector<spblas::index_t> c_colind(info.result_nnz());
   c.update(c_values, c_rowptr, c_colind);
@@ -57,7 +60,7 @@ int main(int argc, char** argv) {
     fmt::print("{}: {}\n", i, row);
   }
 
-  std::cout << "\tExample is completed!" << std::endl;
+  fmt::print("\tExample is completed!\n");
 
   return 0;
 }

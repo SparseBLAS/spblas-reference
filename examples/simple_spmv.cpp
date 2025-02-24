@@ -13,22 +13,23 @@ int main(int argc, char** argv) {
   spblas::index_t n = 100;
   spblas::index_t nnz_in = 10;
 
-  std::cout << "\n\t###########################################################"
-               "######################"
-            << "\n\t### Running SpMV Example:"
-            << "\n\t###"
-            << "\n\t###   y = alpha * A * x"
-            << "\n\t###"
-            << "\n\t### with "
-            << "\n\t### A in CSR format of size (" << m << ", " << n
-            << ") with nnz = " << nnz_in
-            << "\n\t### x, a dense vector of size (" << n << ", " << 1 << ")"
-            << "\n\t### y, a dense vector of size (" << m << ", " << 1 << ")"
-            << "\n\t### using float and spblas::index_t (size = "
-            << sizeof(spblas::index_t) << " bytes)"
-            << "\n\t###########################################################"
-               "######################"
-            << std::endl;
+  fmt::print("\n\t###########################################################"
+               "######################");
+  fmt::print("\n\t### Running SpMV Example:");
+  fmt::print("\n\t###");
+  fmt::print("\n\t###   y = alpha * A * x");
+  fmt::print("\n\t###");
+  fmt::print("\n\t### with ");
+  fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}",
+      m, n, nnz_in);
+  fmt::print("\n\t### x, a dense vector, of size ({}, {})", n, 1);
+  fmt::print("\n\t### y, a dense vector, of size ({}, {})", m, 1);
+  fmt::print("\n\t### using float and spblas::index_t (size = {} bytes)",
+      sizeof(spblas::index_t) );
+  fmt::print("\n\t###########################################################"
+  "######################");
+  fmt::print("\n");
+
 
   auto&& [values, rowptr, colind, shape, nnz] =
       generate_csr<DATA_TYPE, spblas::index_t>(m, n, nnz_in);
@@ -47,7 +48,7 @@ int main(int argc, char** argv) {
   // y = alpha * A * x
   multiply(a_scaled, x, y);
 
-  std::cout << "\tExample is completed!" << std::endl;
+  fmt::print("\tExample is completed!\n");
 
   return 0;
 }

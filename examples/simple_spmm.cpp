@@ -11,28 +11,28 @@ int main(int argc, char** argv) {
   spblas::index_t m = 100;
   spblas::index_t n = 10;
   spblas::index_t k = 100;
-  spblas::index_t nnz = 10;
+  spblas::index_t nnz_in = 10;
 
-  std::cout << "\n\t###########################################################"
-               "######################"
-            << "\n\t### Running SpMM Example:"
-            << "\n\t###"
-            << "\n\t###   Y = alpha * A * X"
-            << "\n\t###"
-            << "\n\t### with "
-            << "\n\t### A in CSR format of size (" << m << ", " << k
-            << ") with nnz = " << nnz
-            << "\n\t### X, a dense matrix in rowmajor format of size (" << k
-            << ", " << n << ")"
-            << "\n\t### Y, a dense matrix in rowmajor format of size (" << m
-            << ", " << n << ")"
-            << "\n\t### using float and spblas::index_t (size = "
-            << sizeof(spblas::index_t) << " bytes)"
-            << "\n\t###########################################################"
-               "######################"
-            << std::endl;
+  fmt::print("\n\t###########################################################"
+               "######################");
+  fmt::print("\n\t### Running SpMM Example:");
+  fmt::print("\n\t###");
+  fmt::print("\n\t###   Y = alpha * A * X");
+  fmt::print("\n\t###");
+  fmt::print("\n\t### with ");
+  fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}",
+      m, k, nnz_in);
+  fmt::print("\n\t### x, a dense matrix, of size ({}, {})", k, n);
+  fmt::print("\n\t### y, a dense vector, of size ({}, {})", m, n);
+  fmt::print("\n\t### using float and spblas::index_t (size = {} bytes)",
+      sizeof(spblas::index_t) );
+  fmt::print("\n\t###########################################################"
+  "######################");
+  fmt::print("\n");
 
-  auto&& [values, rowptr, colind, shape, _] = generate_csr<float>(m, k, nnz);
+
+
+  auto&& [values, rowptr, colind, shape, nnz] = generate_csr<float>(m, k, nnz_in);
 
   csr_view<float> a(values, rowptr, colind, shape, nnz);
 
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 
   fmt::print("{}\n", spblas::__backend::values(y));
 
-  std::cout << "\tExample is completed!" << std::endl;
+  fmt::print("\tExample is completed!\n");
 
   return 0;
 }
