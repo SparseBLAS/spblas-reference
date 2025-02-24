@@ -8,36 +8,36 @@ int main(int argc, char** argv) {
   using namespace spblas;
   namespace md = spblas::__mdspan;
 
+  using T = float;
+
   spblas::index_t m = 100;
   spblas::index_t n = 10;
   spblas::index_t k = 100;
   spblas::index_t nnz_in = 10;
 
   fmt::print("\n\t###########################################################"
-               "######################");
+             "######################");
   fmt::print("\n\t### Running SpMM Example:");
   fmt::print("\n\t###");
   fmt::print("\n\t###   Y = alpha * A * X");
   fmt::print("\n\t###");
   fmt::print("\n\t### with ");
-  fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}",
-      m, k, nnz_in);
+  fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}", m, k,
+             nnz_in);
   fmt::print("\n\t### x, a dense matrix, of size ({}, {})", k, n);
   fmt::print("\n\t### y, a dense vector, of size ({}, {})", m, n);
   fmt::print("\n\t### using float and spblas::index_t (size = {} bytes)",
-      sizeof(spblas::index_t) );
+             sizeof(spblas::index_t));
   fmt::print("\n\t###########################################################"
-  "######################");
+             "######################");
   fmt::print("\n");
 
+  auto&& [values, rowptr, colind, shape, nnz] = generate_csr<T>(m, k, nnz_in);
 
+  csr_view<T> a(values, rowptr, colind, shape, nnz);
 
-  auto&& [values, rowptr, colind, shape, nnz] = generate_csr<float>(m, k, nnz_in);
-
-  csr_view<float> a(values, rowptr, colind, shape, nnz);
-
-  std::vector<float> x_values(k * n, 1);
-  std::vector<float> y_values(m * n, 0);
+  std::vector<T> x_values(k * n, 1);
+  std::vector<T> y_values(m * n, 0);
 
   md::mdspan x(x_values.data(), k, n);
   md::mdspan y(y_values.data(), m, n);
