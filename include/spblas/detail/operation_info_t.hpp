@@ -3,6 +3,10 @@
 #include <spblas/detail/index.hpp>
 #include <spblas/detail/types.hpp>
 
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+#include <spblas/vendor/onemkl_iespblas/operation_state_t.hpp>
+#endif
+
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 #include <spblas/vendor/onemkl_sycl/operation_state_t.hpp>
 #endif
@@ -28,6 +32,13 @@ public:
   operation_info_t(index<> result_shape, offset_t result_nnz)
       : result_shape_(result_shape), result_nnz_(result_nnz) {}
 
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+  operation_info_t(index<> result_shape, offset_t result_nnz,
+                   __mkl_iespblas::operation_state_t&& state)
+      : result_shape_(result_shape), result_nnz_(result_nnz),
+        state_(std::move(state)) {}
+#endif
+
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
   operation_info_t(index<> result_shape, offset_t result_nnz,
                    __mkl::operation_state_t&& state)
@@ -50,6 +61,11 @@ public:
 private:
   index<> result_shape_;
   offset_t result_nnz_;
+
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+public:
+  __mkl_iespblas::operation_state_t state_;
+#endif
 
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 public:
