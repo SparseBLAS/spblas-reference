@@ -108,7 +108,7 @@ operation_info_t add_inspect(A&& a, B&& b, C&& c) {
 }
 
 template <matrix A, matrix B, matrix C>
-void add_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
+void add_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
   add(a, b, c);
 }
 
