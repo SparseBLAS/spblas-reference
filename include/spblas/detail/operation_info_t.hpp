@@ -23,6 +23,8 @@ public:
     return result_nnz_;
   }
 
+  operation_info_t() = default;
+
   operation_info_t(index<> result_shape, offset_t result_nnz)
       : result_shape_(result_shape), result_nnz_(result_nnz) {}
 
@@ -39,6 +41,11 @@ public:
       : result_shape_(result_shape), result_nnz_(result_nnz),
         state_(std::move(state)) {}
 #endif
+
+  void update_impl_(index<> result_shape, offset_t result_nnz) {
+    result_shape_ = result_shape;
+    result_nnz_ = result_nnz;
+  }
 
 private:
   index<> result_shape_;

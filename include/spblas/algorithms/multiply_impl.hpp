@@ -104,7 +104,7 @@ void multiply(A&& a, B&& b, C&& c) {
 
 template <matrix A, matrix B, matrix C>
 operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
-  return {};
+  return operation_info_t{};
 }
 
 template <matrix A, matrix B, matrix C>
@@ -150,8 +150,9 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
 void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
-  info = multiply_execute(std::forward<A>(a), std::forward<B>(b),
-                          std::forward<C>(c));
+  auto new_info = multiply_execute(std::forward<A>(a), std::forward<B>(b),
+                                   std::forward<C>(c));
+  info.update_impl_(new_info.result_shape(), new_info.result_nnz());
 }
 
 // C = AB
