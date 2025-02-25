@@ -55,6 +55,7 @@ enum { SPBLAS_DEBUG, SPBLAS_WARNING, SPBLAS_TRACE, SPBLAS_INFO };
 
 #include <stdarg.h> // va_start, va_list, va_end
 #include <stdio.h>  // printf, vprintf
+#include <unistd.h> // isatty
 
 static void spblas_log_(int level, const char* pref, const char* file,
                         const int line, const char* func, const char* fmt,
