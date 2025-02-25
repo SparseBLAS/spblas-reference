@@ -16,10 +16,10 @@ endif()
 # Download dependencies
 include(FetchContent)
 
-if (ENABLE_ONEMKL)
+if (ENABLE_ONEMKL_SYCL)
   find_package(MKL REQUIRED)
-  target_link_libraries(spblas INTERFACE MKL::MKL_DPCPP)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL")
+  target_link_libraries(spblas INTERFACE MKL::MKL_SYCL) # SYCL APIs
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL_SYCL")
 endif()
 
 if (ENABLE_ARMPL)
@@ -29,6 +29,11 @@ if (ENABLE_ARMPL)
   target_include_directories(spblas INTERFACE $ENV{ARMPL_DIR}/include)
   target_link_libraries(spblas INTERFACE $ENV{ARMPL_DIR}/lib/libarmpl.a $ENV{ARMPL_DIR}/lib/libamath.a m)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
+endif()
+
+# turn on/off debug logging
+if (LOG_LEVEL)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
 endif()
 
 # mdspan

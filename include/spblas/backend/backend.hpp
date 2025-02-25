@@ -6,8 +6,8 @@
 #include <spblas/backend/generate.hpp>
 #include <spblas/backend/view_customizations.hpp>
 
-#ifdef SPBLAS_ENABLE_ONEMKL
-#include <spblas/vendor/mkl/mkl.hpp>
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+#include <spblas/vendor/onemkl_sycl/onemkl_sycl.hpp>
 #endif
 
 #ifdef SPBLAS_ENABLE_ARMPL

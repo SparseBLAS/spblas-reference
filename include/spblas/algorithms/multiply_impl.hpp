@@ -2,6 +2,7 @@
 
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/log.hpp>
 
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
@@ -15,6 +16,7 @@ namespace spblas {
 // SpMV
 template <matrix A, vector B, vector C>
 void multiply(A&& a, B&& b, C&& c) {
+  log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c) ||
       __backend::shape(a)[1] != __backend::shape(b)) {
     throw std::invalid_argument(
@@ -38,6 +40,7 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::lookupable<B> && __backend::lookupable<C>)
 void multiply(A&& a, B&& b, C&& c) {
+  log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
       __backend::shape(a)[1] != __backend::shape(b)[0]) {
@@ -65,6 +68,7 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
 void multiply(A&& a, B&& b, C&& c) {
+  log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
       __backend::shape(a)[1] != __backend::shape(b)[0]) {
@@ -104,6 +108,7 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
 operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
       __backend::shape(a)[1] != __backend::shape(b)[0]) {
@@ -113,8 +118,9 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
+  using O = tensor_offset_t<C>;
 
-  std::size_t nnz = 0;
+  O nnz = 0;
   __backend::spa_set<I> c_row(__backend::shape(c)[1]);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
@@ -135,6 +141,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 // C = AB
 template <matrix A, matrix B, matrix C>
 void multiply_execute(operation_info_t info, A&& a, B&& b, C&& c) {
+  log_trace("");
   multiply(a, b, c);
 }
 

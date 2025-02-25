@@ -61,7 +61,7 @@ jobs:
     - name: CMake
       run: |
         source /opt/intel/oneapi/setvars.sh
-        cmake -B build -DENABLE_ONEMKL=${{ matrix.mkl }}
+        cmake -B build -DENABLE_ONEMKL_SYCL=${{ matrix.mkl }}
     - name: Build
       run: |
         source /opt/intel/oneapi/setvars.sh

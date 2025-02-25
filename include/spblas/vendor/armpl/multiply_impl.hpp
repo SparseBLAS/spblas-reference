@@ -2,6 +2,7 @@
 
 #include <spblas/vendor/armpl/detail/armpl.hpp>
 
+#include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
@@ -13,6 +14,7 @@ template <matrix A, vector B, vector C>
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
 void multiply(A&& a, B&& b, C&& c) {
+  log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
 
@@ -42,6 +44,7 @@ template <matrix A, matrix B, matrix C>
            std::is_same_v<typename std::remove_cvref_t<C>::layout_type,
                           __mdspan::layout_right>
 void multiply(A&& a, B&& b, C&& c) {
+  log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
 
@@ -87,6 +90,7 @@ template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
 
@@ -124,6 +128,7 @@ template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  log_trace("");
   auto a_handle = info.state_.a_handle;
   auto b_handle = info.state_.b_handle;
   auto c_handle = info.state_.c_handle;
