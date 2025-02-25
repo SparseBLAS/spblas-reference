@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 
   csr_view<T> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-  auto info = multiply_inspect(scaled(1.f, a), b, c);
+  auto info = multiply_execute(scaled(1.f, a), b, c);
 
   fmt::print("\t\t C_nnz = {}", info.result_nnz());
 
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
   std::vector<spblas::index_t> c_colind(info.result_nnz());
   c.update(c_values, c_rowptr, c_colind);
 
-  multiply_execute(info, scaled(1.f, a), b, c);
+  multiply_fill(info, scaled(1.f, a), b, c);
 
   for (auto&& [i, row] : spblas::__backend::rows(c)) {
     fmt::print("{}: {}\n", i, row);

@@ -26,14 +26,14 @@ TEST(CsrView, SpGEMM) {
 
       spblas::csr_view<T, I> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-      auto info = spblas::multiply_inspect(a, b, c);
+      auto info = spblas::multiply_execute(a, b, c);
 
       std::vector<T> c_values(info.result_nnz());
       std::vector<I> c_colind(info.result_nnz());
 
       c.update(c_values, c_rowptr, c_colind);
 
-      spblas::multiply_execute(info, a, b, c);
+      spblas::multiply_fill(info, a, b, c);
 
       spblas::__backend::spa_accumulator<T, I> c_row_ref(
           spblas::__backend::shape(c)[1]);
@@ -91,14 +91,14 @@ TEST(CsrView, SpGEMM_AScaled) {
 
       spblas::csr_view<T, I> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-      auto info = spblas::multiply_inspect(spblas::scaled(alpha, a), b, c);
+      auto info = spblas::multiply_execute(spblas::scaled(alpha, a), b, c);
 
       std::vector<T> c_values(info.result_nnz());
       std::vector<I> c_colind(info.result_nnz());
 
       c.update(c_values, c_rowptr, c_colind);
 
-      spblas::multiply_execute(info, spblas::scaled(alpha, a), b, c);
+      spblas::multiply_fill(info, spblas::scaled(alpha, a), b, c);
 
       spblas::__backend::spa_accumulator<T, I> c_row_ref(
           spblas::__backend::shape(c)[1]);
@@ -156,14 +156,14 @@ TEST(CsrView, SpGEMM_BScaled) {
 
       spblas::csr_view<T, I> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-      auto info = spblas::multiply_inspect(a, spblas::scaled(alpha, b), c);
+      auto info = spblas::multiply_execute(a, spblas::scaled(alpha, b), c);
 
       std::vector<T> c_values(info.result_nnz());
       std::vector<I> c_colind(info.result_nnz());
 
       c.update(c_values, c_rowptr, c_colind);
 
-      spblas::multiply_execute(info, a, spblas::scaled(alpha, b), c);
+      spblas::multiply_fill(info, a, spblas::scaled(alpha, b), c);
 
       spblas::__backend::spa_accumulator<T, I> c_row_ref(
           spblas::__backend::shape(c)[1]);
