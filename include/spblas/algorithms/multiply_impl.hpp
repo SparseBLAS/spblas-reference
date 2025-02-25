@@ -102,6 +102,14 @@ void multiply(A&& a, B&& b, C&& c) {
            c.rowptr()[c.shape()[0]]);
 }
 
+template <matrix A, matrix B, matrix C>
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
+  return {};
+}
+
+template <matrix A, matrix B, matrix C>
+void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c){};
+
 // C = AB
 // SpGEMM (Gustavson's Algorithm)
 template <matrix A, matrix B, matrix C>
@@ -136,6 +144,14 @@ operation_info_t multiply_execute(A&& a, B&& b, C&& c) {
   }
 
   return operation_info_t{__backend::shape(c), nnz};
+}
+
+template <matrix A, matrix B, matrix C>
+  requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
+           __detail::is_csr_view_v<C>)
+void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  info = multiply_execute(std::forward<A>(a), std::forward<B>(b),
+                          std::forward<C>(c));
 }
 
 // C = AB

@@ -12,7 +12,16 @@ template <matrix A, matrix B, matrix C>
 void multiply(A&& a, B&& b, C&& c);
 
 template <matrix A, matrix B, matrix C>
+operation_info_t multiply_inspect(A&& a, B&& b, C&& c);
+
+template <matrix A, matrix B, matrix C>
+void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c);
+
+template <matrix A, matrix B, matrix C>
 operation_info_t multiply_execute(A&& a, B&& b, C&& c);
+
+template <matrix A, matrix B, matrix C>
+void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c);
 
 template <matrix A, matrix B, matrix C>
 void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c);
