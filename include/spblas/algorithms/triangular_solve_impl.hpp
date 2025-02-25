@@ -11,10 +11,13 @@ namespace spblas {
 template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
   requires(__backend::row_iterable<A> && __backend::lookupable<B> &&
            __backend::lookupable<X>)
-void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
-                      X&& x) {
+void triangular_solve(A&& a, Triangle t, DiagonalStorage d, B&& b, X&& x) {
   static_assert(std::is_same_v<Triangle, upper_triangle_t> ||
                 std::is_same_v<Triangle, lower_triangle_t>);
+  assert(__backend::shape(a)[0] == __backend::shape(a)[1]);
+
+  assert(__backend::shape(a)[1] == __backend::shape(x) &&
+         __backend::shape(a)[0] == __backend::shape(b));
 
   using T = tensor_scalar_t<A>;
   using V = decltype(std::declval<tensor_scalar_t<A>>() *
@@ -44,7 +47,7 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
       V dot_product = 0;
       for (auto&& [k, a_v] : a_row) {
         if (k < i) {
-          dot_product += a_v * __backend::lookup(b, k);
+          dot_product += a_v * __backend::lookup(x, k);
         } else if (i == k) {
           diagonal_value = a_v;
         }
@@ -53,6 +56,8 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
         __backend::lookup(x, i) =
             (__backend::lookup(b, i) - dot_product) / diagonal_value;
       } else {
+        assert(i < __backend::shape(b));
+        assert(i < __backend::shape(x));
         __backend::lookup(x, i) = __backend::lookup(b, i) - dot_product;
       }
     }
