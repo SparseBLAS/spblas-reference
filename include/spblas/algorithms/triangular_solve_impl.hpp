@@ -1,8 +1,8 @@
 #pragma once
 
 #include <spblas/backend/backend.hpp>
-#include <spblas/backend/log.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/triangular_types.hpp>
 
