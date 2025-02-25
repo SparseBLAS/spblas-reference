@@ -15,6 +15,7 @@ namespace spblas {
 // C = AB
 // SpMV
 template <matrix A, vector B, vector C>
+  requires(__backend::lookupable<B> && __backend::lookupable<C>)
 void multiply(A&& a, B&& b, C&& c) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c) ||
