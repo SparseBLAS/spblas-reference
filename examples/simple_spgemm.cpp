@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 
   csr_view<T> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
 
-  auto info = multiply_execute(scaled(1.f, a), b, c);
+  auto info = multiply_compute(scaled(1.f, a), b, c);
 
   fmt::print("\t\t C_nnz = {}", info.result_nnz());
 

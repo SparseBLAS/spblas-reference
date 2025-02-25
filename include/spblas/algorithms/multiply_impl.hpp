@@ -115,7 +115,7 @@ void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c){};
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
-operation_info_t multiply_execute(A&& a, B&& b, C&& c) {
+operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -149,8 +149,8 @@ operation_info_t multiply_execute(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
-void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c) {
-  auto new_info = multiply_execute(std::forward<A>(a), std::forward<B>(b),
+void multiply_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  auto new_info = multiply_compute(std::forward<A>(a), std::forward<B>(b),
                                    std::forward<C>(c));
   info.update_impl_(new_info.result_shape(), new_info.result_nnz());
 }

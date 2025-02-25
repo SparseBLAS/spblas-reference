@@ -32,7 +32,7 @@ TEST(CsrView, Add_CSR_CSR_CSR) {
 
     c.update(c_values, c_rowptr, c_colind);
 
-    spblas::add_execute(info, a, b, c);
+    spblas::add_compute(info, a, b, c);
 
     spblas::__backend::spa_accumulator<T, I> c_row_ref(
         spblas::__backend::shape(c)[1]);

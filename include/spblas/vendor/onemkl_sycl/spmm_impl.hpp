@@ -18,7 +18,7 @@
 // //operation_info_t multiply_inspect(A, x, y)
 // //void multiply_inspect(operation_info_t, A, x, y)
 //
-// //void multiply_execute(operation_info_t, A, x, y)
+// //void multiply_compute(operation_info_t, A, x, y)
 // void multiply(A, x, y)
 //
 

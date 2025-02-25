@@ -89,7 +89,7 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
-operation_info_t multiply_execute(A&& a, B&& b, C&& c) {
+operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);

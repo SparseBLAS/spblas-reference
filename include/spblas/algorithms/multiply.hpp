@@ -18,10 +18,10 @@ template <matrix A, matrix B, matrix C>
 void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c);
 
 template <matrix A, matrix B, matrix C>
-operation_info_t multiply_execute(A&& a, B&& b, C&& c);
+operation_info_t multiply_compute(A&& a, B&& b, C&& c);
 
 template <matrix A, matrix B, matrix C>
-void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c);
+void multiply_compute(operation_info_t& info, A&& a, B&& b, C&& c);
 
 template <matrix A, matrix B, matrix C>
 void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c);

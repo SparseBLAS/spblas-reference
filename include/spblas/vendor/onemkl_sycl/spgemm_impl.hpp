@@ -16,7 +16,7 @@
 //  where A,B and C are sparse matrices of CSR format
 //
 // operation_info_t multiply_inspect(A, B, C)
-// void multiply_execute(operation_info_t, A, B, C)
+// void multiply_compute(operation_info_t, A, B, C)
 //
 
 namespace spblas {
@@ -24,7 +24,7 @@ namespace spblas {
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
-operation_info_t multiply_execute(A&& a, B&& b, C&& c) {
+operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
