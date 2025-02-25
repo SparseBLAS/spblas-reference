@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
   // scale values of matrix to make the implicit unit diagonal matrix
   // be diagonally dominant, so it is solveable
   T scale_factor = 1e-3f;
-  std::transform(values.begin(), values.end(), values.begin(), 
-                 [scale_factor](T val){ return scale_factor * val; });
+  std::transform(values.begin(), values.end(), values.begin(),
+                 [scale_factor](T val) { return scale_factor * val; });
 
   csr_view<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
 
@@ -50,7 +50,8 @@ int main(int argc, char** argv) {
   auto b_scaled = scaled(alpha, b);
 
   // solve for x:  lower(A) * x = alpha * b
-  triangular_solve(a, spblas::lower_triangle_t, spblas::implicit_unit_diagonal_t, b_scaled, x);
+  triangular_solve(a, spblas::lower_triangle_t{},
+                   spblas::implicit_unit_diagonal_t{}, b_scaled, x);
 
   fmt::print("\tExample is completed!\n");
 
