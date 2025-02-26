@@ -7,6 +7,7 @@ add_example(simple_spmv)
 add_example(simple_spmm)
 add_example(simple_spgemm)
 add_example(simple_sptrsv)
+add_example(matrix_opt_example)
 
 if (ENABLE_ARMPL)
   add_subdirectory(armpl)
