@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
+option(SPBLAS_BUILD_MINIAPPS "Also build the miniapps. Default: OFF." OFF)
+
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
 
@@ -89,4 +91,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
   add_subdirectory(examples)
   add_subdirectory(test)
+endif()
+
+if (SPBLAS_BUILD_MINIAPPS)
+  add_subdirectory(miniapps)
 endif()

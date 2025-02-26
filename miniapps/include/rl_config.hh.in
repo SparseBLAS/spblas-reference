@@ -1,0 +1,11 @@
+#ifndef miniapps_config_h
+#define miniapps_config_h
+
+#define miniapps_VERSION "@miniapps_VERSION@"
+#define miniapps_VERSION_MAJOR @miniapps_VERSION_MAJOR@
+#define miniapps_VERSION_MINOR @miniapps_VERSION_MINOR@
+#define miniapps_VERSION_PATCH @miniapps_VERSION_PATCH@
+
+#CMAKEDEFINE miniapps_HAS_OpenMP
+
+#endif
