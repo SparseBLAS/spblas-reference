@@ -4,12 +4,11 @@
 #include <algorithm>
 #include "mkl.h"
 
-#include <spblas/backend/log.hpp>
-
 #include "mkl_wrappers.hpp"
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
+#include <spblas/detail/log.hpp>
 
 //
 // Defines the following APIs for SpGEMM:
