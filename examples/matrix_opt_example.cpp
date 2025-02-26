@@ -1,5 +1,4 @@
 #include <spblas/spblas.hpp>
-#include <spblas/views/matrix_opt.hpp>
 
 #include <fmt/core.h>
 #include <fmt/ranges.h>

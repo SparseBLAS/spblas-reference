@@ -15,7 +15,6 @@ TEST(CsrView, SpMM) {
           spblas::generate_csr<T, I>(m, k, nnz);
 
       spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
-      spblas::matrix_opt a_opt(a);
 
       auto [b_values, b_shape] = spblas::generate_dense<T>(k, n);
 
@@ -24,7 +23,7 @@ TEST(CsrView, SpMM) {
       md::mdspan b(b_values.data(), k, n);
       md::mdspan c(c_values.data(), m, n);
 
-      spblas::multiply(a_opt, b, c);
+      spblas::multiply(a, b, c);
 
       std::vector<T> c_ref(m * n, 0);
 
@@ -150,6 +149,7 @@ TEST(CsrView, SpMM_Aopt) {
           spblas::generate_csr<T, I>(m, k, nnz);
 
       spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
+      spblas::matrix_opt a_opt(a);
 
       auto [b_values, b_shape] = spblas::generate_dense<T>(k, n);
 
@@ -158,7 +158,7 @@ TEST(CsrView, SpMM_Aopt) {
       md::mdspan b(b_values.data(), k, n);
       md::mdspan c(c_values.data(), m, n);
 
-      spblas::multiply(a, b, c);
+      spblas::multiply(a_opt, b, c);
 
       std::vector<T> c_ref(m * n, 0);
 

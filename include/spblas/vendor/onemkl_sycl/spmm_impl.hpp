@@ -7,8 +7,6 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
-#include <fmt/core.h>
-
 //
 // Defines the following APIs for SpMM:
 //
@@ -35,7 +33,6 @@ template <matrix A, matrix X, matrix Y>
            std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                           __mdspan::layout_right>
 void multiply(A&& a, X&& x, Y&& y) {
-  fmt::print("Running MKL implementation!\n");
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto x_base = __detail::get_ultimate_base(x);
