@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <spblas/detail/concepts.hpp>
 #include <spblas/views/inspectors.hpp>
 
