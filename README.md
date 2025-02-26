@@ -115,7 +115,7 @@ You can then use the built-in `icpx` compiler to build with the oneMKL backend.
 # Import oneAPI toolkit into Bash environment.
 brock@slothius:~/src/spblas-reference$ source /opt/intel/oneapi/setvars.sh
 # Compile with icpx and oneMKL backend.
-brock@slothius:~/src/spblas-reference$ CXX=icpx cmake -B build -DENABLE_ONEMKL=ON
+brock@slothius:~/src/spblas-reference$ CXX=icpx cmake -B build -DENABLE_ONEMKL_SYCL=ON
 ```
 
 #### Compiling with GCC on Mac OS
@@ -158,6 +158,30 @@ system will automatically detect whether you are compiling with a sufficiently
 new version of the C++ standard library.  If it is missing required features,
 it will automatically download the [range-v3](https://github.com/ericniebler/range-v3)
 library and use it instead of your standard library's implementation of ranges.
+
+## Contributing
+You're welcome to contribute to this project!  Feel free to open an issue or PR.
+
+### Running `pre-commit` Checks
+This project uses the tool `pre-commit` to run `clang-format` and a couple of other formatting
+tools.  Please use them to ensure your code formatting is correct before submitting a PR.  If
+you forget, you'll notice the CI failing on your PR.
+
+```bash
+brock@slothius:~/src/spblas-reference$ python3 -m venv venv
+brock@slothius:~/src/spblas-reference$ source venv/bin/activate
+brock@slothius:~/src/spblas-reference$ pip3 install -r requirements.txt
+brock@slothius:~/src/spblas-reference$ pre-commit run --all
+clang-format.............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+mixed line ending........................................................Passed
+check for added large files..............................................Passed
+```
+
+If you notice that none of the checks pass, that means `clang-format` or another format tool
+has fixed your code formatting.  Go ahead and perform a `git add` and `git commit` to update
+before pushing.
 
 ### Issues
 If you have any issues building the library, please create a GitHub issue in
