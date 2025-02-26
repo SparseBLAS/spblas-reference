@@ -35,6 +35,8 @@ int main(int argc, char** argv) {
 
   csr_view<T> a(values, rowptr, colind, shape, nnz);
 
+  matrix_opt a_opt(a);
+
   std::vector<T> x_values(k * n, 1);
   std::vector<T> y_values(m * n, 0);
 
@@ -44,7 +46,7 @@ int main(int argc, char** argv) {
   auto a_view = scaled(2.f, a);
 
   // y = A * (alpha * x)
-  multiply(a_view, scaled(2.f, x), y);
+  multiply(a_opt, scaled(2.f, x), y);
 
   fmt::print("{}\n", spblas::__backend::values(y));
 
