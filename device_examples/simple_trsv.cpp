@@ -48,9 +48,11 @@ int main(int argc, char** argv) {
   std::span<float> x_span(dx, shape[1]);
 
   triangular_solve_handle_t handle(allocator);
+  auto diag_kind = spblas::explicit_diagonal_t();
+  auto uplo_kind = spblas::lower_triangle_t();
 
-  triangular_solve_compute(handle, a, rhs_span, x_span);
-  triangular_solve_execute(handle, a, rhs_span, x_span);
+  triangular_solve_compute(handle, a, uplo_kind, diag_kind, rhs_span, x_span);
+  triangular_solve_execute(handle, a, uplo_kind, diag_kind, rhs_span, x_span);
 
   std::vector<float> x(4);
   cudaMemcpy(x.data(), dx, sizeof(float) * shape[1], cudaMemcpyDeviceToHost);

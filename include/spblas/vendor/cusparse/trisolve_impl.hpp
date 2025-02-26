@@ -7,6 +7,7 @@
 
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
+#include <spblas/detail/triangular_types.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
 #include "types.hpp"
@@ -26,11 +27,12 @@ public:
     cusparseDestroy(handle_);
   }
 
-  template <matrix A, vector B, vector C>
+  template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
     requires __detail::has_csr_base<A> &&
              __detail::has_contiguous_range_base<B> &&
              __ranges::contiguous_range<C>
-  void triangular_solve_compute(A&& a, B&& b, C&& c) {
+  void triangular_solve_compute(A&& a, Triangle uplo, DiagonalStorage diag,
+                                B&& b, C&& c) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
     using matrix_type = decltype(a_base);
@@ -79,11 +81,12 @@ public:
     cusparseDestroySpMat(matA);
   }
 
-  template <matrix A, vector B, vector C>
+  template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
     requires __detail::has_csr_base<A> &&
              __detail::has_contiguous_range_base<B> &&
              __ranges::contiguous_range<C>
-  void triangular_solve_execute(A&& a, B&& b, C&& c) {
+  void triangular_solve_execute(A&& a, Triangle uplo, DiagonalStorage diag,
+                                B&& b, C&& c) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
     using matrix_type = decltype(a_base);
@@ -107,12 +110,17 @@ public:
                       cusparse_index_type<typename matrix_type::offset_type>(),
                       cusparse_index_type<typename matrix_type::index_type>(),
                       CUSPARSE_INDEX_BASE_ZERO, cuda_data_type<value_type>());
-    auto diag_type = CUSPARSE_DIAG_TYPE_NON_UNIT;
-    auto fill_mode = CUSPARSE_FILL_MODE_LOWER;
+    auto diag_type = std::is_same_v<DiagonalStorage, explicit_diagonal_t>
+                         ? CUSPARSE_DIAG_TYPE_NON_UNIT
+                         : CUSPARSE_DIAG_TYPE_UNIT;
+    auto fill_mode = std::is_same_v<Triangle, upper_triangle_t>
+                         ? CUSPARSE_FILL_MODE_UPPER
+                         : CUSPARSE_FILL_MODE_LOWER;
     cusparseSpMatSetAttribute(matA, CUSPARSE_SPMAT_FILL_MODE, &fill_mode,
                               sizeof(fill_mode));
     cusparseSpMatSetAttribute(matA, CUSPARSE_SPMAT_DIAG_TYPE, &diag_type,
                               sizeof(diag_type));
+
     cusparseSpSV_solve(handle_, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha_val,
                        matA, vecB, vecC, cuda_data_type<value_type>(),
                        CUSPARSE_SPSV_ALG_DEFAULT, spsv_desc_);
@@ -129,29 +137,32 @@ private:
   void* workspace_;
 };
 
-template <matrix A, vector B, vector C>
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
 void triangular_solve_inspect(triangular_solve_handle_t& trisolve_handle, A&& a,
-                              B&& b, C&& c) {}
+                              Triangle uplo, DiagonalStorage diag, B&& b,
+                              C&& c) {}
 
-template <matrix A, vector B, vector C>
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
 void triangular_solve_compute(triangular_solve_handle_t& trisolve_handle, A&& a,
-                              B&& b, C&& c) {
-  trisolve_handle.triangular_solve_compute(a, b, c);
+                              Triangle uplo, DiagonalStorage diag, B&& b,
+                              C&& c) {
+  trisolve_handle.triangular_solve_compute(a, uplo, diag, b, c);
 }
 
-template <matrix A, vector B, vector C>
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
 void triangular_solve_execute(triangular_solve_handle_t& trisolve_handle, A&& a,
-                              B&& b, C&& c) {
-  trisolve_handle.triangular_solve_execute(a, b, c);
+                              Triangle uplo, DiagonalStorage diag, B&& b,
+                              C&& c) {
+  trisolve_handle.triangular_solve_execute(a, uplo, diag, b, c);
 }
 
 } // namespace spblas
