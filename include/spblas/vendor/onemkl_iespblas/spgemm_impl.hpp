@@ -29,7 +29,7 @@ namespace spblas {
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
-operation_info_t multiply_inspect(A&& a, B&& b, C&& c)
+operation_info_t multiply_compute(A&& a, B&& b, C&& c)
 {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
@@ -88,7 +88,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c)
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
-void multiply_execute(operation_info_t& info, A&& a, B&& b, C&& c)
+void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c)
 {
   log_trace("");
 
