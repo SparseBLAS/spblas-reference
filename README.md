@@ -56,9 +56,14 @@ you forget, you'll notice the CI failing on your PR.
 
 ```bash
 brock@slothius:~/src/spblas-reference$ python3 -m venv venv
-brock@slothius:~/src/spblas-reference$ source venv/bin/active
+brock@slothius:~/src/spblas-reference$ source venv/bin/activate
 brock@slothius:~/src/spblas-reference$ pip3 install -r requirements.txt
 brock@slothius:~/src/spblas-reference$ pre-commit run --all
+clang-format.............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+mixed line ending........................................................Passed
+check for added large files..............................................Passed
 ```
 
 ## Building
