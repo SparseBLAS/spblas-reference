@@ -1,4 +1,3 @@
-#include <iostream>
 #include <spblas/spblas.hpp>
 
 #include <fmt/core.h>
