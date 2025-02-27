@@ -75,6 +75,9 @@ jobs:
     runs-on: 'macos-latest'
     steps:
     - uses: actions/checkout@v4
-    - name: Test
+    - name: Set up ArmPL
       run: |
-        echo "Hello, world!"
+        brew install --cask arm-performance-libraries
+    - name: CMake
+      run: |
+        cmake -B build -DENABLE_ARMPL=ON
