@@ -70,17 +70,3 @@ jobs:
       run: |
         source /opt/intel/oneapi/setvars.sh
         ./build/test/gtest/spblas-tests
-
-  armpl:
-    runs-on: 'macos-latest'
-    name: armpl
-    env:
-      CXX: g++-14
-    steps:
-    - uses: actions/checkout@v4
-    -name: Set up ArmPL
-      run: |
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        sudo apt-get update -y
-        sudo apt-get install g++-14
-        brew install --cask arm-performance-libraries
