@@ -85,7 +85,7 @@ jobs:
         cmake -B build -DENABLE_ARMPL=ON
     - name: Build
       run: |
-        make -C build -j `nproc`
+        make -C build -j
     - name: Test
       run: |
         ./build/test/gtest/spblas-tests
