@@ -25,9 +25,9 @@
 namespace spblas {
 
 template <matrix A, vector X, vector Y>
-  requires __detail::has_csr_base<A> &&
+  requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
            __detail::has_contiguous_range_base<X> &&
-           __ranges::contiguous_range<Y>
+           __ranges::contiguous_range<Y>)
 void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
@@ -37,19 +37,12 @@ void multiply(A&& a, X&& x, Y&& y) {
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
 
   sycl::queue q(sycl::cpu_selector_v);
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
 
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
+  auto a_handle = __mkl::create_matrix_handle(q, a_base);
+  auto a_transpose = __mkl::get_transpose(a);
 
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
-
-  oneapi::mkl::sparse::gemv(q, oneapi::mkl::transpose::nontrans, alpha,
-                            a_handle, __ranges::data(x_base), 0.0,
-                            __ranges::data(y))
+  oneapi::mkl::sparse::gemv(q, a_transpose, alpha, a_handle,
+                            __ranges::data(x_base), 0.0, __ranges::data(y))
       .wait();
 
   oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();

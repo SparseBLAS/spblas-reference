@@ -18,6 +18,16 @@ void for_each(M&& m, F&& f) {
   }
 }
 
+template <matrix M, typename F>
+  requires(__backend::column_iterable<M>)
+void for_each(M&& m, F&& f) {
+  for (auto&& [j, column] : __backend::columns(m)) {
+    for (auto&& [i, v] : column) {
+      f(std::make_tuple(std::tuple{i, j}, std::reference_wrapper(v)));
+    }
+  }
+}
+
 template <vector V, typename F>
   requires(__backend::lookupable<V> && __ranges::random_access_range<V>)
 void for_each(V&& v, F&& f) {

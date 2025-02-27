@@ -23,17 +23,22 @@ void transpose(operation_info_t& info, A&& a, B&& b) {
     throw std::invalid_argument("transpose: matrix nnz are incompatible.");
   }
   using O = tensor_offset_t<B>;
+
   const auto b_base = __detail::get_ultimate_base(b);
   const auto b_rowptr = b_base.rowptr();
   const auto b_colind = b_base.colind();
   const auto b_values = b_base.values();
+
   __ranges::fill(b_rowptr, 0);
+
   for (auto&& [i, row] : __backend::rows(a)) {
     for (auto&& [j, _] : row) {
       b_rowptr[j + 1]++;
     }
-  };
+  }
+
   std::exclusive_scan(b_rowptr.begin(), b_rowptr.end(), b_rowptr.begin(), O{});
+
   for (auto&& [i, row] : __backend::rows(a)) {
     for (auto&& [j, v] : row) {
       const auto out_idx = b_rowptr[j + 1];
@@ -41,7 +46,7 @@ void transpose(operation_info_t& info, A&& a, B&& b) {
       b_values[out_idx] = v;
       b_rowptr[j + 1]++;
     }
-  };
+  }
 }
 
 } // namespace spblas

@@ -11,4 +11,7 @@ operation_info_t transpose_inspect(A&& a, B&& b);
 template <matrix A, matrix B>
 void transpose(operation_info_t& info, A&& a, B&& b);
 
+template <matrix M>
+auto transposed(M&& m);
+
 } // namespace spblas
