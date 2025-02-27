@@ -73,17 +73,8 @@ jobs:
 
   armpl:
     runs-on: 'macos-latest'
-    strategy:
-      matrix:
-        cxx: [c++, g++-14]
-    env:
-      CXX: ${{ matrix.cxx }}
-    name: armpl-${{ matrix.cxx }}
     steps:
     - uses: actions/checkout@v4
-    - name: Set up GCC-14
-      run: |
-        brew install g++-14
     - name: Set up ArmPL
       run: |
         brew install --cask arm-performance-libraries
@@ -94,7 +85,7 @@ jobs:
         cmake -B build -DENABLE_ARMPL=ON
     - name: Build
       run: |
-        make -C build -j
+        make -C build -j 3
     - name: Test
       run: |
         ./build/test/gtest/spblas-tests
