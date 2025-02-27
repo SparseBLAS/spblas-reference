@@ -78,6 +78,8 @@ jobs:
     - name: Set up ArmPL
       run: |
         brew install --cask arm-performance-libraries
+        ARMPL_PATH=$(echo /opt/arm/armpl*)
+        echo "ARMPL_DIR=$ARMPL_PATH" >> $GITHUB_ENV
     - name: CMake
       run: |
         cmake -B build -DENABLE_ARMPL=ON
