@@ -73,6 +73,12 @@ jobs:
 
   armpl:
     runs-on: 'macos-latest'
+    strategy:
+      matrix:
+        cxx: [c++, g++-14]
+    env:
+      CXX: ${{ matrix.cxx }}
+    name: armpl-${{ matrix.cxx }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up ArmPL
