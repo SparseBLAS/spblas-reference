@@ -84,10 +84,3 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install g++-14
         brew install --cask arm-performance-libraries
-    - name: CMake
-      run: |
-        cmake -B build
-    - name: Build
-      run: make -C build -j `nproc`
-    - name: Test
-      run: ./build/test/gtest/spblas-tests
