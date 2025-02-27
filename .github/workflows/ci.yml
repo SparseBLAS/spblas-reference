@@ -72,7 +72,7 @@ jobs:
         ./build/test/gtest/spblas-tests
 
   armpl:
-    runs-on: 'ubuntu-latest'
+    runs-on: 'macos-latest'
     steps:
     - uses: actions/checkout@v4
     - name: Test
