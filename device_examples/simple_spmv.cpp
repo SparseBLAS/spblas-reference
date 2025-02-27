@@ -5,14 +5,14 @@
 #include <iostream>
 
 // #include "allocator.hpp"
-class cuda_allocator : public spblas::allocator {
+class amd_allocator : public spblas::allocator {
 public:
   void alloc(void** ptrptr, size_t size) const override {
-    cudaMalloc(ptrptr, size);
+    hipMalloc(ptrptr, size);
   }
 
   void free(void* ptr) const override {
-    cudaFree(ptr);
+    hipFree(ptr);
   }
 };
 
@@ -24,17 +24,17 @@ int main(int argc, char** argv) {
 
   float* dvalues;
   int *drowptr, *dcolind;
-  auto allocator = std::make_shared<const cuda_allocator>();
+  auto allocator = std::make_shared<const amd_allocator>();
   spblas::spmv_handle_t spmv_handle(allocator);
 
-  cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
-  cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
-  cudaMalloc((void**) &dcolind, sizeof(int) * nnz);
-  cudaMemcpy(dvalues, values.data(), sizeof(float) * nnz,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(dcolind, colind.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
+  hipMalloc((void**) &dvalues, sizeof(float) * nnz);
+  hipMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
+  hipMalloc((void**) &dcolind, sizeof(int) * nnz);
+  hipMemcpy(dvalues, values.data(), sizeof(float) * nnz,
+             hipMemcpyHostToDevice);
+  hipMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
+             hipMemcpyHostToDevice);
+  hipMemcpy(dcolind, colind.data(), sizeof(int) * nnz, hipMemcpyHostToDevice);
   csr_view<float, int> a(dvalues, drowptr, dcolind, shape, nnz);
 
   // Scale every value of `a` by 5 in place.
@@ -43,10 +43,10 @@ int main(int argc, char** argv) {
   std::vector<float> b(100, 1);
   std::vector<float> c(100, 0);
   float *db, *dc;
-  cudaMalloc((void**) &db, sizeof(float) * 100);
-  cudaMalloc((void**) &dc, sizeof(float) * 100);
-  cudaMemcpy(db, b.data(), sizeof(float) * 100, cudaMemcpyHostToDevice);
-  cudaMemcpy(dc, c.data(), sizeof(float) * 100, cudaMemcpyHostToDevice);
+  hipMalloc((void**) &db, sizeof(float) * 100);
+  hipMalloc((void**) &dc, sizeof(float) * 100);
+  hipMemcpy(db, b.data(), sizeof(float) * 100, hipMemcpyHostToDevice);
+  hipMemcpy(dc, c.data(), sizeof(float) * 100, hipMemcpyHostToDevice);
 
   std::span<float> b_span(db, 100);
   std::span<float> c_span(dc, 100);
@@ -56,15 +56,15 @@ int main(int argc, char** argv) {
   // multiply(a, scaled(alpha, b), c);
   multiply(spmv_handle, a, b_span, c_span);
 
-  cudaMemcpy(c.data(), dc, sizeof(float) * 100, cudaMemcpyDeviceToHost);
+  hipMemcpy(c.data(), dc, sizeof(float) * 100, hipMemcpyDeviceToHost);
   for (int i = 0; i < 100; i++) {
     std::cout << c.at(i) << " ";
   }
   std::cout << std::endl;
-  cudaFree(dvalues);
-  cudaFree(drowptr);
-  cudaFree(dcolind);
-  cudaFree(db);
-  cudaFree(dc);
+  hipFree(dvalues);
+  hipFree(drowptr);
+  hipFree(dcolind);
+  hipFree(db);
+  hipFree(dc);
   return 0;
 }

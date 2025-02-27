@@ -23,24 +23,24 @@ int main(int argc, char** argv) {
 
   float* dvalues;
   int *drowptr, *dcolind;
-  auto allocator = std::make_shared<const cuda_allocator>();
+  auto allocator = std::make_shared<const amd_allocator>();
   spblas::spmv_handle_t spmv_handle(allocator);
 
-  cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
-  cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
-  cudaMalloc((void**) &dcolind, sizeof(int) * nnz);
-  cudaMemcpy(dvalues, values.data(), sizeof(float) * nnz,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(dcolind, colind.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
+  hipMalloc((void**) &dvalues, sizeof(float) * nnz);
+  hipMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
+  hipMalloc((void**) &dcolind, sizeof(int) * nnz);
+  hipMemcpy(dvalues, values.data(), sizeof(float) * nnz,
+             hipMemcpyHostToDevice);
+  hipMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
+             hipMemcpyHostToDevice);
+  hipMemcpy(dcolind, colind.data(), sizeof(int) * nnz, hipMemcpyHostToDevice);
   csr_view<float, int> a(dvalues, drowptr, dcolind, shape, nnz);
 
   simple_operation_handle_t handle(allocator);
 
   scale(handle, 4.0f, a);
-  cudaMemcpy(values.data(), dvalues, sizeof(float) * nnz,
-             cudaMemcpyDeviceToHost);
+  hipMemcpy(values.data(), dvalues, sizeof(float) * nnz,
+             hipMemcpyDeviceToHost);
 
   auto inf_norm = matrix_inf_norm(handle, a);
   auto frob_norm = matrix_frob_norm(handle, a);
@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
   std::cout << "frob norm: " << frob_norm << ", which should be 32"
             << std::endl;
 
-  cudaFree(dvalues);
-  cudaFree(drowptr);
-  cudaFree(dcolind);
+  hipFree(dvalues);
+  hipFree(drowptr);
+  hipFree(dcolind);
   return 0;
 }

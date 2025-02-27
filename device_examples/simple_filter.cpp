@@ -23,30 +23,30 @@ int main(int argc, char** argv) {
 
   float* da_values;
   int *da_rowptr, *da_colind;
-  auto allocator = std::make_shared<const cuda_allocator>();
+  auto allocator = std::make_shared<const amd_allocator>();
 
-  cudaMalloc((void**) &da_values, sizeof(float) * a_nnz);
-  cudaMalloc((void**) &da_rowptr, sizeof(int) * (shape[0] + 1));
-  cudaMalloc((void**) &da_colind, sizeof(int) * a_nnz);
-  cudaMemcpy(da_values, a_values.data(), sizeof(float) * a_nnz,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(da_rowptr, a_rowptr.data(), sizeof(int) * (shape[0] + 1),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(da_colind, a_colind.data(), sizeof(int) * a_nnz,
-             cudaMemcpyHostToDevice);
+  hipMalloc((void**) &da_values, sizeof(float) * a_nnz);
+  hipMalloc((void**) &da_rowptr, sizeof(int) * (shape[0] + 1));
+  hipMalloc((void**) &da_colind, sizeof(int) * a_nnz);
+  hipMemcpy(da_values, a_values.data(), sizeof(float) * a_nnz,
+             hipMemcpyHostToDevice);
+  hipMemcpy(da_rowptr, a_rowptr.data(), sizeof(int) * (shape[0] + 1),
+             hipMemcpyHostToDevice);
+  hipMemcpy(da_colind, a_colind.data(), sizeof(int) * a_nnz,
+             hipMemcpyHostToDevice);
   csr_view<float, int> a(da_values, da_rowptr, da_colind, shape, a_nnz);
 
   float* db_values;
   int *db_rowptr, *db_colind;
 
-  cudaMalloc((void**) &db_rowptr, sizeof(int) * (shape[0] + 1));
+  hipMalloc((void**) &db_rowptr, sizeof(int) * (shape[0] + 1));
   csr_view<float, int> b(nullptr, db_rowptr, nullptr, shape, 0);
 
   filter_handle_t handle(allocator);
   filter_compute(handle, a, b, keep_valid_nonzeros());
 
-  cudaMalloc((void**) &db_values, handle.result_nnz() * sizeof(float));
-  cudaMalloc((void**) &db_colind, handle.result_nnz() * sizeof(int));
+  hipMalloc((void**) &db_values, handle.result_nnz() * sizeof(float));
+  hipMalloc((void**) &db_colind, handle.result_nnz() * sizeof(int));
   std::cout << "result_nnz: " << handle.result_nnz() << std::endl;
   std::span<int> b_rowptr_span(db_rowptr, shape[0] + 1);
   std::span<int> b_colind_span(db_colind, handle.result_nnz());
@@ -58,12 +58,12 @@ int main(int argc, char** argv) {
   std::vector<int> b_rowptr(shape[0] + 1);
   std::vector<int> b_colind(handle.result_nnz());
   std::vector<float> b_values(handle.result_nnz());
-  cudaMemcpy(b_rowptr.data(), db_rowptr, sizeof(int) * (shape[0] + 1),
-             cudaMemcpyDeviceToHost);
-  cudaMemcpy(b_colind.data(), db_colind, sizeof(int) * handle.result_nnz(),
-             cudaMemcpyDeviceToHost);
-  cudaMemcpy(b_values.data(), db_values, sizeof(float) * handle.result_nnz(),
-             cudaMemcpyDeviceToHost);
+  hipMemcpy(b_rowptr.data(), db_rowptr, sizeof(int) * (shape[0] + 1),
+             hipMemcpyDeviceToHost);
+  hipMemcpy(b_colind.data(), db_colind, sizeof(int) * handle.result_nnz(),
+             hipMemcpyDeviceToHost);
+  hipMemcpy(b_values.data(), db_values, sizeof(float) * handle.result_nnz(),
+             hipMemcpyDeviceToHost);
 
   /**
    * answer should be
@@ -85,11 +85,11 @@ int main(int argc, char** argv) {
   }
   std::cout << std::endl;
 
-  cudaFree(da_values);
-  cudaFree(da_rowptr);
-  cudaFree(da_colind);
-  cudaFree(db_values);
-  cudaFree(db_rowptr);
-  cudaFree(db_colind);
+  hipFree(da_values);
+  hipFree(da_rowptr);
+  hipFree(da_colind);
+  hipFree(db_values);
+  hipFree(db_rowptr);
+  hipFree(db_colind);
   return 0;
 }

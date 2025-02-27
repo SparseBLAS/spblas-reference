@@ -39,6 +39,18 @@ if (ENABLE_CUSPARSE)
   target_link_libraries(spblas INTERFACE cuspblas)
 endif()
 
+if (ENABLE_AMDSPARSE)
+  find_package(hip REQUIRED)
+  find_package(hipblas REQUIRED)
+  find_package(rocblas REQUIRED)
+  find_package(hipsparse REQUIRED)
+  find_package(rocsparse REQUIRED)
+  target_link_libraries(spblas INTERFACE roc::rocblas roc::hipblas roc::rocsparse roc::hipsparse hip::host)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_AMDSPARSE")
+  add_subdirectory(amd_spblas)
+  target_link_libraries(spblas INTERFACE amd_spblas)
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
@@ -95,7 +107,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 11.1.3)
   FetchContent_MakeAvailable(fmt)
 
-  if(ENABLE_CUSPARSE)
+  if(ENABLE_CUSPARSE OR ENABLE_AMDSPARSE)
     add_subdirectory(device_examples)
   else()
     add_subdirectory(examples)

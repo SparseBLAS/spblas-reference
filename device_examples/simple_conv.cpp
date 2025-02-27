@@ -20,14 +20,14 @@ int main(int argc, char** argv) {
   spblas::index<int> shape(4, 4);
 
   float* ddense_values;
-  auto allocator = std::make_shared<const cuda_allocator>();
+  auto allocator = std::make_shared<const amd_allocator>();
 
-  cudaMalloc((void**) &ddense_values, sizeof(float) * shape[0] * shape[1]);
-  cudaMemcpy(ddense_values, dense_values.data(),
-             sizeof(float) * shape[0] * shape[1], cudaMemcpyHostToDevice);
+  hipMalloc((void**) &ddense_values, sizeof(float) * shape[0] * shape[1]);
+  hipMemcpy(ddense_values, dense_values.data(),
+             sizeof(float) * shape[0] * shape[1], hipMemcpyHostToDevice);
   md::mdspan dense(ddense_values, shape[0], shape[1]);
   int* drowptr;
-  cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
+  hipMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
   std::span<int> rowptr_span(drowptr, shape[0] + 1);
   csr_view<float, int> csr(nullptr, drowptr, nullptr, shape, 0);
 
@@ -38,9 +38,9 @@ int main(int argc, char** argv) {
   int* dcolind;
   float* dvalues;
   std::cout << "nnz " << nnz << std::endl;
-  cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
+  hipMalloc((void**) &dvalues, sizeof(float) * nnz);
 
-  cudaMalloc((void**) &dcolind, sizeof(int) * nnz);
+  hipMalloc((void**) &dcolind, sizeof(int) * nnz);
 
   std::span<int> colind_span(dcolind, nnz);
   std::span<float> values_span(dvalues, nnz);
@@ -50,11 +50,11 @@ int main(int argc, char** argv) {
   std::vector<float> values(nnz);
   std::vector<int> rowptr(shape[0] + 1);
   std::vector<int> colind(nnz);
-  cudaMemcpy(values.data(), dvalues, sizeof(float) * nnz,
-             cudaMemcpyDeviceToHost);
-  cudaMemcpy(colind.data(), dcolind, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
-  cudaMemcpy(rowptr.data(), drowptr, sizeof(int) * (shape[0] + 1),
-             cudaMemcpyDeviceToHost);
+  hipMemcpy(values.data(), dvalues, sizeof(float) * nnz,
+             hipMemcpyDeviceToHost);
+  hipMemcpy(colind.data(), dcolind, sizeof(int) * nnz, hipMemcpyDeviceToHost);
+  hipMemcpy(rowptr.data(), drowptr, sizeof(int) * (shape[0] + 1),
+             hipMemcpyDeviceToHost);
 
   for (auto& x : rowptr) {
     std::cout << x << " ";
@@ -69,9 +69,9 @@ int main(int argc, char** argv) {
   }
   std::cout << std::endl;
 
-  cudaFree(dvalues);
-  cudaFree(ddense_values);
-  cudaFree(drowptr);
-  cudaFree(dcolind);
+  hipFree(dvalues);
+  hipFree(ddense_values);
+  hipFree(drowptr);
+  hipFree(dcolind);
   return 0;
 }

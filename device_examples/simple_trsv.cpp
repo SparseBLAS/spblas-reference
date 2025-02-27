@@ -25,26 +25,26 @@ int main(int argc, char** argv) {
 
   float* dvalues;
   int *drowptr, *dcolind;
-  auto allocator = std::make_shared<const cuda_allocator>();
+  auto allocator = std::make_shared<const amd_allocator>();
 
-  cudaMalloc((void**) &dvalues, sizeof(float) * nnz);
-  cudaMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
-  cudaMalloc((void**) &dcolind, sizeof(int) * nnz);
-  cudaMemcpy(dvalues, values.data(), sizeof(float) * nnz,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(dcolind, colind.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
+  hipMalloc((void**) &dvalues, sizeof(float) * nnz);
+  hipMalloc((void**) &drowptr, sizeof(int) * (shape[0] + 1));
+  hipMalloc((void**) &dcolind, sizeof(int) * nnz);
+  hipMemcpy(dvalues, values.data(), sizeof(float) * nnz,
+             hipMemcpyHostToDevice);
+  hipMemcpy(drowptr, rowptr.data(), sizeof(int) * (shape[0] + 1),
+             hipMemcpyHostToDevice);
+  hipMemcpy(dcolind, colind.data(), sizeof(int) * nnz, hipMemcpyHostToDevice);
   csr_view<float, int> a(dvalues, drowptr, dcolind, shape, nnz);
 
   float* drhs;
-  cudaMalloc((void**) &drhs, sizeof(float) * shape[0]);
-  cudaMemcpy(drhs, rhs.data(), sizeof(float) * shape[0],
-             cudaMemcpyHostToDevice);
+  hipMalloc((void**) &drhs, sizeof(float) * shape[0]);
+  hipMemcpy(drhs, rhs.data(), sizeof(float) * shape[0],
+             hipMemcpyHostToDevice);
   std::span<float> rhs_span(drhs, shape[0]);
 
   float* dx;
-  cudaMalloc((void**) &dx, sizeof(float) * shape[1]);
+  hipMalloc((void**) &dx, sizeof(float) * shape[1]);
   std::span<float> x_span(dx, shape[1]);
 
   triangular_solve_handle_t handle(allocator);
@@ -55,16 +55,16 @@ int main(int argc, char** argv) {
   triangular_solve_execute(handle, a, uplo_kind, diag_kind, rhs_span, x_span);
 
   std::vector<float> x(4);
-  cudaMemcpy(x.data(), dx, sizeof(float) * shape[1], cudaMemcpyDeviceToHost);
+  hipMemcpy(x.data(), dx, sizeof(float) * shape[1], hipMemcpyDeviceToHost);
   // answer should be the the [1/3 1 2 2/3]'
   for (const auto& v : x) {
     std::cout << v << std::endl;
   }
 
-  cudaFree(dvalues);
-  cudaFree(drowptr);
-  cudaFree(dcolind);
-  cudaFree(dx);
-  cudaFree(drhs);
+  hipFree(dvalues);
+  hipFree(drowptr);
+  hipFree(dcolind);
+  hipFree(dx);
+  hipFree(drhs);
   return 0;
 }

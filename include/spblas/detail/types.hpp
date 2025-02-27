@@ -9,6 +9,9 @@
 #ifdef SPBLAS_ENABLE_CUSPARSE
 #include <spblas/vendor/cusparse/types.hpp> // easily wrong with different default type?
 #endif
+#ifdef SPBLAS_ENABLE_AMDSPARSE
+#include <spblas/vendor/amdsparse/types.hpp> // easily wrong with different default type?
+#endif
 
 #ifdef SPBLAS_ENABLE_ARMPL
 #include <spblas/vendor/armpl/types.hpp>

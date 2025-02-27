@@ -17,3 +17,7 @@
 #ifdef SPBLAS_ENABLE_CUSPARSE
 #include <spblas/vendor/cusparse/cusparse.hpp>
 #endif
+
+#ifdef SPBLAS_ENABLE_AMDSPARSE
+#include <spblas/vendor/amdsparse/amdsparse.hpp>
+#endif

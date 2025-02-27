@@ -6,8 +6,13 @@
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 #include <spblas/vendor/onemkl_sycl/operation_state_t.hpp>
 #endif
+
 #ifdef SPBLAS_ENABLE_CUSPARSE
 #include <spblas/vendor/cusparse/operation_state_t.hpp>
+#endif
+
+#ifdef SPBLAS_ENABLE_AMDSPARSE
+#include <spblas/vendor/amdsparse/operation_state_t.hpp>
 #endif
 
 #ifdef SPBLAS_ENABLE_ARMPL
@@ -67,6 +72,11 @@ public:
 #ifdef SPBLAS_ENABLE_CUSPARSE
 public:
   __cusparse::operation_state_t state;
+#endif
+
+#ifdef SPBLAS_ENABLE_AMDSPARSE
+public:
+  __amdsparse::operation_state_t state;
 #endif
 };
 

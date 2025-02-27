@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(SPBLAS_ENABLE_ONEMKL_SYCL) || defined(SPBLAS_ENABLE_ARMPL) || defined(SPBLAS_ENABLE_CUSPARSE)
+#if defined(SPBLAS_ENABLE_ONEMKL_SYCL) || defined(SPBLAS_ENABLE_ARMPL) || defined(SPBLAS_ENABLE_CUSPARSE) || defined(SPBLAS_ENABLE_AMDSPARSE)
 #define SPBLAS_VENDOR_BACKEND true
 #endif
 
