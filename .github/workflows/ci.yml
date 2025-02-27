@@ -81,6 +81,9 @@ jobs:
     name: armpl-${{ matrix.cxx }}
     steps:
     - uses: actions/checkout@v4
+    - name: Set up GCC-14
+      run: |
+        brew install g++-14
     - name: Set up ArmPL
       run: |
         brew install --cask arm-performance-libraries
