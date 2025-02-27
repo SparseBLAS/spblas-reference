@@ -179,3 +179,66 @@ TEST(CsrView, SpMM_Aopt) {
     }
   }
 }
+
+TEST(CscView, SpGEMM) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, k, nnz] : util::dims) {
+    for (auto&& n : {m, k}) {
+      auto [a_values, a_colptr, a_rowind, a_shape, a_nnz] =
+          spblas::generate_csc<T, I>(m, k, nnz);
+
+      auto [b_values, b_colptr, b_rowind, b_shape, b_nnz] =
+          spblas::generate_csc<T, I>(k, n, nnz);
+
+      spblas::csc_view<T, I> a(a_values, a_colptr, a_rowind, a_shape, a_nnz);
+      spblas::csc_view<T, I> b(b_values, b_colptr, b_rowind, b_shape, b_nnz);
+
+      std::vector<I> c_colptr(n + 1);
+
+      spblas::csc_view<T, I> c(nullptr, c_colptr.data(), nullptr, {m, n}, 0);
+
+      auto info = spblas::multiply_compute(a, b, c);
+
+      std::vector<T> c_values(info.result_nnz());
+      std::vector<I> c_rowind(info.result_nnz());
+
+      c.update(c_values, c_colptr, c_rowind);
+
+      spblas::multiply_fill(info, a, b, c);
+
+      spblas::__backend::spa_accumulator<T, I> c_column_ref(
+          spblas::__backend::shape(c)[0]);
+
+      spblas::__backend::spa_accumulator<T, I> c_column_acc(
+          spblas::__backend::shape(c)[0]);
+
+      for (auto&& [j, b_column] : spblas::__backend::columns(b)) {
+        c_column_ref.clear();
+        for (auto&& [k, b_v] : b_column) {
+          auto&& a_column = spblas::__backend::lookup_column(a, k);
+
+          for (auto&& [i, a_v] : a_column) {
+            c_column_ref[i] += a_v * b_v;
+          }
+        }
+
+        auto&& c_column = spblas::__backend::lookup_column(c, j);
+
+        // Accumulate output into `c_column_acc` so that we can allow
+        // duplicate column indices.
+        c_column_acc.clear();
+        for (auto&& [i, c_v] : c_column) {
+          c_column_acc[i] += c_v;
+        }
+
+        for (auto&& [i, c_v] : c_column) {
+          EXPECT_EQ_(c_column_ref[i], c_column_acc[i]);
+        }
+
+        EXPECT_EQ(c_column_ref.size(), c_column_acc.size());
+      }
+    }
+  }
+}
