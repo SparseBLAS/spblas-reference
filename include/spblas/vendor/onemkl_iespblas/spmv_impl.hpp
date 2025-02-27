@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mkl.h"
-
+#include <type_traits>
 
 #include "mkl_wrappers.hpp"
 #include <spblas/detail/operation_info_t.hpp>
@@ -37,9 +37,9 @@ void multiply(A&& a, X&& x, Y&& y)
   auto a_base = __detail::get_ultimate_base(a);
   auto x_base = __detail::get_ultimate_base(x);
   
-  using T = tensor_scalar_t<A>;
-  using I = tensor_index_t<A>;
-  using O = tensor_offset_t<A>;
+  using T = std::remove_cv_t<tensor_scalar_t<A>>;
+  using I = std::remove_cv_t<tensor_index_t<A>>;
+  using O = std::remove_cv_t<tensor_offset_t<A>>;
 
   auto alpha_optional = __detail::get_scaling_factor(a, x);
   T alpha = alpha_optional.value_or(1);
@@ -53,9 +53,17 @@ void multiply(A&& a, X&& x, Y&& y)
   const index_t a_nrows = __backend::shape(a_base)[0];
   const index_t a_ncols = __backend::shape(a_base)[1];
 
-  __mkl_iespblas::mkl_sparse_create_csr( &csrA, indexing, a_nrows, a_ncols, a_base.rowptr().data(),
-          a_base.rowptr().data()+1, a_base.colind().data(), a_base.values().data());
+  T * values = const_cast<T*>(a_base.values().data());
+  I * colind = const_cast<I*>(a_base.colind().data());
+  O * rowptr = const_cast<O*>(a_base.rowptr().data());
 
+
+  __mkl_iespblas::mkl_sparse_create_csr( &csrA, indexing, a_nrows, a_ncols, 
+        rowptr, rowptr+1, colind, values);
+    /*      a_base.rowptr().data(),
+          a_base.rowptr().data()+1, a_base.colind().data(), a_base.values().data());
+          a_base.rowptr().data()+1, a_base.colind().data(), a_base.values().data());
+*/
   mkl_sparse_set_mv_hint( csrA, opA, descr, 1);
 
   mkl_sparse_optimize( csrA );

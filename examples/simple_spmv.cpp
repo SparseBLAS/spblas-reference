@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
   auto&& [values, rowptr, colind, shape, nnz] =
       generate_csr<T, spblas::index_t>(m, n, nnz_in);
 
-  csr_view<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
+  //csr_view<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
+  csr_view<T, const spblas::index_t, const spblas::offset_t> a(values, rowptr, colind, shape, nnz);
 
   // Scale every value of `a` by 5 in place.
   // scale(5.f, a);
