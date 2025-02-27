@@ -63,7 +63,7 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
     auto values = a_base.values().data();
 
     std::vector<T> tmp_values;
-    std::vector<I> tmp_rowptr(n + 1);
+    std::vector<I> tmp_rowptr(m + 1);
     std::vector<O> tmp_colind;
 
     auto index_base = rowptr[0];
@@ -85,7 +85,7 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
     };
 
     int k = 0;
-    for (armpl_int_t r = 0; r < n; r++) {
+    for (armpl_int_t r = 0; r < m; r++) {
 
       if (is_unit && is_upper) {
         tmp_colind.push_back(r);
