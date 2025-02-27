@@ -106,3 +106,35 @@ TEST(CsrView, SpMV_BScaled) {
     }
   }
 }
+
+TEST(CscView, SpMV) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, colptr, rowind, shape, _] =
+        spblas::generate_csc<T, I>(m, n, nnz);
+
+    spblas::csc_view<T, I> a(values, colptr, rowind, shape, nnz);
+
+    std::vector<T> b(n, 1);
+    std::vector<T> c(m, 0);
+
+    spblas::multiply(a, b, c);
+
+    std::vector<T> c_ref(m, 0);
+
+    for (I j = 0; j < n; j++) {
+      for (I i_ptr = colptr[j]; i_ptr < colptr[j + 1]; i_ptr++) {
+        I i = rowind[i_ptr];
+        T v = values[i_ptr];
+
+        c_ref[i] += v * b[j];
+      }
+    }
+
+    for (I i = 0; i < c_ref.size(); i++) {
+      EXPECT_EQ_(c_ref[i], c[i]);
+    }
+  }
+}
