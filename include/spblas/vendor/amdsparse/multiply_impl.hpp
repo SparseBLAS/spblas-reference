@@ -164,4 +164,26 @@ void multiply_execute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
   spgemm_handle.multiply_execute(a, b, c);
 }
 
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C>
+void multiply_symbolic_compute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
+  spgemm_handle.multiply_compute(a, b, c);
+}
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C>
+void multiply_symbolic_fill(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
+  spgemm_handle.multiply_symbolic_fill(a, b, c);
+}
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C>
+void multiply_numeric(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
+  spgemm_handle.multiply_numeric(a, b, c);
+}
+
 } // namespace spblas

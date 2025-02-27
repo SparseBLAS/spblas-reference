@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include <hipsparse/hipsparse.h>
+#include <rocsparse/rocsparse.h>
 
 namespace spblas {
 
@@ -50,6 +51,43 @@ MAP_HIPSPARSE_INDEX_TYPE(std::int64_t, HIPSPARSE_INDEX_64I);
 
 #undef MAP_HIPSPARSE_INDEX_TYPE
 
+
+/**
+ * mapping the type to rocsparse_datatype
+ */
+template <typename T>
+struct rocm_data_type_impl {};
+
+#define MAP_ROCM_DATA_TYPE(_type, _value)                                      \
+  template <>                                                                  \
+  struct rocm_data_type_impl<_type> {                                          \
+    constexpr static rocsparse_datatype value = _value;                            \
+  }
+
+MAP_ROCM_DATA_TYPE(float, rocsparse_datatype_f32_r);
+MAP_ROCM_DATA_TYPE(double, rocsparse_datatype_f64_r);
+MAP_ROCM_DATA_TYPE(std::complex<float>, rocsparse_datatype_f32_c);
+MAP_ROCM_DATA_TYPE(std::complex<double>, rocsparse_datatype_f64_c);
+
+#undef MAP_ROCM_DATA_TYPE
+
+/**
+ * mapping the type to rocsparse_indextype
+ */
+template <typename T>
+struct rocm_index_type_impl {};
+
+#define MAP_ROCM_INDEX_TYPE(_type, _value)                                 \
+  template <>                                                                  \
+  struct rocm_index_type_impl<_type> {                                     \
+    constexpr static rocsparse_indextype value = _value;                       \
+  }
+
+MAP_ROCM_INDEX_TYPE(std::int32_t, rocsparse_indextype_i32);
+MAP_ROCM_INDEX_TYPE(std::int64_t, rocsparse_indextype_i64);
+
+#undef MAP_ROCM_INDEX_TYPE
+
 } // namespace detail
 
 /**
@@ -75,5 +113,16 @@ template <typename T>
 constexpr hipsparseIndexType_t hipsparse_index_type() {
   return detail::hipsparse_index_type_impl<T>::value;
 }
+
+template <typename T>
+constexpr rocsparse_datatype rocm_data_type() {
+  return detail::rocm_data_type_impl<T>::value;
+}
+
+template <typename T>
+constexpr rocsparse_indextype rocm_index_type() {
+  return detail::rocm_index_type_impl<T>::value;
+}
+
 
 } // namespace spblas
