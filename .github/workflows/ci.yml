@@ -70,3 +70,11 @@ jobs:
       run: |
         source /opt/intel/oneapi/setvars.sh
         ./build/test/gtest/spblas-tests
+
+  armpl:
+    runs-on: 'ubuntu-latest'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test
+      run: |
+        echo "Hello, world!"
