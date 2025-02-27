@@ -68,6 +68,7 @@ if (USE_RANGE_V3)
   target_link_libraries(spblas INTERFACE range-v3)
 endif()
 
+install(DIRECTORY include/spblas DESTINATION include)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   # Dependencies needed only for examples/test
