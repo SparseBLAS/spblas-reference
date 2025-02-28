@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
 option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
 option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
+option(ENABLE_CUSPARSE "Enable cuSPARSE" OFF)
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -71,6 +72,13 @@ if (ENABLE_ROCSPARSE)
   target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
   set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
+if (ENABLE_CUSPARSE)
+  set(SPBLAS_GPU_BACKEND ON)
+  find_package(CUDAToolkit REQUIRED)
+  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
 endif()
 
 # turn on/off debug logging
