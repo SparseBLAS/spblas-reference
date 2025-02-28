@@ -13,3 +13,7 @@
 #ifdef SPBLAS_ENABLE_ARMPL
 #include <spblas/vendor/armpl/armpl.hpp>
 #endif
+
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/cusparse.hpp>
+#endif
