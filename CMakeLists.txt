@@ -95,7 +95,9 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   FetchContent_MakeAvailable(fmt)
 
   # TODO: enable test for gpu library
-  if(NOT ENABLE_CUSPARSE)
+  if(ENABLE_CUSPARSE)
+    add_subdirectory(device_examples)
+  else()
     add_subdirectory(examples)
     add_subdirectory(test)
   endif()
