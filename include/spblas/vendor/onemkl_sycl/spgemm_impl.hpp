@@ -7,6 +7,9 @@
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
+#include <spblas/views/matrix_opt.hpp>
+
+#include "matrix_wrapper.hpp"
 
 //
 // Defines the following APIs for SpGEMM:
@@ -29,6 +32,12 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
 
+  bool a_is_matrix_opt = false;
+  if constexpr (__detail::is_matrix_opt_view_v<decltype(a_base)>) a_is_matrix_opt = true;
+  bool b_is_matrix_opt = false;
+  if constexpr (__detail::is_matrix_opt_view_v<decltype(b_base)>) b_is_matrix_opt = true;
+
+
   using oneapi::mkl::transpose;
   using oneapi::mkl::sparse::matmat_request;
   using oneapi::mkl::sparse::matrix_view_descr;
@@ -44,29 +53,20 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
       matrix_view_descr::general, transpose::nontrans,        // view/op for B
       matrix_view_descr::general);                            // view for C
 
-  oneapi::mkl::sparse::matrix_handle_t a_handle, b_handle, c_handle;
-  a_handle = b_handle = c_handle = nullptr;
 
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-  oneapi::mkl::sparse::init_matrix_handle(&b_handle);
+  auto a_handle = __mkl::get_matrix_handle(q, a_base);
+  auto b_handle = __mkl::get_matrix_handle(q, b_base);
+//  auto c_handle = __mkl::get_matrix_handle(q, c);
+
+  oneapi::mkl::sparse::matrix_handle_t c_handle = nullptr;
+
   oneapi::mkl::sparse::init_matrix_handle(&c_handle);
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, b_handle, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
-      oneapi::mkl::index_base::zero, b_base.rowptr().data(),
-      b_base.colind().data(), b_base.values().data())
-      .wait();
 
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
+  using O = tensor_offset_t<C>;
 
-  I* c_rowptr;
+  O* c_rowptr;
   if (c.rowptr().size() >= __backend::shape(c)[0] + 1) {
     c_rowptr = c.rowptr().data();
   } else {
@@ -94,7 +94,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   ev3_1.wait(); // sync is required to read c_nnz
 
-  index_t nnz = 0;
+  offset_t nnz = 0;
   if (*c_nnz <= std::numeric_limits<offset_t>::max()) {
     nnz = static_cast<offset_t>(*c_nnz);
   } else {
@@ -107,8 +107,10 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   return operation_info_t{
       index<>{__backend::shape(c)[0], __backend::shape(c)[1]}, nnz,
-      __mkl::operation_state_t{a_handle, b_handle, c_handle, nullptr, descr,
-                               (void*) c_rowptr, q}};
+      __mkl::operation_state_t{
+        a_is_matrix_opt ? nullptr : a_handle, 
+        b_is_matrix_opt ? nullptr : b_handle, 
+        c_handle, nullptr, descr, (void*)c_rowptr, q}};
 }
 
 template <matrix A, matrix B, matrix C>
@@ -125,12 +127,13 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
 
   using oneapi::mkl::sparse::matmat_request;
   sycl::queue q(sycl::cpu_selector_v);
-  using I = tensor_index_t<C>;
+  using O = tensor_offset_t<C>;
 
-  I* c_rowptr = (I*) info.state_.c_rowptr;
+  O* c_rowptr = (O*) info.state_.c_rowptr;
 
-  auto a_handle = info.state_.a_handle;
-  auto b_handle = info.state_.b_handle;
+  auto a_handle = __mkl::get_matrix_handle(q, a_base, info.state_.a_handle);
+  auto b_handle = __mkl::get_matrix_handle(q, b_base, info.state_.b_handle);
+
   auto c_handle = info.state_.c_handle;
 
   auto descr = info.state_.descr;
@@ -148,7 +151,7 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
 
   if (c_rowptr != c.rowptr().data()) {
     q.memcpy(c.rowptr().data(), c_rowptr,
-             sizeof(I) * (__backend::shape(c)[0] + 1))
+             sizeof(O) * (__backend::shape(c)[0] + 1))
         .wait();
 
     sycl::free(c_rowptr, q);

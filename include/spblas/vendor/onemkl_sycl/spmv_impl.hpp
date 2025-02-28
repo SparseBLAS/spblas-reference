@@ -6,6 +6,7 @@
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
+#include "matrix_wrapper.hpp"
 
 //
 // Defines the following APIs for SpMV:
@@ -37,22 +38,18 @@ void multiply(A&& a, X&& x, Y&& y) {
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
 
   sycl::queue q(sycl::cpu_selector_v);
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
 
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
+  auto a_handle = __mkl::get_matrix_handle(q, a_base);
 
   oneapi::mkl::sparse::gemv(q, oneapi::mkl::transpose::nontrans, alpha,
                             a_handle, __ranges::data(x_base), 0.0,
                             __ranges::data(y))
       .wait();
 
-  oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  if constexpr (!__detail::is_matrix_opt_view_v<decltype(a_base)>) {
+      oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  }
+
 }
 
 } // namespace spblas
