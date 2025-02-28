@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <type_traits>
 
@@ -109,20 +110,26 @@ public:
     return result_nnz_;
   }
 
-  template <matrix A, matrix B, matrix C>
+  template <matrix A, matrix B, matrix C, matrix D>
     requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-             __detail::is_csr_view_v<C>
-  void multiply_compute(A&& a, B&& b, C&& c) {
+             __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+  void multiply_compute(A&& a, B&& b, C&& c, D&& d) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
+    auto d_base = __detail::get_ultimate_base(d);
     using matrix_type = decltype(a_base);
     using input_type = decltype(b_base);
     using output_type = std::remove_reference_t<decltype(c)>;
     using value_type = typename matrix_type::scalar_type;
 
     size_t buffer_size1 = 0;
-    value_type alpha = 1.0;
-    value_type beta = 0.0;
+
+    auto alpha_optional = __detail::get_scaling_factor(a, b);
+    tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+    value_type alpha_val = alpha;
+    auto beta_optional = __detail::get_scaling_factor(d);
+    value_type beta = beta_optional.value_or(1);
+    std::cout << alpha << " " << beta << std::endl;
     // Create sparse matrix A in CSR format
     rocsparse_create_csr_descr(
         &matA, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
@@ -147,39 +154,49 @@ public:
         rocsparse_index_base_zero,
         rocm_data_type<typename output_type::scalar_type>());
     rocsparse_create_csr_descr(
-        &matD, 0, 0, 0, nullptr, nullptr, nullptr,
+        &matD, __backend::shape(d_base)[0], __backend::shape(d_base)[1],
+        d_base.values().size(), d_base.rowptr().data(), d_base.colind().data(),
+        d_base.values().data(),
         rocm_index_type<typename output_type::offset_type>(),
         rocm_index_type<typename output_type::index_type>(),
         rocsparse_index_base_zero,
         rocm_data_type<typename output_type::scalar_type>());
+    std::cout << __backend::shape(a_base)[0] << " "
+              << __backend::shape(b_base)[1] << " "
+              << __backend::shape(d_base)[0] << " "
+              << __backend::shape(d_base)[1] << std::endl;
     //--------------------------------------------------------------------------
     // SpGEMM Computation
     // ask buffer_size1 bytes for external memory
-    rocsparse_spgemm(
+    auto status1 = rocsparse_spgemm(
         handle_, rocsparse_operation_none, rocsparse_operation_none, &alpha,
         matA, matB, &beta, matD, matC, rocm_data_type<value_type>(),
         rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_buffer_size,
         &buffer_size1, nullptr);
+    std::cout << "buffer status: " << status1 << std::endl;
     if (buffer_size1 > buffer_size1_) {
       buffer_size1_ = buffer_size1;
       alloc_->free(workspace1_);
       alloc_->alloc(&workspace1_, buffer_size1);
     }
-    rocsparse_spgemm(handle_, rocsparse_operation_none,
-                     rocsparse_operation_none, &alpha, matA, matB, &beta, matD,
-                     matC, rocm_data_type<value_type>(),
-                     rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_nnz,
-                     &buffer_size1, workspace1_);
+    auto status = rocsparse_spgemm(
+        handle_, rocsparse_operation_none, rocsparse_operation_none, &alpha,
+        matA, matB, &beta, matD, matC, rocm_data_type<value_type>(),
+        rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_nnz, &buffer_size1,
+        workspace1_);
     // get matrix C non-zero entries C_nnz1
     int64_t C_num_rows1, C_num_cols1;
     rocsparse_spmat_get_size(matC, &C_num_rows1, &C_num_cols1, &result_nnz_);
     result_shape_ = index<>(C_num_rows1, C_num_cols1);
+
+    std::cout << "nnz status: " << status << std::endl;
+    hipDeviceSynchronize();
   }
 
-  template <matrix A, matrix B, matrix C>
+  template <matrix A, matrix B, matrix C, matrix D>
     requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-             __detail::is_csr_view_v<C>
-  void multiply_execute(A&& a, B&& b, C&& c) {
+             __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+  void multiply_execute(A&& a, B&& b, C&& c, D&& d) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
     using matrix_type = decltype(a_base);
@@ -189,16 +206,18 @@ public:
 
     auto alpha_optional = __detail::get_scaling_factor(a, b);
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-    
     value_type alpha_val = alpha;
-    value_type beta = 0.0;
-    rocsparse_csr_set_pointers(matC, c.rowptr().data(), c.colind().data(), c.values().data());
+    auto beta_optional = __detail::get_scaling_factor(d);
+    value_type beta = beta_optional.value_or(1);
 
-    rocsparse_spgemm(handle_, rocsparse_operation_none,
-                     rocsparse_operation_none, &alpha, matA, matB, &beta, matD,
-                     matC, rocm_data_type<value_type>(),
-                     rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_compute,
-                     &buffer_size1_, workspace1_);
+    rocsparse_csr_set_pointers(matC, c.rowptr().data(), c.colind().data(),
+                               c.values().data());
+
+    rocsparse_spgemm(
+        handle_, rocsparse_operation_none, rocsparse_operation_none, &alpha,
+        matA, matB, &beta, matD, matC, rocm_data_type<value_type>(),
+        rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_compute,
+        &buffer_size1_, workspace1_);
     hipDeviceSynchronize();
     // destroy matrix/vector descriptors
     rocsparse_destroy_spmat_descr(matA);
@@ -209,12 +228,13 @@ public:
 
   // split symbolic
 
-  template <matrix A, matrix B, matrix C>
+  template <matrix A, matrix B, matrix C, matrix D>
     requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-             __detail::is_csr_view_v<C>
-  void multiply_symbolic_fill(A&& a, B&& b, C&& c) {
+             __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+  void multiply_symbolic_fill(A&& a, B&& b, C&& c, D&& d) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
+    auto d_base = __detail::get_ultimate_base(d);
     using matrix_type = decltype(a_base);
     using input_type = decltype(b_base);
     using output_type = std::remove_reference_t<decltype(c)>;
@@ -222,22 +242,27 @@ public:
 
     auto alpha_optional = __detail::get_scaling_factor(a, b);
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-    
     value_type alpha_val = alpha;
-    value_type beta = 0.0;
-    rocsparse_csr_set_pointers(matC, c.rowptr().data(), c.colind().data(), c.values().data());
+    auto beta_optional = __detail::get_scaling_factor(d);
+    value_type beta = beta_optional.value_or(1);
+    std::cout << alpha << " " << beta << std::endl;
 
-    rocsparse_spgemm(handle_, rocsparse_operation_none,
-                     rocsparse_operation_none, &alpha, matA, matB, &beta, matD,
-                     matC, rocm_data_type<value_type>(),
-                     rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_symbolic,
-                     &buffer_size1_, workspace1_);
+    rocsparse_csr_set_pointers(matC, c.rowptr().data(), c.colind().data(),
+                               c.values().data());
+
+    auto status = rocsparse_spgemm(
+        handle_, rocsparse_operation_none, rocsparse_operation_none, &alpha,
+        matA, matB, &beta, matD, matC, rocm_data_type<value_type>(),
+        rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_symbolic,
+        &buffer_size1_, workspace1_);
+    std::cout << "symbolic status: " << status << std::endl;
+    hipDeviceSynchronize();
   }
 
-  template <matrix A, matrix B, matrix C>
+  template <matrix A, matrix B, matrix C, matrix D>
     requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-             __detail::is_csr_view_v<C>
-  void multiply_numeric(A&& a, B&& b, C&& c) {
+             __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+  void multiply_numeric(A&& a, B&& b, C&& c, D&& d) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
     using matrix_type = decltype(a_base);
@@ -247,16 +272,19 @@ public:
 
     auto alpha_optional = __detail::get_scaling_factor(a, b);
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-    
     value_type alpha_val = alpha;
-    value_type beta = 0.0;
-    // rocsparse_csr_set_pointers(matC, c.rowptr().data(), c.colind().data(), c.values().data());
+    auto beta_optional = __detail::get_scaling_factor(d);
+    value_type beta = beta_optional.value_or(1);
+    std::cout << alpha << " " << beta << std::endl;
+    // rocsparse_csr_set_pointers(matC, c.rowptr().data(), c.colind().data(),
+    // c.values().data());
 
-    rocsparse_spgemm(handle_, rocsparse_operation_none,
-                     rocsparse_operation_none, &alpha, matA, matB, &beta, matD,
-                     matC, rocm_data_type<value_type>(),
-                     rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_numeric,
-                     &buffer_size1_, workspace1_);
+    auto status = rocsparse_spgemm(
+        handle_, rocsparse_operation_none, rocsparse_operation_none, &alpha,
+        matA, matB, &beta, matD, matC, rocm_data_type<value_type>(),
+        rocsparse_spgemm_alg_default, rocsparse_spgemm_stage_numeric,
+        &buffer_size1_, workspace1_);
+    std::cout << "status: " << status << std::endl;
     hipDeviceSynchronize();
     // TODO: move the destory to the state not function
     // destroy matrix/vector descriptors
@@ -265,7 +293,7 @@ public:
     // rocsparse_destroy_spmat_descr(matC);
     // rocsparse_destroy_spmat_descr(matD);
   }
-  
+
 private:
   rocsparse_handle handle_;
   std::shared_ptr<const allocator> alloc_;

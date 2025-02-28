@@ -48,27 +48,27 @@ void multiply(A&& a, B&& b, C&& c, S&& s) {
   hipsparseCreate(&handle); // put into info or global stuff?
   // Create sparse matrix A in CSR format
   hipsparseCreateCsr(&matA, __backend::shape(a_base)[0],
-                    __backend::shape(a_base)[1], a_base.values().size(),
-                    a_base.rowptr().data(), a_base.colind().data(),
-                    a_base.values().data(),
-                    hipsparse_index_type<typename matrix_type::offset_type>(),
-                    hipsparse_index_type<typename matrix_type::index_type>(),
-                    HIPSPARSE_INDEX_BASE_ZERO, hip_data_type<value_type>());
+                     __backend::shape(a_base)[1], a_base.values().size(),
+                     a_base.rowptr().data(), a_base.colind().data(),
+                     a_base.values().data(),
+                     hipsparse_index_type<typename matrix_type::offset_type>(),
+                     hipsparse_index_type<typename matrix_type::index_type>(),
+                     HIPSPARSE_INDEX_BASE_ZERO, hip_data_type<value_type>());
   hipsparseCreateCsr(&matB, __backend::shape(b_base)[0],
-                    __backend::shape(b_base)[1], b_base.values().size(),
-                    b_base.rowptr().data(), b_base.colind().data(),
-                    b_base.values().data(),
-                    hipsparse_index_type<typename input_type::offset_type>(),
-                    hipsparse_index_type<typename input_type::index_type>(),
-                    HIPSPARSE_INDEX_BASE_ZERO,
-                    hip_data_type<typename input_type::scalar_type>());
+                     __backend::shape(b_base)[1], b_base.values().size(),
+                     b_base.rowptr().data(), b_base.colind().data(),
+                     b_base.values().data(),
+                     hipsparse_index_type<typename input_type::offset_type>(),
+                     hipsparse_index_type<typename input_type::index_type>(),
+                     HIPSPARSE_INDEX_BASE_ZERO,
+                     hip_data_type<typename input_type::scalar_type>());
   hipsparseCreateCsr(&matC, __backend::shape(a_base)[0],
-                    __backend::shape(b_base)[1], 0, c.rowptr().data(), NULL,
-                    NULL,
-                    hipsparse_index_type<typename output_type::offset_type>(),
-                    hipsparse_index_type<typename output_type::index_type>(),
-                    HIPSPARSE_INDEX_BASE_ZERO,
-                    hip_data_type<typename output_type::scalar_type>());
+                     __backend::shape(b_base)[1], 0, c.rowptr().data(), NULL,
+                     NULL,
+                     hipsparse_index_type<typename output_type::offset_type>(),
+                     hipsparse_index_type<typename output_type::index_type>(),
+                     HIPSPARSE_INDEX_BASE_ZERO,
+                     hip_data_type<typename output_type::scalar_type>());
   //--------------------------------------------------------------------------
   // SpGEMM Computation
   hipsparseSpGEMMDescr_t spgemmDesc;
@@ -85,24 +85,24 @@ void multiply(A&& a, B&& b, C&& c, S&& s) {
   // the next step
 
   hipsparseSpGEMM_workEstimation(handle, HIPSPARSE_OPERATION_NON_TRANSPOSE,
-                                HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA,
-                                matB, &beta, matC, compute_type,
-                                HIPSPARSE_SPGEMM_DEFAULT, spgemmDesc,
-                                &bufferSize1, dBuffer1);
+                                 HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
+                                 matA, matB, &beta, matC, compute_type,
+                                 HIPSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+                                 &bufferSize1, dBuffer1);
 
   // ask bufferSize2 bytes for external memory
 
   hipsparseSpGEMM_compute(handle, HIPSPARSE_OPERATION_NON_TRANSPOSE,
-                         HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
-                         &beta, matC, compute_type, HIPSPARSE_SPGEMM_DEFAULT,
-                         spgemmDesc, &bufferSize2, NULL);
+                          HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
+                          &beta, matC, compute_type, HIPSPARSE_SPGEMM_DEFAULT,
+                          spgemmDesc, &bufferSize2, NULL);
   s.alloc(&dBuffer2, bufferSize2);
 
   // compute the intermediate product of A * B
   hipsparseSpGEMM_compute(handle, HIPSPARSE_OPERATION_NON_TRANSPOSE,
-                         HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
-                         &beta, matC, compute_type, HIPSPARSE_SPGEMM_DEFAULT,
-                         spgemmDesc, &bufferSize2, dBuffer2);
+                          HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
+                          &beta, matC, compute_type, HIPSPARSE_SPGEMM_DEFAULT,
+                          spgemmDesc, &bufferSize2, dBuffer2);
   // get matrix C non-zero entries C_nnz1
   int64_t C_num_rows1, C_num_cols1, C_nnz1;
   hipsparseSpMatGetSize(matC, &C_num_rows1, &C_num_cols1, &C_nnz1);
@@ -124,9 +124,9 @@ void multiply(A&& a, B&& b, C&& c, S&& s) {
   // copy the final products to the matrix C
 
   hipsparseSpGEMM_copy(handle, HIPSPARSE_OPERATION_NON_TRANSPOSE,
-                      HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
-                      &beta, matC, compute_type, HIPSPARSE_SPGEMM_DEFAULT,
-                      spgemmDesc);
+                       HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB,
+                       &beta, matC, compute_type, HIPSPARSE_SPGEMM_DEFAULT,
+                       spgemmDesc);
 
   std::span<typename output_type::index_type> c_colind(dC_columns, C_nnz1);
   std::span<typename output_type::scalar_type> c_values(dC_values, C_nnz1);
@@ -150,40 +150,92 @@ template <matrix A, matrix B, matrix C>
            __detail::is_csr_view_v<C>
 void multiply_inspect(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {}
 
+template <matrix A, matrix B, matrix C, matrix D>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+void multiply_compute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c,
+                      D&& d) {
+  spgemm_handle.multiply_compute(a, b, c, d);
+}
+
+template <matrix A, matrix B, matrix C, matrix D>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+void multiply_execute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c,
+                      D&& d) {
+  spgemm_handle.multiply_execute(a, b, c, d);
+}
+
+template <matrix A, matrix B, matrix C, matrix D>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+void multiply_symbolic_compute(spgemm_handle_t& spgemm_handle, A&& a, B&& b,
+                               C&& c, D&& d) {
+  spgemm_handle.multiply_compute(a, b, c, d);
+}
+
+template <matrix A, matrix B, matrix C, matrix D>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+void multiply_symbolic_fill(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c,
+                            D&& d) {
+  spgemm_handle.multiply_symbolic_fill(a, b, c, d);
+}
+
+template <matrix A, matrix B, matrix C, matrix D>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
+void multiply_numeric(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c,
+                      D&& d) {
+  spgemm_handle.multiply_numeric(a, b, c, d);
+}
+
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 void multiply_compute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
-  spgemm_handle.multiply_compute(a, b, c);
+
+  std::remove_reference_t<decltype(c)> d(nullptr, nullptr, nullptr,
+                                         index<>{0, 0}, 0);
+  spgemm_handle.multiply_compute(a, b, c, scaled(0.0, d));
 }
 
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 void multiply_execute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
-  spgemm_handle.multiply_execute(a, b, c);
-}
-
-
-template <matrix A, matrix B, matrix C>
-  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-           __detail::is_csr_view_v<C>
-void multiply_symbolic_compute(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
-  spgemm_handle.multiply_compute(a, b, c);
+  std::remove_reference_t<decltype(c)> d(nullptr, nullptr, nullptr,
+                                         index<>{0, 0}, 0);
+  spgemm_handle.multiply_execute(a, b, c, scaled(0.0, d));
 }
 
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
-void multiply_symbolic_fill(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
-  spgemm_handle.multiply_symbolic_fill(a, b, c);
+void multiply_symbolic_compute(spgemm_handle_t& spgemm_handle, A&& a, B&& b,
+                               C&& c) {
+  std::remove_reference_t<decltype(c)> d(nullptr, nullptr, nullptr,
+                                         index<>{0, 0}, 0);
+  spgemm_handle.multiply_compute(a, b, c, scaled(0.0, d));
+}
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
+           __detail::is_csr_view_v<C>
+void multiply_symbolic_fill(spgemm_handle_t& spgemm_handle, A&& a, B&& b,
+                            C&& c) {
+  std::remove_reference_t<decltype(c)> d(nullptr, nullptr, nullptr,
+                                         index<>{0, 0}, 0);
+  spgemm_handle.multiply_symbolic_fill(a, b, c, scaled(0.0, d));
 }
 
 template <matrix A, matrix B, matrix C>
   requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
            __detail::is_csr_view_v<C>
 void multiply_numeric(spgemm_handle_t& spgemm_handle, A&& a, B&& b, C&& c) {
-  spgemm_handle.multiply_numeric(a, b, c);
+  std::remove_reference_t<decltype(c)> d(nullptr, nullptr, nullptr,
+                                         index<>{0, 0}, 0);
+  spgemm_handle.multiply_numeric(a, b, c, scaled(0.0, d));
 }
 
 } // namespace spblas
