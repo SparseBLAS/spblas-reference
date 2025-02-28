@@ -106,7 +106,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   __armpl::create_spmat_csr<tensor_scalar_t<B>>(
       &b_handle, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
-      b_base.rowptr().data(), b_base.colind().data(), a_base.values().data(),
+      b_base.rowptr().data(), b_base.colind().data(), b_base.values().data(),
       ARMPL_SPARSE_CREATE_NOCOPY);
 
   c_handle =
