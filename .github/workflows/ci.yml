@@ -70,3 +70,22 @@ jobs:
       run: |
         source /opt/intel/oneapi/setvars.sh
         ./build/test/gtest/spblas-tests
+
+  armpl:
+    runs-on: 'macos-latest'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up ArmPL
+      run: |
+        brew install --cask arm-performance-libraries
+        ARMPL_PATH=$(echo /opt/arm/armpl*)
+        echo "ARMPL_DIR=$ARMPL_PATH" >> $GITHUB_ENV
+    - name: CMake
+      run: |
+        cmake -B build -DENABLE_ARMPL=ON
+    - name: Build
+      run: |
+        make -C build -j 3
+    - name: Test
+      run: |
+        ./build/test/gtest/spblas-tests
