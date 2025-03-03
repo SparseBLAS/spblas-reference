@@ -144,7 +144,6 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
   std::copy(colind, colind + nnz, c.colind().begin());
   std::copy(rowptr, rowptr + m + 1, c.rowptr().begin());
 
-  // Trigger CI run
   *(c.values().begin()) = 12;
 
   free(values);
