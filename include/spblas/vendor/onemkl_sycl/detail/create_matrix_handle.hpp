@@ -38,6 +38,17 @@ oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
   return handle;
 }
 
+//
+// Takes in a CSR or CSR_transpose (aka CSC) or CSC or CSC_transpose
+//  and returns the transpose value associated with it being represented
+// in the CSR format (since oneMKL SYCL currently does not have CSC 
+// format
+//
+//     CSR = CSR + nontrans
+//     CSR_transpose = CSR + trans
+//     CSC = CSR + trans
+//     CSC_transpose -> CSR + nontrans
+//
 template <matrix M>
 oneapi::mkl::transpose get_transpose(M&& m) {
   static_assert(__detail::has_base<M> || __detail::is_csr_view_v<M> ||
