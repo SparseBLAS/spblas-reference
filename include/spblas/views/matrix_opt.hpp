@@ -4,10 +4,16 @@
 #include <spblas/backend/cpos.hpp>
 #include <spblas/concepts.hpp>
 
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+#include <oneapi/mkl.hpp>
+#include <sycl/sycl.hpp>
+#endif
+
+
 namespace spblas {
 
 template <matrix M>
-  requires(view<M>)
+  requires(view<M> && __detail::is_csr_view_v<M>)
 class matrix_opt : public view_base {
 public:
   using scalar_type = tensor_scalar_t<M>;
@@ -15,7 +21,28 @@ public:
   using index_type = tensor_index_t<M>;
   using offset_type = tensor_offset_t<M>;
 
-  matrix_opt(M matrix) : matrix_(matrix) {}
+  matrix_opt(M matrix) : matrix_(matrix)
+  {
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+    matrix_handle_=nullptr;
+#endif
+
+  }
+
+  ~matrix_opt()
+  {
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+    if (matrix_handle_) {
+        // q here needs to be on same context as queue in operations,
+        // idealy from execution policy
+        sycl::queue q(sycl::cpu_selector_v);
+        oneapi::mkl::sparse::release_matrix_handle(q, &matrix_handle_, {})
+            .wait();
+        matrix_handle_ = nullptr;
+    }
+#endif
+
+  }
 
   auto shape() const noexcept {
     return __backend::shape(base());
@@ -64,6 +91,13 @@ private:
 
 public:
   M matrix_;
+
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+  oneapi::mkl::sparse::matrix_handle_t matrix_handle_;
+#endif
+
+
+
 };
 
 namespace __detail {
