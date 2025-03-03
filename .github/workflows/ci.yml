@@ -71,8 +71,12 @@ jobs:
         source /opt/intel/oneapi/setvars.sh
         ./build/test/gtest/spblas-tests
 
-  armpl:
+  macos:
     runs-on: 'macos-latest'
+    strategy:
+      matrix:
+        armpl: [OFF, ON]
+    name: macos${{ matrix.armpl == 'ON' && '-armpl' || '' }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up ArmPL
@@ -82,7 +86,7 @@ jobs:
         echo "ARMPL_DIR=$ARMPL_PATH" >> $GITHUB_ENV
     - name: CMake
       run: |
-        cmake -B build -DENABLE_ARMPL=ON
+        cmake -B build -DENABLE_ARMPL=${{ matrix.armpl }}
     - name: Build
       run: |
         make -C build -j 3
