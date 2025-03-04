@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   fmt::print("\n\t###   Y = alpha * A * X");
   fmt::print("\n\t###");
   fmt::print("\n\t### with ");
-  fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}", m, k,
+  fmt::print("\n\t### A, in CSC format, of size ({}, {}) with nnz = {}", m, k,
              nnz_in);
   fmt::print("\n\t### x, a dense matrix, of size ({}, {})", k, n);
   fmt::print("\n\t### y, a dense vector, of size ({}, {})", m, n);
