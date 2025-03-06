@@ -47,9 +47,9 @@ auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz,
 }
 
 template <typename T = float, typename I = index_t, typename O = I>
-auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz,
-                  std::size_t seed = 0) {
-  auto&& [values, rowind, colind, shape, _] =
+auto generate_csr_sorted(std::size_t m, std::size_t n, std::size_t nnz,
+                         std::size_t seed = 0) {
+  auto&& [values, rowind, colind, shape, nnz_] =
       generate_coo<T, I>(m, n, nnz, seed);
 
   std::vector<O> rowptr(m + 1);
@@ -59,6 +59,31 @@ auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz,
   std::exclusive_scan(rowptr.begin(), rowptr.end(), rowptr.begin(), O{});
 
   return std::tuple(values, rowptr, colind, shape, I(nnz));
+}
+
+template <typename T = float, typename I = index_t, typename O = I>
+auto generate_csr(std::size_t m, std::size_t n, std::size_t nnz,
+                  std::size_t seed = 0) {
+  auto&& [values, rowptr, colind, shape, nnz_] =
+      generate_csr_sorted<T, I, O>(m, n, nnz, seed);
+
+  for (std::size_t row = 0; row < m; row++) {
+    const auto row_begin = rowptr[row];
+    const auto row_end = rowptr[row + 1];
+    std::shuffle(colind.begin() + row_begin, colind.begin() + row_end,
+                 std::mt19937(seed));
+  }
+
+  return std::tuple(values, rowptr, colind, shape, I(nnz));
+}
+
+template <typename T = float, typename I = index_t, typename O = I>
+auto generate_csc_sorted(std::size_t m, std::size_t n, std::size_t nnz,
+                         std::size_t seed = 0) {
+  auto&& [values, colptr, rowind, shape_, nnz_] =
+      generate_csr_sorted<T, I, O>(n, m, nnz, seed);
+  return std::tuple(std::move(values), std::move(colptr), std::move(rowind),
+                    spblas::index<I>(m, n), I(nnz));
 }
 
 template <typename T = float, typename I = index_t, typename O = I>

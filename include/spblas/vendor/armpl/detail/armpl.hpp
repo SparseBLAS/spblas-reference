@@ -27,6 +27,21 @@ inline constexpr auto create_spmat_csr<std::complex<double>> =
     &armpl_spmat_create_csr_z;
 
 template <typename T>
+armpl_status_t (*create_spmat_csc)(armpl_spmat_t*, armpl_int_t, armpl_int_t,
+                                   const armpl_int_t*, const armpl_int_t*,
+                                   const T*, armpl_int_t);
+template <>
+inline constexpr auto create_spmat_csc<float> = &armpl_spmat_create_csc_s;
+template <>
+inline constexpr auto create_spmat_csc<double> = &armpl_spmat_create_csc_d;
+template <>
+inline constexpr auto create_spmat_csc<std::complex<float>> =
+    &armpl_spmat_create_csc_c;
+template <>
+inline constexpr auto create_spmat_csc<std::complex<double>> =
+    &armpl_spmat_create_csc_z;
+
+template <typename T>
 armpl_status_t (*create_spmat_dense)(armpl_spmat_t*, enum armpl_dense_layout,
                                      armpl_int_t, armpl_int_t, armpl_int_t,
                                      const T*, armpl_int_t);

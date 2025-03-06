@@ -6,6 +6,7 @@ add_executable(
   spmm_test.cpp
   spgemm_test.cpp
   add_test.cpp
+  transpose_test.cpp
   triangular_solve_test.cpp
 )
 
