@@ -42,7 +42,7 @@ inline constexpr auto create_spmat_dense<std::complex<double>> =
     &armpl_spmat_create_dense_z;
 
 template <typename T>
-armpl_status_t (*spmv_exec)(enum armpl_sparse_hint_value, armpl_spmat_t,
+armpl_status_t (*spmv_exec)(enum armpl_sparse_hint_value, T, armpl_spmat_t,
                             const T*, T, T*);
 template <>
 inline constexpr auto spmv_exec<float> = &armpl_spmv_exec_s;
@@ -68,7 +68,7 @@ inline constexpr auto spmm_exec<std::complex<double>> = &armpl_spmm_exec_z;
 
 template <typename T>
 armpl_status_t (*sptrsv_exec)(enum armpl_sparse_hint_value, armpl_spmat_t, T*,
-                              T, const T);
+                              T, const T*);
 template <>
 inline constexpr auto sptrsv_exec<float> = &armpl_spsv_exec_s;
 template <>
