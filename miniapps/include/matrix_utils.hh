@@ -10,13 +10,15 @@
 
 namespace miniapps {
 
-template <typename T> struct matrix_data_entry {
+template <typename T>
+struct matrix_data_entry {
   std::size_t row;
   std::size_t col;
   T value;
 };
 
-template <typename T> struct matrix_data {
+template <typename T>
+struct matrix_data {
   using nonzero_type = matrix_data_entry<T>;
 
   std::size_t num_rows;
@@ -102,7 +104,7 @@ template <typename T> struct matrix_data {
       if (diag_positions[i] < 0) {
         nonzeros.emplace_back(i, i, norms[i] * ratio);
       } else {
-        auto &diag_value = nonzeros[diag_positions[i]].value;
+        auto& diag_value = nonzeros[diag_positions[i]].value;
         const auto diag_magnitude = std::abs(diag_value);
         const auto offdiag_magnitude = norms[i];
         if (diag_magnitude < offdiag_magnitude * ratio) {

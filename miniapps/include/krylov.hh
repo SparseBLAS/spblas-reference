@@ -14,7 +14,7 @@ namespace miniapps {
  */
 template <typename T>
 class Krylov {
- public:
+public:
   Krylov(T eps, int max_iters) : eps{eps}, max_iters{max_iters} {}
 
   virtual ~Krylov() {}
@@ -23,14 +23,18 @@ class Krylov {
                                         const std::vector<T> b,
                                         std::vector<T> x) = 0;
 
-  T get_eps() { return eps; }
+  T get_eps() {
+    return eps;
+  }
 
-  int get_max_iters() { return max_iters; }
+  int get_max_iters() {
+    return max_iters;
+  }
 
   const T eps;
   const int max_iters;
 };
 
-}
+} // namespace miniapps
 
 #endif // MINIAPPS_KRYLOV_HH

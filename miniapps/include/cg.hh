@@ -14,7 +14,8 @@
 
 namespace miniapps {
 
-template <typename T> class CG : public Krylov<T> {
+template <typename T>
+class CG : public Krylov<T> {
 public:
   CG(T eps, int max_iters) : Krylov<T>{eps, max_iters} {}
 

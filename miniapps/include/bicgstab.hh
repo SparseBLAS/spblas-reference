@@ -13,7 +13,8 @@
 
 namespace miniapps {
 
-template <typename T> class BiCGSTAB : public Krylov<T> {
+template <typename T>
+class BiCGSTAB : public Krylov<T> {
 public:
   BiCGSTAB(T eps, int max_iters) : Krylov<T>{eps, max_iters} {}
 
