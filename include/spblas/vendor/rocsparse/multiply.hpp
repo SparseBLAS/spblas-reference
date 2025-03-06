@@ -9,12 +9,17 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+#include "allocator.hpp"
 #include "types.hpp"
 
 namespace spblas {
 
 class spmv_state_t {
 public:
+  spmv_state_t() : spmv_state_t(std::make_shared<detail::rocm_allocator>()) {
+    rocsparse_create_handle(&handle_);
+  }
+
   spmv_state_t(std::shared_ptr<const allocator> alloc)
       : alloc_(alloc), buffer_size_(0) {
     rocsparse_create_handle(&handle_);
@@ -49,7 +54,8 @@ public:
         rocsparse_index_type<typename matrix_type::index_type>(),
         rocsparse_index_base_zero, rocsparse_data_type<value_type>());
 
-    rocsparse_dnvec_descr vecb, vecc;
+    rocsparse_dnvec_descr vecb;
+    rocsparse_dnvec_descr vecc;
     rocsparse_create_dnvec_descr(
         &vecb, b_base.size(), b_base.data(),
         rocsparse_data_type<typename input_type::value_type>());
@@ -63,24 +69,24 @@ public:
     // TODO: create a compute type for mixed precision computation
     rocsparse_spmv(handle_, rocsparse_operation_none, &alpha_val, mat, vecb,
                    &beta, vecc, rocsparse_data_type<value_type>(),
-                   rocsparse_spmv_alg_csr_adaptive,
+                   rocsparse_spmv_alg_csr_stream,
                    rocsparse_spmv_stage_buffer_size, &buffer_size, nullptr);
     // only allocate the new workspace when the requiring workspace larger than
     // current
     if (buffer_size > buffer_size_) {
       buffer_size_ = buffer_size;
       alloc_->free(workspace_);
-      alloc_->alloc(&workspace_, buffer_size);
+      workspace_ = alloc_->alloc(buffer_size);
     }
 
     rocsparse_spmv(handle_, rocsparse_operation_none, &alpha_val, mat, vecb,
                    &beta, vecc, rocsparse_data_type<value_type>(),
-                   rocsparse_spmv_alg_csr_adaptive,
+                   rocsparse_spmv_alg_csr_stream,
                    rocsparse_spmv_stage_preprocess, &buffer_size, workspace_);
     rocsparse_spmv(handle_, rocsparse_operation_none, &alpha_val, mat, vecb,
                    &beta, vecc, rocsparse_data_type<value_type>(),
-                   rocsparse_spmv_alg_csr_adaptive,
-                   rocsparse_spmv_stage_compute, &buffer_size, workspace_);
+                   rocsparse_spmv_alg_csr_stream, rocsparse_spmv_stage_compute,
+                   &buffer_size, workspace_);
     rocsparse_destroy_spmat_descr(mat);
     rocsparse_destroy_dnvec_descr(vecc);
     rocsparse_destroy_dnvec_descr(vecb);
