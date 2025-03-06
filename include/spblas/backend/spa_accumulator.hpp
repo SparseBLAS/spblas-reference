@@ -25,6 +25,10 @@ public:
     return data_[pos];
   }
 
+  bool contains(I pos) {
+    return set_[pos];
+  }
+
   void clear() {
     for (auto&& pos : stored_) {
       set_[pos] = false;
