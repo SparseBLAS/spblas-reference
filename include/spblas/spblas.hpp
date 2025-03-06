@@ -1,6 +1,7 @@
 #pragma once
 
-#if defined(SPBLAS_ENABLE_ONEMKL_SYCL) || defined(SPBLAS_ENABLE_ARMPL)
+#if defined(SPBLAS_ENABLE_ONEMKL_SYCL) || defined(SPBLAS_ENABLE_ARMPL) ||      \
+    defined(SPBLAS_ENABLE_ROCSPARSE)
 #define SPBLAS_VENDOR_BACKEND true
 #endif
 

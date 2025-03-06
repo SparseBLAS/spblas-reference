@@ -11,6 +11,10 @@
 #include <spblas/vendor/armpl/types.hpp>
 #endif
 
+#ifdef SPBLAS_ENABLE_ROCSPARSE
+#include <spblas/vendor/rocsparse/types.hpp>
+#endif
+
 namespace spblas {
 
 #ifndef SPBLAS_VENDOR_BACKEND
