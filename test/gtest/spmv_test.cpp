@@ -82,9 +82,8 @@ TEST(CsrView, SpMV) {
         c_ref[i] += v * b[j];
       }
     }
-    spblas::spmv_state_t spmv_state;
 
-    spblas::multiply(spmv_state, a, b_span, c_span);
+    spblas::multiply(a, b_span, c_span);
 
     copy_to_host(m, dc.get_const_data(), c.data());
     for (I i = 0; i < c_ref.size(); i++) {
@@ -129,9 +128,8 @@ TEST(CsrView, SpMV_Ascaled) {
           c_ref[i] += alpha * v * b[j];
         }
       }
-      spblas::spmv_state_t spmv_state;
 
-      spblas::multiply(spmv_state, spblas::scaled(alpha, a), b_span, c_span);
+      spblas::multiply(spblas::scaled(alpha, a), b_span, c_span);
 
       copy_to_host(m, dc.get_const_data(), c.data());
       for (I i = 0; i < c_ref.size(); i++) {
@@ -177,9 +175,8 @@ TEST(CsrView, SpMV_BScaled) {
           c_ref[i] += v * alpha * b[j];
         }
       }
-      spblas::spmv_state_t spmv_state;
 
-      spblas::multiply(spmv_state, a, spblas::scaled(alpha, b_span), c_span);
+      spblas::multiply(a, spblas::scaled(alpha, b_span), c_span);
 
       copy_to_host(m, dc.get_const_data(), c.data());
       for (I i = 0; i < c_ref.size(); i++) {
