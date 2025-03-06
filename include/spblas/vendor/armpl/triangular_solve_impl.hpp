@@ -36,14 +36,10 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   T alpha = alpha_optional.value_or(1);
 
-  armpl_spmat_t a_handle;
+  armpl_spmat_t a_handle = __armpl::create_matrix_handle(a_base);
 
   // Optimistically try the solve without a copy, in case the matrix is already
   // triangular
-  __armpl::create_spmat_csr<tensor_scalar_t<A>>(
-      &a_handle, m, n, a_base.rowptr().data(), a_base.colind().data(),
-      a_base.values().data(), ARMPL_SPARSE_CREATE_NOCOPY);
-
   auto stat = __armpl::sptrsv_exec<tensor_scalar_t<A>>(
       ARMPL_SPARSE_OPERATION_NOTRANS, a_handle, __ranges::data(x), alpha,
       __ranges::data(b_base));
