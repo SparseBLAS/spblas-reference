@@ -15,7 +15,7 @@ public:
   auto generate_spd_problem(std::size_t m, std::size_t n, std::size_t nnz_input,
                             std::size_t seed = 0) {
     auto&& [values_orig, rowind_orig, colind_orig, shape, nnz_orig] =
-        spblas::generate_coo<T>(m, n, nnz_input, seed);
+        spblas::generate_coo<T, spblas::index_t>(m, n, nnz_input, seed);
     miniapps::matrix_data<T> data(rowind_orig, colind_orig, values_orig, shape);
     data.sort_row_major();
     data.make_symmetric();

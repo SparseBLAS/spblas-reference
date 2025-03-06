@@ -17,17 +17,17 @@ struct matrix_data_entry {
   T value;
 };
 
-template <typename T>
+template <typename T, typename I = spblas::index_t>
 struct matrix_data {
   using nonzero_type = matrix_data_entry<T>;
 
-  std::size_t num_rows;
-  std::size_t num_cols;
+  I num_rows;
+  I num_cols;
   std::vector<nonzero_type> nonzeros;
 
-  matrix_data(std::vector<std::size_t> rowind, std::vector<std::size_t> colind,
-              std::vector<T> values, spblas::index<std::size_t> shape)
-      : num_rows{shape[0]}, num_cols{shape[1]} {
+  matrix_data(std::vector<I> rowind, std::vector<I> colind,
+              std::vector<T> values, spblas::index<I> shape)
+      : num_rows(shape[0]), num_cols(shape[1]) {
     assert(rowind.size() == colind.size() && rowind.size() == values.size());
     for (std::size_t i = 0; i < values.size(); i++) {
       nonzeros.emplace_back(rowind[i], colind[i], values[i]);
@@ -37,8 +37,8 @@ struct matrix_data {
   auto convert_to_coo() {
     auto nnz = nonzeros.size();
     std::vector<T> values(nnz);
-    std::vector<std::size_t> rowind(nnz);
-    std::vector<std::size_t> colind(nnz);
+    std::vector<I> rowind(nnz);
+    std::vector<I> colind(nnz);
 
     for (std::size_t i = 0; i < nnz; i++) {
       values[i] = nonzeros[i].value;
