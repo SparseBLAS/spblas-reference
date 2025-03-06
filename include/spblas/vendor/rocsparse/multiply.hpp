@@ -103,8 +103,18 @@ template <matrix A, vector B, vector C>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
-void multiply(spmv_state_t& spmv_handle, A&& a, B&& b, C&& c) {
-  spmv_handle.multiply(a, b, c);
+void multiply(spmv_state_t& spmv_state, A&& a, B&& b, C&& c) {
+  spmv_state.multiply(a, b, c);
+}
+
+// simple function without state
+template <matrix A, vector B, vector C>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<C>
+void multiply(A&& a, B&& b, C&& c) {
+  spmv_state_t spmv_state;
+  spmv_state.multiply(a, b, c);
 }
 
 } // namespace spblas
