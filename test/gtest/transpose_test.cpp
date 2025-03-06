@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include "util.hpp"
-#include <spblas/algorithms/transpose.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/spblas.hpp>
 
