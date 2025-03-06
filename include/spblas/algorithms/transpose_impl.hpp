@@ -1,8 +1,8 @@
 #pragma once
 
-#include "spblas/detail/view_inspectors.hpp"
 #include <spblas/concepts.hpp>
 #include <spblas/detail/operation_info_t.hpp>
+#include <spblas/detail/view_inspectors.hpp>
 
 namespace spblas {
 
