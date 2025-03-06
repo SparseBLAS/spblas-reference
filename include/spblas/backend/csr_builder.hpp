@@ -26,15 +26,23 @@ public:
 
     while (i_ < row_index) {
       view_.rowptr()[i_ + 1] = j_ptr_;
+      i_++;
     }
 
     for (auto&& [j, v] : row) {
       view_.values()[j_ptr_] = v;
       view_.colind()[j_ptr_] = j;
-      ++j_ptr_;
+      j_ptr_++;
     }
     view_.rowptr()[i_ + 1] = j_ptr_;
     i_++;
+  }
+
+  void finish() {
+    while (i_ < view_.shape()[0]) {
+      view_.rowptr()[i_ + 1] = j_ptr_;
+      i_++;
+    }
   }
 
 private:

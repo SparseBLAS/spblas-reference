@@ -13,14 +13,15 @@ operation_info_t transpose_inspect(A&& a, B&& b) {
 
 template <matrix A, matrix B>
   requires(__detail::is_csr_view_v<A> && __detail::is_csr_view_v<B>)
-void transpose(operation_info_t& info, A&& a, B&& b) {
+void transpose(A&& a, B&& b) {
   if (__backend::shape(a)[0] != __backend::shape(b)[1] ||
       __backend::shape(a)[1] != __backend::shape(b)[0]) {
     throw std::invalid_argument(
         "transpose: matrix dimensions are incompatible.");
   }
-  if (__backend::size(a) != __backend::size(b)) {
-    throw std::invalid_argument("transpose: matrix nnz are incompatible.");
+  if (b.values().size() < __backend::size(a) ||
+      b.colind().size() < __backend::size(a)) {
+    throw std::runtime_error("transpose: Transpose ran out of memory.");
   }
   using O = tensor_offset_t<B>;
 
@@ -47,6 +48,14 @@ void transpose(operation_info_t& info, A&& a, B&& b) {
       b_rowptr[j + 1]++;
     }
   }
+
+  b.update(b.values(), b.rowptr(), b.colind(), b.shape(), a.size());
+}
+
+template <matrix A, matrix B>
+  requires(__detail::is_csr_view_v<A> && __detail::is_csr_view_v<B>)
+void transpose(operation_info_t& info, A&& a, B&& b) {
+  transpose(std::forward<A>(a), std::forward<B>(b));
 }
 
 } // namespace spblas

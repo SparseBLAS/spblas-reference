@@ -212,6 +212,8 @@ std::optional<T> sparse_dot_product(A&& a, B&& b) {
     if (a_i == b_i) {
       sum += a_v * b_v;
       implicit_zero = false;
+      ++a_iter;
+      ++b_iter;
     } else if (a_i < b_i) {
       ++a_iter;
     } else {
@@ -268,6 +270,7 @@ void multiply(A&& a, B&& b, C&& c) {
       }
     }
   }
+  c_builder.finish();
   c.update(c.values(), c.rowptr(), c.colind(), c.shape(),
            c.rowptr()[c.shape()[0]]);
 }

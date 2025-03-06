@@ -8,6 +8,7 @@
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
+#include <spblas/vendor/onemkl_sycl/detail/create_matrix_handle.hpp>
 
 //
 // Defines the following APIs for SpGEMM:
@@ -23,8 +24,9 @@
 namespace spblas {
 
 template <matrix A, matrix B, matrix C>
-  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-           __detail::is_csr_view_v<C>
+  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+          (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
+          __detail::is_csr_view_v<C>
 operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
@@ -34,38 +36,15 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   using oneapi::mkl::sparse::matmat_request;
   using oneapi::mkl::sparse::matrix_view_descr;
 
-  oneapi::mkl::sparse::matmat_descr_t descr = nullptr;
-
   sycl::queue q(sycl::cpu_selector_v);
-
-  oneapi::mkl::sparse::init_matmat_descr(&descr);
-
-  oneapi::mkl::sparse::set_matmat_data(
-      descr, matrix_view_descr::general, transpose::nontrans, // view/op for A
-      matrix_view_descr::general, transpose::nontrans,        // view/op for B
-      matrix_view_descr::general);                            // view for C
-
-  oneapi::mkl::sparse::matrix_handle_t a_handle, b_handle, c_handle;
-  a_handle = b_handle = c_handle = nullptr;
-
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-  oneapi::mkl::sparse::init_matrix_handle(&b_handle);
-  oneapi::mkl::sparse::init_matrix_handle(&c_handle);
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, b_handle, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
-      oneapi::mkl::index_base::zero, b_base.rowptr().data(),
-      b_base.colind().data(), b_base.values().data())
-      .wait();
 
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
+
+  oneapi::mkl::sparse::matrix_handle_t a_handle =
+      __mkl::create_matrix_handle(q, a_base);
+  oneapi::mkl::sparse::matrix_handle_t b_handle =
+      __mkl::create_matrix_handle(q, b_base);
 
   I* c_rowptr;
   if (c.rowptr().size() >= __backend::shape(c)[0] + 1) {
@@ -74,10 +53,22 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
     c_rowptr = sycl::malloc_device<I>(__backend::shape(c)[0] + 1, q);
   }
 
+  oneapi::mkl::sparse::matrix_handle_t c_handle = nullptr;
+  oneapi::mkl::sparse::init_matrix_handle(&c_handle);
+
   oneapi::mkl::sparse::set_csr_data(
       q, c_handle, __backend::shape(c)[0], __backend::shape(c)[1],
       oneapi::mkl::index_base::zero, c_rowptr, (I*) nullptr, (T*) nullptr)
       .wait();
+
+  oneapi::mkl::sparse::matmat_descr_t descr = nullptr;
+  oneapi::mkl::sparse::init_matmat_descr(&descr);
+
+  oneapi::mkl::sparse::set_matmat_data(
+      descr, matrix_view_descr::general,
+      __mkl::get_transpose(a),                             // view/op for A
+      matrix_view_descr::general, __mkl::get_transpose(b), // view/op for B
+      matrix_view_descr::general);                         // view for C
 
   auto ev1 = oneapi::mkl::sparse::matmat(q, a_handle, b_handle, c_handle,
                                          matmat_request::work_estimation, descr,
@@ -113,8 +104,9 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 }
 
 template <matrix A, matrix B, matrix C>
-  requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
-           __detail::is_csr_view_v<C>
+  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+          (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
+          __detail::is_csr_view_v<C>
 void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
 
   log_trace("");
