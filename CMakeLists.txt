@@ -107,6 +107,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   # TODO: enable test for gpu library
   if(NOT ENABLE_ROCSPARSE)
     add_subdirectory(examples)
-    add_subdirectory(test)
   endif()
+  add_subdirectory(test)
 endif()
