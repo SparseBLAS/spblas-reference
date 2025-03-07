@@ -13,3 +13,7 @@
 #ifdef SPBLAS_ENABLE_ARMPL
 #include <spblas/vendor/armpl/armpl.hpp>
 #endif
+
+#ifdef SPBLAS_ENABLE_ROCSPARSE
+#include <spblas/vendor/rocsparse/rocsparse.hpp>
+#endif
