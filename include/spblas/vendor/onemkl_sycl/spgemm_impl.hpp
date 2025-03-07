@@ -153,8 +153,9 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
 }
 
 template <matrix A, matrix B, matrix C>
-  requires __detail::has_csc_base<A> && __detail::has_csc_base<B> &&
-           __detail::is_csc_view_v<C>
+  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+          (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
+          __detail::is_csc_view_v<C>
 operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   return multiply_compute(transposed(b), transposed(a), transposed(c));
 }
