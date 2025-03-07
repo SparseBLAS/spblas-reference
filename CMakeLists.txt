@@ -31,6 +31,12 @@ if (ENABLE_ARMPL)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
 endif()
 
+if (ENABLE_CUSPARSE)
+  find_package(CUDAToolkit REQUIRED)
+  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
@@ -88,6 +94,11 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 11.1.3)
   FetchContent_MakeAvailable(fmt)
 
-  add_subdirectory(examples)
-  add_subdirectory(test)
+  # TODO: enable test for gpu library
+  if(ENABLE_CUSPARSE)
+    add_subdirectory(device_examples)
+  else()
+    add_subdirectory(examples)
+    add_subdirectory(test)
+  endif()
 endif()
