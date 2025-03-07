@@ -31,6 +31,18 @@ if (ENABLE_ARMPL)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
 endif()
 
+if (ENABLE_AOCLSPARSE)
+  if (NOT DEFINED ENV{AOCLSPARSE_DIR})
+    message(FATAL_ERROR "Environment variable AOCLSPARSE_DIR must be set when the AOCLSPARSE is enabled.")
+  endif()
+  if (NOT DEFINED ENV{AOCLUTILS_DIR})
+    message(FATAL_ERROR "Environment variable AOCLUTILS_DIR must be set when the AOCLSPARSE is enabled.")
+  endif()
+  target_include_directories(spblas INTERFACE $ENV{AOCLSPARSE_DIR}/include $ENV{AOCLUTILS_DIR}/include)
+  target_link_libraries(spblas INTERFACE $ENV{AOCLSPARSE_DIR}/lib/libaoclsparse.a $ENV{AOCLUTILS_DIR}/lib/libaoclutils.a)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_AOCLSPARSE")
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
