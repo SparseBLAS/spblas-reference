@@ -26,21 +26,47 @@ public:
 
     while (i_ < row_index) {
       view_.rowptr()[i_ + 1] = j_ptr_;
+      i_++;
     }
 
     for (auto&& [j, v] : row) {
       view_.values()[j_ptr_] = v;
       view_.colind()[j_ptr_] = j;
-      ++j_ptr_;
+      j_ptr_++;
     }
     view_.rowptr()[i_ + 1] = j_ptr_;
     i_++;
+  }
+
+  void finish() {
+    while (i_ < view_.shape()[0]) {
+      view_.rowptr()[i_ + 1] = j_ptr_;
+      i_++;
+    }
   }
 
 private:
   csr_view<T, I, O> view_;
   O j_ptr_ = 0;
   I i_ = 0;
+};
+
+template <typename T, std::integral I = index_t, std::integral O = I>
+class csc_builder {
+public:
+  csc_builder(csc_view<T, I, O> view) : builder_(transposed(view)) {}
+
+  template <__ranges::forward_range Column>
+  void insert_column(I column_index, Column&& column) {
+    builder_.insert_row(column_index, std::forward<Column>(column));
+  }
+
+  void finish() {
+    builder_.finish();
+  }
+
+private:
+  csr_builder<T, I> builder_;
 };
 
 } // namespace __backend

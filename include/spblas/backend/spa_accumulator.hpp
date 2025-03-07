@@ -2,7 +2,6 @@
 
 #include <functional>
 #include <span>
-#include <spblas/detail/ranges.hpp>
 #include <tuple>
 #include <vector>
 
@@ -23,6 +22,10 @@ public:
       set_[pos] = true;
     }
     return data_[pos];
+  }
+
+  bool contains(I pos) {
+    return set_[pos];
   }
 
   void clear() {

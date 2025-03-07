@@ -87,7 +87,7 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
            (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
-           __detail::is_csr_view_v<C>)
+           (__detail::is_csr_view_v<C> || __detail::is_csc_view_v<C>) )
 operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
@@ -117,42 +117,12 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
            (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
-           __detail::is_csr_view_v<C>)
+           (__detail::is_csr_view_v<C> || __detail::is_csc_view_v<C>) )
 void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
   log_trace("");
-  auto a_handle = info.state_.a_handle;
-  auto b_handle = info.state_.b_handle;
   auto c_handle = info.state_.c_handle;
 
-  armpl_int_t m, n;
-  auto nnz = info.result_nnz();
-  armpl_int_t *rowptr, *colind;
-  tensor_scalar_t<C>* values;
-  __armpl::export_spmat_csr<tensor_scalar_t<C>>(c_handle, 0, &m, &n, &rowptr,
-                                                &colind, &values);
-
-  std::copy(values, values + nnz, c.values().begin());
-  std::copy(colind, colind + nnz, c.colind().begin());
-  std::copy(rowptr, rowptr + m + 1, c.rowptr().begin());
-
-  free(values);
-  free(rowptr);
-  free(colind);
-}
-
-template <matrix A, matrix B, matrix C>
-  requires __detail::has_csc_base<A> && __detail::has_csc_base<B> &&
-           __detail::is_csc_view_v<C>
-operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
-  return multiply_compute(transposed(b), transposed(a), transposed(c));
-}
-
-template <matrix A, matrix B, matrix C>
-  requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
-           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
-           __detail::is_csc_view_v<C>)
-void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
-  multiply_fill(info, transposed(b), transposed(a), transposed(c));
+  __armpl::export_matrix_handle(info, c, c_handle);
 }
 
 } // namespace spblas

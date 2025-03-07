@@ -11,13 +11,14 @@ namespace spblas {
 /*
   The following types fulfill the matrix concept:
   - Instantiations of csr_view<...>
+  - Instantiations of csc_view<...>
   - Instantiations of mdspan<...> with rank 2
   - Instantiations of scaled_view<T> where M is a matrix
 */
 
 template <typename M>
 concept matrix =
-    __detail::is_csr_view_v<M> ||
+    __detail::is_csr_view_v<M> || __detail::is_csc_view_v<M> ||
     __detail::is_matrix_instantiation_of_mdspan_v<M> || __detail::matrix<M>;
 
 /*
