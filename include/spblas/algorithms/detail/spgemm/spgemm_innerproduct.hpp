@@ -105,7 +105,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
 // C = AB
 // CSR * CSC -> CSC
-// SpGEMM (Inner Product)
+// SpGEMM (Inner Product, transposed)
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::column_iterable<B> &&
            __detail::is_csc_view_v<C>)
@@ -118,44 +118,12 @@ void multiply(A&& a, B&& b, C&& c) {
         "multiply: matrix dimensions are incompatible.");
   }
 
-  using T = tensor_scalar_t<C>;
-  using I = tensor_index_t<C>;
-
-  __backend::spa_accumulator<T, I> dot_product_acc(__backend::shape(a)[1]);
-  __backend::spa_accumulator<T, I> c_column(__backend::shape(c)[1]);
-  __backend::csc_builder c_builder(c);
-
-  for (auto&& [j, b_column] : __backend::columns(b)) {
-    c_column.clear();
-
-    if (!__ranges::empty(b_column)) {
-      for (auto&& [i, a_row] : __backend::rows(a)) {
-        if (!__ranges::empty(a_row)) {
-          auto v =
-              __detail::sparse_dot_product<T>(dot_product_acc, a_row, b_column);
-
-          if (v.has_value()) {
-            c_column[i] += v.value();
-          }
-        }
-      }
-      c_column.sort();
-
-      try {
-        c_builder.insert_column(j, c_column.get());
-      } catch (...) {
-        throw std::runtime_error("multiply: SpGEMM ran out of memory.");
-      }
-    }
-  }
-  c_builder.finish();
-  c.update(c.values(), c.colptr(), c.rowind(), c.shape(),
-           c.colptr()[c.shape()[1]]);
+  return multiply(transposed(b), transposed(a), transposed(c));
 }
 
 // C = AB
 // CSR * CSC -> CSC
-// SpGEMM (Inner Product)
+// SpGEMM (Inner Product, transposed)
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::column_iterable<B> &&
            __detail::is_csc_view_v<C>)
@@ -168,30 +136,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
         "multiply: matrix dimensions are incompatible.");
   }
 
-  using T = tensor_scalar_t<C>;
-  using I = tensor_index_t<C>;
-  using O = tensor_offset_t<C>;
-
-  O nnz = 0;
-
-  __backend::spa_accumulator<T, I> dot_product_acc(__backend::shape(a)[1]);
-
-  for (auto&& [j, b_column] : __backend::columns(b)) {
-    if (!__ranges::empty(b_column)) {
-      for (auto&& [i, a_row] : __backend::rows(a)) {
-        if (!__ranges::empty(a_row)) {
-          auto v =
-              __detail::sparse_dot_product<T>(dot_product_acc, a_row, b_column);
-
-          if (v.has_value()) {
-            nnz++;
-          }
-        }
-      }
-    }
-  }
-
-  return operation_info_t{__backend::shape(c), nnz};
+  return multiply_compute(transposed(b), transposed(a), transposed(c));
 }
 
 } // namespace spblas
