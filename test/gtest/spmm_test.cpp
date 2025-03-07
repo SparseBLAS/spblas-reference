@@ -179,3 +179,45 @@ TEST(CsrView, SpMM_Aopt) {
     }
   }
 }
+
+TEST(CscView, SpMM) {
+  namespace md = spblas::__mdspan;
+
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto [m, k, nnz] : util::dims) {
+    for (auto n : {1, 8, 32, 64, 512}) {
+      auto [values, colptr, rowind, shape, _] =
+          spblas::generate_csc<T, I>(m, k, nnz);
+
+      spblas::csc_view<T, I> a(values, colptr, rowind, shape, nnz);
+
+      auto [b_values, b_shape] = spblas::generate_dense<T>(k, n);
+
+      std::vector<T> c_values(m * n, 0);
+
+      md::mdspan b(b_values.data(), k, n);
+      md::mdspan c(c_values.data(), m, n);
+
+      spblas::multiply(a, b, c);
+
+      std::vector<T> c_ref(m * n, 0);
+
+      for (I k_ = 0; k_ < k; k_++) {
+        for (I i_ptr = colptr[k_]; i_ptr < colptr[k_ + 1]; i_ptr++) {
+          I i = rowind[i_ptr];
+          T v = values[i_ptr];
+
+          for (I j = 0; j < n; j++) {
+            c_ref[i * n + j] += v * b_values[k_ * n + j];
+          }
+        }
+      }
+
+      for (I i = 0; i < c_ref.size(); i++) {
+        EXPECT_EQ_(c_ref[i], c_values[i]);
+      }
+    }
+  }
+}

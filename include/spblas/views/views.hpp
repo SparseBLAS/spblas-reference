@@ -1,5 +1,6 @@
 #pragma once
 
+#include <spblas/views/csc_view.hpp>
 #include <spblas/views/csr_view.hpp>
 #include <spblas/views/inspectors.hpp>
 #include <spblas/views/matrix_opt.hpp>

@@ -46,6 +46,16 @@ struct rows_fn_ {
 
 inline constexpr auto rows = rows_fn_{};
 
+struct columns_fn_ {
+  template <typename T>
+    requires(spblas::is_tag_invocable_v<columns_fn_, T>)
+  constexpr auto operator()(T&& t) const {
+    return spblas::tag_invoke(columns_fn_{}, std::forward<T>(t));
+  }
+};
+
+inline constexpr auto columns = columns_fn_{};
+
 struct lookup_fn_ {
   template <typename T, typename... Args>
     requires(spblas::is_tag_invocable_v<lookup_fn_, T, Args...>)
@@ -69,6 +79,18 @@ struct lookup_row_fn_ {
 };
 
 inline constexpr auto lookup_row = lookup_row_fn_{};
+
+struct lookup_column_fn_ {
+  template <typename T, typename... Args>
+    requires(spblas::is_tag_invocable_v<lookup_column_fn_, T, Args...>)
+  constexpr tag_invoke_result_t<lookup_column_fn_, T, Args...>
+  operator()(T&& t, Args&&... args) const {
+    return spblas::tag_invoke(lookup_column_fn_{}, std::forward<T>(t),
+                              std::forward<Args>(args)...);
+  }
+};
+
+inline constexpr auto lookup_column = lookup_column_fn_{};
 
 } // namespace __backend
 

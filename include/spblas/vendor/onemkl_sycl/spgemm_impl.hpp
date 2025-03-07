@@ -4,6 +4,7 @@
 
 #include <spblas/detail/log.hpp>
 
+#include <spblas/algorithms/transposed.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
@@ -157,6 +158,21 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
   if (alpha_optional.has_value()) {
     scale(alpha, c);
   }
+}
+
+template <matrix A, matrix B, matrix C>
+  requires __detail::has_csc_base<A> && __detail::has_csc_base<B> &&
+           __detail::is_csc_view_v<C>
+operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
+  return multiply_compute(transposed(b), transposed(a), transposed(c));
+}
+
+template <matrix A, matrix B, matrix C>
+  requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
+           __detail::is_csc_view_v<C>)
+void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
+  multiply_fill(info, transposed(b), transposed(a), transposed(c));
 }
 
 } // namespace spblas

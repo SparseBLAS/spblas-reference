@@ -5,10 +5,16 @@
 
 namespace spblas {
 
-// Customization point implementations for csr_view.
+// Customization point implementations for csr_view and csc_view.
 
 template <typename M>
   requires(__detail::is_csr_view_v<M>)
+auto tag_invoke(__backend::size_fn_, M&& m) {
+  return m.size();
+}
+
+template <typename M>
+  requires(__detail::is_csc_view_v<M>)
 auto tag_invoke(__backend::size_fn_, M&& m) {
   return m.size();
 }
@@ -20,7 +26,19 @@ auto tag_invoke(__backend::shape_fn_, M&& m) {
 }
 
 template <typename M>
+  requires(__detail::is_csc_view_v<M>)
+auto tag_invoke(__backend::shape_fn_, M&& m) {
+  return m.shape();
+}
+
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
+auto tag_invoke(__backend::values_fn_, M&& m) {
+  return m.values();
+}
+
+template <typename M>
+  requires(__detail::is_csc_view_v<M>)
 auto tag_invoke(__backend::values_fn_, M&& m) {
   return m.values();
 }
@@ -47,6 +65,26 @@ auto row(M&& m, typename std::remove_cvref_t<M>::index_type row_index) {
   return __ranges::views::zip(column_indices, row_values);
 }
 
+template <typename M>
+  requires(__detail::is_csc_view_v<M>)
+auto column(M&& m, typename std::remove_cvref_t<M>::index_type column_index) {
+  using O = typename std::remove_cvref_t<M>::offset_type;
+  O first = m.colptr()[column_index];
+  O last = m.colptr()[column_index + 1];
+
+  using row_iter_t = decltype(m.rowind().data());
+  using value_iter_t = decltype(m.values().data());
+
+  __ranges::subrange<row_iter_t> column_indices(
+      __ranges::next(m.rowind().data(), first),
+      __ranges::next(m.rowind().data(), last));
+  __ranges::subrange<value_iter_t> column_values(
+      __ranges::next(m.values().data(), first),
+      __ranges::next(m.values().data(), last));
+
+  return __ranges::views::zip(column_indices, column_values);
+}
+
 } // namespace
 
 template <typename M>
@@ -63,11 +101,33 @@ auto tag_invoke(__backend::rows_fn_, M&& m) {
 }
 
 template <typename M>
+  requires(__detail::is_csc_view_v<M>)
+auto tag_invoke(__backend::columns_fn_, M&& m) {
+  using I = typename std::remove_cvref_t<M>::index_type;
+  auto column_indices = __ranges::views::iota(I(0), I(m.shape()[1]));
+
+  auto column_values =
+      column_indices | __ranges::views::transform([=](auto column_index) {
+        return column(m, column_index);
+      });
+
+  return __ranges::views::zip(column_indices, column_values);
+}
+
+template <typename M>
   requires(__detail::is_csr_view_v<M>)
 auto tag_invoke(__backend::lookup_row_fn_, M&& m,
                 typename std::remove_cvref_t<M>::index_type row_index) {
   using I = typename std::remove_cvref_t<M>::index_type;
   return row(m, row_index);
+}
+
+template <typename M>
+  requires(__detail::is_csc_view_v<M>)
+auto tag_invoke(__backend::lookup_column_fn_, M&& m,
+                typename std::remove_cvref_t<M>::index_type column_index) {
+  using I = typename std::remove_cvref_t<M>::index_type;
+  return column(m, column_index);
 }
 
 // Customization point implementations for vectors
