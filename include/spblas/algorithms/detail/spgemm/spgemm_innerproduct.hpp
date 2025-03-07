@@ -83,16 +83,16 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   O nnz = 0;
 
-  __backend::spa_accumulator<T, I> dot_product_acc(__backend::shape(a)[1]);
+  __backend::spa_set<I> dot_product_acc(__backend::shape(a)[1]);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     if (!__ranges::empty(a_row)) {
       for (auto&& [j, b_column] : __backend::columns(b)) {
         if (!__ranges::empty(b_column)) {
           auto v =
-              __detail::sparse_dot_product<T>(dot_product_acc, a_row, b_column);
+              __detail::sparse_intersection(dot_product_acc, a_row, b_column);
 
-          if (v.has_value()) {
+          if (v) {
             nnz++;
           }
         }

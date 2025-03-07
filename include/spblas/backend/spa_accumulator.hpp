@@ -2,7 +2,6 @@
 
 #include <functional>
 #include <span>
-#include <spblas/detail/ranges.hpp>
 #include <tuple>
 #include <vector>
 

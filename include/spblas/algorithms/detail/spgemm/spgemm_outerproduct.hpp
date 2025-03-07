@@ -7,7 +7,7 @@
 #include <spblas/algorithms/detail/sparse_dot_product.hpp>
 #include <spblas/algorithms/transposed.hpp>
 #include <spblas/backend/csr_builder.hpp>
-#include <spblas/backend/spa_accumulator.hpp>
+#include <spblas/backend/hash_accumulator.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 
 namespace spblas {
@@ -30,7 +30,7 @@ void multiply(A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
 
-  std::vector<__backend::spa_accumulator<T, I>> row_accumulators;
+  std::vector<__backend::hash_accumulator<T, I>> row_accumulators;
 
   for (std::size_t i = 0; i < __backend::shape(c)[0]; i++) {
     row_accumulators.emplace_back(__backend::shape(c)[1]);
@@ -80,7 +80,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   using I = tensor_index_t<C>;
   using O = tensor_offset_t<C>;
 
-  std::vector<__backend::spa_accumulator<T, I>> row_accumulators;
+  std::vector<__backend::hash_accumulator<T, I>> row_accumulators;
 
   for (std::size_t i = 0; i < __backend::shape(c)[0]; i++) {
     row_accumulators.emplace_back(__backend::shape(c)[1]);
