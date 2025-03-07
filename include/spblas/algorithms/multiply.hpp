@@ -26,4 +26,7 @@ void multiply_compute(operation_info_t& info, A&& a, B&& b, C&& c);
 template <matrix A, matrix B, matrix C>
 void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c);
 
+template <matrix A, matrix B, matrix C>
+void multiply_fill_update(operation_info_t& info, A&& a, B&& b, C&& c);
+
 } // namespace spblas
