@@ -10,24 +10,23 @@
 #include <spblas/detail/view_inspectors.hpp>
 
 #include "allocator.hpp"
+#include "exception.hpp"
 #include "types.hpp"
 
 namespace spblas {
 
 class spmv_state_t {
 public:
-  spmv_state_t() : spmv_state_t(std::make_shared<detail::rocm_allocator>()) {
-    rocsparse_create_handle(&handle_);
-  }
+  spmv_state_t() : spmv_state_t(std::make_shared<detail::rocm_allocator>()) {}
 
-  spmv_state_t(std::shared_ptr<const allocator> alloc)
-      : alloc_(alloc), buffer_size_(0) {
-    rocsparse_create_handle(&handle_);
+  spmv_state_t(std::shared_ptr<allocator> alloc)
+      : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
+    detail::throw_if_error(rocsparse_create_handle(&handle_));
   }
 
   ~spmv_state_t() {
     alloc_->free(workspace_);
-    rocsparse_destroy_handle(handle_);
+    detail::throw_if_error(rocsparse_destroy_handle(handle_));
   }
 
   template <matrix A, vector B, vector C>
@@ -46,31 +45,29 @@ public:
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
 
     rocsparse_spmat_descr mat;
-    rocsparse_create_csr_descr(
+    detail::throw_if_error(rocsparse_create_csr_descr(
         &mat, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
         a_base.values().size(), a_base.rowptr().data(), a_base.colind().data(),
         a_base.values().data(),
-        rocsparse_index_type<typename matrix_type::offset_type>(),
-        rocsparse_index_type<typename matrix_type::index_type>(),
-        rocsparse_index_base_zero, rocsparse_data_type<value_type>());
-
+        to_rocsparse_indextype<typename matrix_type::offset_type>(),
+        to_rocsparse_indextype<typename matrix_type::index_type>(),
+        rocsparse_index_base_zero, to_rocsparse_datatype<value_type>()));
     rocsparse_dnvec_descr vecb;
     rocsparse_dnvec_descr vecc;
-    rocsparse_create_dnvec_descr(
+    detail::throw_if_error(rocsparse_create_dnvec_descr(
         &vecb, b_base.size(), b_base.data(),
-        rocsparse_data_type<typename input_type::value_type>());
-    rocsparse_create_dnvec_descr(
+        to_rocsparse_datatype<typename input_type::value_type>()));
+    detail::throw_if_error(rocsparse_create_dnvec_descr(
         &vecc, c.size(), c.data(),
-        rocsparse_data_type<typename output_type::value_type>());
-
+        to_rocsparse_datatype<typename output_type::value_type>()));
     value_type alpha_val = alpha;
     value_type beta = 0.0;
     long unsigned int buffer_size = 0;
     // TODO: create a compute type for mixed precision computation
-    rocsparse_spmv(handle_, rocsparse_operation_none, &alpha_val, mat, vecb,
-                   &beta, vecc, rocsparse_data_type<value_type>(),
-                   rocsparse_spmv_alg_csr_stream,
-                   rocsparse_spmv_stage_buffer_size, &buffer_size, nullptr);
+    detail::throw_if_error(rocsparse_spmv(
+        handle_, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
+        to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
+        rocsparse_spmv_stage_buffer_size, &buffer_size, nullptr));
     // only allocate the new workspace when the requiring workspace larger than
     // current
     if (buffer_size > buffer_size_) {
@@ -78,23 +75,22 @@ public:
       alloc_->free(workspace_);
       workspace_ = alloc_->alloc(buffer_size);
     }
-
-    rocsparse_spmv(handle_, rocsparse_operation_none, &alpha_val, mat, vecb,
-                   &beta, vecc, rocsparse_data_type<value_type>(),
-                   rocsparse_spmv_alg_csr_stream,
-                   rocsparse_spmv_stage_preprocess, &buffer_size, workspace_);
-    rocsparse_spmv(handle_, rocsparse_operation_none, &alpha_val, mat, vecb,
-                   &beta, vecc, rocsparse_data_type<value_type>(),
-                   rocsparse_spmv_alg_csr_stream, rocsparse_spmv_stage_compute,
-                   &buffer_size, workspace_);
-    rocsparse_destroy_spmat_descr(mat);
-    rocsparse_destroy_dnvec_descr(vecc);
-    rocsparse_destroy_dnvec_descr(vecb);
+    detail::throw_if_error(rocsparse_spmv(
+        handle_, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
+        to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
+        rocsparse_spmv_stage_preprocess, &buffer_size_, workspace_));
+    detail::throw_if_error(rocsparse_spmv(
+        handle_, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
+        to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
+        rocsparse_spmv_stage_compute, &buffer_size_, workspace_));
+    detail::throw_if_error(rocsparse_destroy_spmat_descr(mat));
+    detail::throw_if_error(rocsparse_destroy_dnvec_descr(vecc));
+    detail::throw_if_error(rocsparse_destroy_dnvec_descr(vecb));
   }
 
 private:
   rocsparse_handle handle_;
-  std::shared_ptr<const allocator> alloc_;
+  std::shared_ptr<allocator> alloc_;
   long unsigned int buffer_size_;
   void* workspace_;
 };

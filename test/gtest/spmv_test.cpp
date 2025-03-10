@@ -9,7 +9,7 @@
 TEST(CsrView, SpMV) {
   using T = float;
   using I = spblas::index_t;
-  auto alloc = std::make_shared<const default_allocator>();
+  auto alloc = std::make_shared<default_allocator>();
 
   for (auto&& [m, n, nnz] : util::dims) {
     auto [values, rowptr, colind, shape, _] =
@@ -52,7 +52,7 @@ TEST(CsrView, SpMV) {
 TEST(CsrView, SpMV_Ascaled) {
   using T = float;
   using I = spblas::index_t;
-  auto alloc = std::make_shared<const default_allocator>();
+  auto alloc = std::make_shared<default_allocator>();
 
   for (auto&& [m, n, nnz] :
        {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
@@ -99,7 +99,7 @@ TEST(CsrView, SpMV_Ascaled) {
 TEST(CsrView, SpMV_BScaled) {
   using T = float;
   using I = spblas::index_t;
-  auto alloc = std::make_shared<const default_allocator>();
+  auto alloc = std::make_shared<default_allocator>();
 
   for (auto&& [m, n, nnz] :
        {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),

@@ -1,18 +1,24 @@
 #pragma once
 
+#include <spblas/allocator.hpp>
+
 #if defined(SPBLAS_ENABLE_ROCSPARSE)
 
 #include <hip/hip_runtime.h>
+#include <spblas/vendor/rocsparse/allocator.hpp>
+#include <spblas/vendor/rocsparse/exception.hpp>
 
 template <typename ValueType>
 void copy_to_device(std::size_t num, const ValueType* input,
                     ValueType* output) {
-  hipMemcpy(output, input, num * sizeof(ValueType), hipMemcpyHostToDevice);
+  spblas::detail::throw_if_error(
+      hipMemcpy(output, input, num * sizeof(ValueType), hipMemcpyHostToDevice));
 }
 
 template <typename ValueType>
 void copy_to_host(std::size_t num, const ValueType* input, ValueType* output) {
-  hipMemcpy(output, input, num * sizeof(ValueType), hipMemcpyDeviceToHost);
+  spblas::detail::throw_if_error(
+      hipMemcpy(output, input, num * sizeof(ValueType), hipMemcpyDeviceToHost));
 }
 
 using default_allocator = spblas::detail::rocm_allocator;
