@@ -10,9 +10,9 @@ namespace spblas {
  */
 class allocator {
 public:
-  virtual void* alloc(std::size_t size) const = 0;
+  virtual void* alloc(std::size_t size) = 0;
 
-  virtual void free(void* ptr) const = 0;
+  virtual void free(void* ptr) = 0;
 };
 
 } // namespace spblas

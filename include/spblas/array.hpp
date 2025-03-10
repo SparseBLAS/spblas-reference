@@ -36,7 +36,7 @@ public:
   /**
    * allocate the memory for `size` value_type elements via alloc.
    */
-  array(std::shared_ptr<const allocator> alloc, size_t size)
+  array(std::shared_ptr<allocator> alloc, size_t size)
       : size_(size), alloc_(alloc),
         data_(static_cast<value_type*>(
             alloc_->alloc(size * sizeof(value_type)))) {}
@@ -51,7 +51,7 @@ private:
   using data_manager =
       std::unique_ptr<value_type[], std::function<void(value_type[])>>;
   size_t size_;
-  std::shared_ptr<const allocator> alloc_;
+  std::shared_ptr<allocator> alloc_;
   value_type* data_;
 };
 

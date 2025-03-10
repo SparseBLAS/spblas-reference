@@ -33,12 +33,12 @@ void copy_to_host(std::size_t num, const ValueType* input, ValueType* output) {
 }
 
 class default_allocator : public spblas::allocator {
-  void* alloc(std::size_t size) const override {
+  void* alloc(std::size_t size) override {
     void* ptr = ::operator new(size, std::nothrow_t{});
     return ptr;
   };
 
-  void free(void* ptr) const override {
+  void free(void* ptr) override {
     ::operator delete(ptr, std::nothrow_t{});
   }
 };

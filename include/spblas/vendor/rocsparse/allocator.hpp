@@ -7,13 +7,13 @@ namespace spblas::detail {
 
 class rocm_allocator : public spblas::allocator {
 public:
-  void* alloc(size_t size) const override {
+  void* alloc(size_t size) override {
     void* ptr;
     hipMalloc(&ptr, size);
     return ptr;
   }
 
-  void free(void* ptr) const override {
+  void free(void* ptr) override {
     hipFree(ptr);
   }
 };
