@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
 option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
+option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -17,6 +18,14 @@ endif()
 
 # Download dependencies
 include(FetchContent)
+
+if (ENABLE_ROCSPARSE)
+  project(spblas LANGUAGES HIP)
+  find_package(hip REQUIRED)
+  find_package(rocsparse REQUIRED)
+  find_package(rocthrust REQUIRED)
+  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host roc::rocthrust)
+endif()
 
 if (ENABLE_ONEMKL_SYCL)
   find_package(MKL REQUIRED)

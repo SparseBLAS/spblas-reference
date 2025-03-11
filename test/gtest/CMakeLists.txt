@@ -1,5 +1,6 @@
 enable_testing()
 
+if (NOT ENABLE_ROCSPARSE)
 add_executable(
   spblas-tests
   spmv_test.cpp
@@ -15,3 +16,4 @@ target_link_libraries(spblas-tests spblas fmt GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(spblas-tests)
+endif()
