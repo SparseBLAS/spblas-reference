@@ -143,6 +143,8 @@ TEST(CsrView, SpMV_BScaled) {
   }
 }
 
+#ifndef SPBLAS_ENABLE_ROCSPARSE
+
 TEST(CscView, SpMV) {
   using T = float;
   using I = spblas::index_t;
@@ -242,3 +244,5 @@ TEST(CscView, SpMV_Bscaled) {
     }
   }
 }
+
+#endif
