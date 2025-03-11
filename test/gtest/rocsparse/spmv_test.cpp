@@ -6,6 +6,8 @@
 #include <spblas/array.hpp>
 #include <spblas/spblas.hpp>
 
+#include <thrust/device_vector.h>
+
 TEST(CsrView, SpMV) {
   using T = float;
   using I = spblas::index_t;
@@ -14,22 +16,27 @@ TEST(CsrView, SpMV) {
   for (auto&& [m, n, nnz] : util::dims) {
     auto [values, rowptr, colind, shape, _] =
         spblas::generate_csr<T, I>(m, n, nnz);
-    spblas::detail::array<T> dvalues(alloc, nnz);
-    spblas::detail::array<I> drowptr(alloc, m + 1);
-    spblas::detail::array<I> dcolind(alloc, nnz);
-    copy_to_device(nnz, values.data(), dvalues.get_data());
-    copy_to_device(m + 1, rowptr.data(), drowptr.get_data());
-    copy_to_device(nnz, colind.data(), dcolind.get_data());
-    spblas::csr_view<T, I> a(dvalues.get_data(), drowptr.get_data(),
-                             dcolind.get_data(), shape, nnz);
+
     std::vector<T> b(n, 1);
     std::vector<T> c(m, 0);
-    spblas::detail::array<T> db(alloc, n);
-    spblas::detail::array<T> dc(alloc, m);
-    copy_to_device(n, b.data(), db.get_data());
-    copy_to_device(m, c.data(), dc.get_data());
-    std::span<T> b_span(db.get_data(), n);
-    std::span<T> c_span(dc.get_data(), m);
+
+    thrust::device_vector<T> d_values(values);
+    thrust::device_vector<I> d_rowptr(rowptr);
+    thrust::device_vector<I> d_colind(colind);
+
+    thrust::device_vector<T> d_b(b);
+    thrust::device_vector<T> d_c(c);
+
+    spblas::csr_view<T, I> a(d_values.data().get(), d_rowptr.data().get(),
+                             d_colind.data().get(), shape, nnz);
+
+    std::span<T> b_span(d_b.data().get(), n);
+    std::span<T> c_span(d_c.data().get(), m);
+
+    spblas::multiply(a, b_span, c_span);
+
+    thrust::copy(d_c.begin(), d_c.end(), c.begin());
+
     std::vector<T> c_ref(m, 0);
     for (I i = 0; i < m; i++) {
       for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
@@ -40,9 +47,6 @@ TEST(CsrView, SpMV) {
       }
     }
 
-    spblas::multiply(a, b_span, c_span);
-
-    copy_to_host(m, dc.get_const_data(), c.data());
     for (I i = 0; i < c_ref.size(); i++) {
       EXPECT_EQ_(c_ref[i], c[i]);
     }
