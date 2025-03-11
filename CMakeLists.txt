@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
 option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
+option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -34,10 +35,12 @@ if (ENABLE_ARMPL)
 endif()
 
 if (ENABLE_ROCSPARSE)
+  project(spblas LANGUAGES HIP)
   find_package(hip REQUIRED)
   find_package(rocsparse REQUIRED)
-  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
+  find_package(rocthrust REQUIRED)
+  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host roc::rocthrust)
+  set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
 endif()
 
 # turn on/off debug logging
@@ -105,8 +108,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   FetchContent_MakeAvailable(fmt)
 
   # TODO: enable test for gpu library
-  if(NOT ENABLE_ROCSPARSE)
-    add_subdirectory(examples)
-  endif()
+  add_subdirectory(examples)
   add_subdirectory(test)
 endif()
