@@ -1,7 +1,7 @@
-#include <gtest/gtest.h>
-
 #include "memory.hpp"
 #include "util.hpp"
+#include <gtest/gtest.h>
+#include <iostream>
 #include <spblas/allocator.hpp>
 #include <spblas/array.hpp>
 #include <spblas/spblas.hpp>
@@ -9,27 +9,27 @@
 TEST(CsrView, SpMV) {
   using T = float;
   using I = spblas::index_t;
-  auto alloc = std::make_shared<default_allocator>();
 
   for (auto&& [m, n, nnz] : util::dims) {
     auto [values, rowptr, colind, shape, _] =
         spblas::generate_csr<T, I>(m, n, nnz);
-    spblas::detail::array<T> dvalues(alloc, nnz);
-    spblas::detail::array<I> drowptr(alloc, m + 1);
-    spblas::detail::array<I> dcolind(alloc, nnz);
-    copy_to_device(nnz, values.data(), dvalues.get_data());
-    copy_to_device(m + 1, rowptr.data(), drowptr.get_data());
-    copy_to_device(nnz, colind.data(), dcolind.get_data());
-    spblas::csr_view<T, I> a(dvalues.get_data(), drowptr.get_data(),
-                             dcolind.get_data(), shape, nnz);
+
+    auto dvalues = allocate_device_ptr<T>(nnz);
+    auto drowptr = allocate_device_ptr<I>(m + 1);
+    auto dcolind = allocate_device_ptr<I>(nnz);
+    copy_to_device(nnz, values.data(), dvalues.get());
+    copy_to_device(m + 1, rowptr.data(), drowptr.get());
+    copy_to_device(nnz, colind.data(), dcolind.get());
+    spblas::csr_view<T, I> a(dvalues.get(), drowptr.get(), dcolind.get(), shape,
+                             nnz);
     std::vector<T> b(n, 1);
     std::vector<T> c(m, 0);
-    spblas::detail::array<T> db(alloc, n);
-    spblas::detail::array<T> dc(alloc, m);
-    copy_to_device(n, b.data(), db.get_data());
-    copy_to_device(m, c.data(), dc.get_data());
-    std::span<T> b_span(db.get_data(), n);
-    std::span<T> c_span(dc.get_data(), m);
+    auto db = allocate_device_ptr<T>(n);
+    auto dc = allocate_device_ptr<T>(m);
+    copy_to_device(n, b.data(), db.get());
+    copy_to_device(m, c.data(), dc.get());
+    std::span<T> b_span(db.get(), n);
+    std::span<T> c_span(dc.get(), m);
     std::vector<T> c_ref(m, 0);
     for (I i = 0; i < m; i++) {
       for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
@@ -42,7 +42,7 @@ TEST(CsrView, SpMV) {
 
     spblas::multiply(a, b_span, c_span);
 
-    copy_to_host(m, dc.get_const_data(), c.data());
+    copy_to_host(m, dc.get(), c.data());
     for (I i = 0; i < c_ref.size(); i++) {
       EXPECT_EQ_(c_ref[i], c[i]);
     }
@@ -52,7 +52,6 @@ TEST(CsrView, SpMV) {
 TEST(CsrView, SpMV_Ascaled) {
   using T = float;
   using I = spblas::index_t;
-  auto alloc = std::make_shared<default_allocator>();
 
   for (auto&& [m, n, nnz] :
        {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
@@ -60,22 +59,22 @@ TEST(CsrView, SpMV_Ascaled) {
     for (auto&& alpha : {-10, 1, 5}) {
       auto [values, rowptr, colind, shape, _] =
           spblas::generate_csr<T, I>(m, n, nnz);
-      spblas::detail::array<T> dvalues(alloc, nnz);
-      spblas::detail::array<I> drowptr(alloc, m + 1);
-      spblas::detail::array<I> dcolind(alloc, nnz);
-      copy_to_device(nnz, values.data(), dvalues.get_data());
-      copy_to_device(m + 1, rowptr.data(), drowptr.get_data());
-      copy_to_device(nnz, colind.data(), dcolind.get_data());
-      spblas::csr_view<T, I> a(dvalues.get_data(), drowptr.get_data(),
-                               dcolind.get_data(), shape, nnz);
+      auto dvalues = allocate_device_ptr<T>(nnz);
+      auto drowptr = allocate_device_ptr<I>(m + 1);
+      auto dcolind = allocate_device_ptr<I>(nnz);
+      copy_to_device(nnz, values.data(), dvalues.get());
+      copy_to_device(m + 1, rowptr.data(), drowptr.get());
+      copy_to_device(nnz, colind.data(), dcolind.get());
+      spblas::csr_view<T, I> a(dvalues.get(), drowptr.get(), dcolind.get(),
+                               shape, nnz);
       std::vector<T> b(n, 1);
       std::vector<T> c(m, 0);
-      spblas::detail::array<T> db(alloc, n);
-      spblas::detail::array<T> dc(alloc, m);
-      copy_to_device(n, b.data(), db.get_data());
-      copy_to_device(m, c.data(), dc.get_data());
-      std::span<T> b_span(db.get_data(), n);
-      std::span<T> c_span(dc.get_data(), m);
+      auto db = allocate_device_ptr<T>(n);
+      auto dc = allocate_device_ptr<T>(m);
+      copy_to_device(n, b.data(), db.get());
+      copy_to_device(m, c.data(), dc.get());
+      std::span<T> b_span(db.get(), n);
+      std::span<T> c_span(dc.get(), m);
       std::vector<T> c_ref(m, 0);
       for (I i = 0; i < m; i++) {
         for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
@@ -88,7 +87,7 @@ TEST(CsrView, SpMV_Ascaled) {
 
       spblas::multiply(spblas::scaled(alpha, a), b_span, c_span);
 
-      copy_to_host(m, dc.get_const_data(), c.data());
+      copy_to_host(m, dc.get(), c.data());
       for (I i = 0; i < c_ref.size(); i++) {
         EXPECT_EQ_(c_ref[i], c[i]);
       }
@@ -99,7 +98,6 @@ TEST(CsrView, SpMV_Ascaled) {
 TEST(CsrView, SpMV_BScaled) {
   using T = float;
   using I = spblas::index_t;
-  auto alloc = std::make_shared<default_allocator>();
 
   for (auto&& [m, n, nnz] :
        {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
@@ -107,22 +105,22 @@ TEST(CsrView, SpMV_BScaled) {
     for (auto&& alpha : {-10, 1, 5}) {
       auto [values, rowptr, colind, shape, _] =
           spblas::generate_csr<T, I>(m, n, nnz);
-      spblas::detail::array<T> dvalues(alloc, nnz);
-      spblas::detail::array<I> drowptr(alloc, m + 1);
-      spblas::detail::array<I> dcolind(alloc, nnz);
-      copy_to_device(nnz, values.data(), dvalues.get_data());
-      copy_to_device(m + 1, rowptr.data(), drowptr.get_data());
-      copy_to_device(nnz, colind.data(), dcolind.get_data());
-      spblas::csr_view<T, I> a(dvalues.get_data(), drowptr.get_data(),
-                               dcolind.get_data(), shape, nnz);
+      auto dvalues = allocate_device_ptr<T>(nnz);
+      auto drowptr = allocate_device_ptr<I>(m + 1);
+      auto dcolind = allocate_device_ptr<I>(nnz);
+      copy_to_device(nnz, values.data(), dvalues.get());
+      copy_to_device(m + 1, rowptr.data(), drowptr.get());
+      copy_to_device(nnz, colind.data(), dcolind.get());
+      spblas::csr_view<T, I> a(dvalues.get(), drowptr.get(), dcolind.get(),
+                               shape, nnz);
       std::vector<T> b(n, 1);
       std::vector<T> c(m, 0);
-      spblas::detail::array<T> db(alloc, n);
-      spblas::detail::array<T> dc(alloc, m);
-      copy_to_device(n, b.data(), db.get_data());
-      copy_to_device(m, c.data(), dc.get_data());
-      std::span<T> b_span(db.get_data(), n);
-      std::span<T> c_span(dc.get_data(), m);
+      auto db = allocate_device_ptr<T>(n);
+      auto dc = allocate_device_ptr<T>(m);
+      copy_to_device<>(n, b.data(), db.get());
+      copy_to_device(m, c.data(), dc.get());
+      std::span<T> b_span(db.get(), n);
+      std::span<T> c_span(dc.get(), m);
       std::vector<T> c_ref(m, 0);
       for (I i = 0; i < m; i++) {
         for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
@@ -135,7 +133,7 @@ TEST(CsrView, SpMV_BScaled) {
 
       spblas::multiply(a, spblas::scaled(alpha, b_span), c_span);
 
-      copy_to_host(m, dc.get_const_data(), c.data());
+      copy_to_host(m, dc.get(), c.data());
       for (I i = 0; i < c_ref.size(); i++) {
         EXPECT_EQ_(c_ref[i], c[i]);
       }
