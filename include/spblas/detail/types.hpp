@@ -11,6 +11,10 @@
 #include <spblas/vendor/armpl/types.hpp>
 #endif
 
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/types.hpp> // is it easily wrong due to different default?
+#endif
+
 namespace spblas {
 
 #ifndef SPBLAS_VENDOR_BACKEND
