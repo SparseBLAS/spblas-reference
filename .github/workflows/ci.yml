@@ -96,6 +96,8 @@ jobs:
 
   amd-gpu:
     runs-on: 'gpu_amd'
+    steps:
+    - uses: actions/checkout@v4
     - name: CMake
       run: |
         cmake -B build
