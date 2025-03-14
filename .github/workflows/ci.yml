@@ -94,7 +94,7 @@ jobs:
       run: |
         ./build/test/gtest/spblas-tests
 
-  amd-gpu:
+  amd_gpu:
     runs-on: 'gpu_amd'
     steps:
     - uses: actions/checkout@v4
