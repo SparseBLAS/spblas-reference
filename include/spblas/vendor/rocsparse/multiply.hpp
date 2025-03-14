@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <type_traits>
 
 #include <hip/hip_runtime.h>
@@ -23,12 +25,22 @@ public:
 
   spmv_state_t(std::shared_ptr<allocator> alloc)
       : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
-    detail::throw_if_error(rocsparse_create_handle(&handle_));
+    rocsparse_handle handle;
+    detail::throw_if_error(rocsparse_create_handle(&handle));
+    handle_ = handle_manager(handle, [](rocsparse_handle handle) {
+      detail::throw_if_error(rocsparse_destroy_handle(handle));
+    });
+  }
+
+  spmv_state_t(std::shared_ptr<allocator> alloc, rocsparse_handle handle)
+      : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
+    handle_ = handle_manager(handle, [](rocsparse_handle handle) {
+      // it is provided by user, we do not delete it at all.
+    });
   }
 
   ~spmv_state_t() {
     alloc_->free(workspace_);
-    detail::throw_if_error(rocsparse_destroy_handle(handle_));
   }
 
   template <matrix A, vector B, vector C>
@@ -45,6 +57,7 @@ public:
 
     auto alpha_optional = __detail::get_scaling_factor(a, b);
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+    auto handle = handle_.get();
 
     rocsparse_spmat_descr mat;
     detail::throw_if_error(rocsparse_create_csr_descr(
@@ -67,7 +80,7 @@ public:
     long unsigned int buffer_size = 0;
     // TODO: create a compute type for mixed precision computation
     detail::throw_if_error(rocsparse_spmv(
-        handle_, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
+        handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
         rocsparse_spmv_stage_buffer_size, &buffer_size, nullptr));
     // only allocate the new workspace when the requiring workspace larger than
@@ -78,11 +91,11 @@ public:
       workspace_ = alloc_->alloc(buffer_size);
     }
     detail::throw_if_error(rocsparse_spmv(
-        handle_, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
+        handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
         rocsparse_spmv_stage_preprocess, &buffer_size_, workspace_));
     detail::throw_if_error(rocsparse_spmv(
-        handle_, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
+        handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
         rocsparse_spmv_stage_compute, &buffer_size_, workspace_));
     detail::throw_if_error(rocsparse_destroy_spmat_descr(mat));
@@ -91,7 +104,11 @@ public:
   }
 
 private:
-  rocsparse_handle handle_;
+  using handle_manager =
+      std::unique_ptr<std::pointer_traits<rocsparse_handle>::element_type,
+                      std::function<void(rocsparse_handle)>>;
+  // rocsparse_handle handle_;
+  handle_manager handle_;
   std::shared_ptr<allocator> alloc_;
   long unsigned int buffer_size_;
   void* workspace_;
