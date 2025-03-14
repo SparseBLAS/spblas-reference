@@ -107,7 +107,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 11.1.3)
   FetchContent_MakeAvailable(fmt)
 
-  # TODO: enable test for gpu library
   add_subdirectory(examples)
   add_subdirectory(test)
 endif()
