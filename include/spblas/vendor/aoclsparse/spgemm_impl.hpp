@@ -105,7 +105,8 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   c_nnz = c_nnz - c_ind;
   log_info("computed c_nnz = %d", c_nnz);
 
-  // Check: csrA and csrB destroyed when the operation_info destructor is called?
+  // Check: csrA and csrB destroyed when the operation_info destructor is
+  // called?
 
   return operation_info_t{
       index<>{__backend::shape(c)[0], __backend::shape(c)[1]}, c_nnz,
