@@ -39,13 +39,6 @@ public:
         state_(std::move(state)) {}
 #endif
 
-#ifdef SPBLAS_ENABLE_AOCLSPARSE
-  operation_info_t(index<> result_shape, offset_t result_nnz,
-                   __aoclsparse::operation_state_t&& state)
-      : result_shape_(result_shape), result_nnz_(result_nnz),
-        state_(std::move(state)) {}
-#endif
-
 #ifdef SPBLAS_ENABLE_ARMPL
   operation_info_t(index<> result_shape, offset_t result_nnz,
                    __armpl::operation_state_t&& state)
@@ -53,7 +46,7 @@ public:
         state_(std::move(state)) {}
 #endif
 
-#ifdef SPBLAS_ENABLE_ARMPL
+#ifdef SPBLAS_ENABLE_AOCLSPARSE
   operation_info_t(index<> result_shape, offset_t result_nnz,
                    __aoclsparse::operation_state_t&& state)
       : result_shape_(result_shape), result_nnz_(result_nnz),
