@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
+option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
+
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
 
@@ -46,6 +48,13 @@ endif()
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
+endif()
+
+# Enable sanitizers
+if (ENABLE_SANITIZERS)
+    set(SANITIZER_FLAGS "-fsanitize=address,undefined")
+    target_compile_options(spblas INTERFACE ${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
+    target_link_options(spblas INTERFACE ${SANITIZER_FLAGS})
 endif()
 
 # mdspan

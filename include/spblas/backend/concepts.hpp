@@ -11,7 +11,14 @@ template <typename T>
 concept row_iterable = requires(T& t) { rows(t); };
 
 template <typename T>
+concept column_iterable = requires(T& t) { columns(t); };
+
+template <typename T>
 concept row_lookupable = requires(T& t) { lookup_row(t, tensor_index_t<T>{}); };
+
+template <typename T>
+concept column_lookupable =
+    requires(T& t) { lookup_column(t, tensor_index_t<T>{}); };
 
 namespace {
 
