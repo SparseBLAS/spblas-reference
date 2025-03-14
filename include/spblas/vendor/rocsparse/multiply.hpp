@@ -15,6 +15,8 @@
 #include "exception.hpp"
 #include "types.hpp"
 
+#include <fmt/core.h>
+
 namespace spblas {
 
 class spmv_state_t {
