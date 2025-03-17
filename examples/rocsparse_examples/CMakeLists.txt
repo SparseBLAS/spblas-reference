@@ -4,4 +4,4 @@ function(add_rocm_example example_name)
   target_link_libraries(${example_name} spblas fmt)
 endfunction()
 
-add_rocm_example(hello_world)
+add_rocm_example(simple_spmv)
