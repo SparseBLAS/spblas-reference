@@ -93,3 +93,19 @@ jobs:
     - name: Test
       run: |
         ./build/test/gtest/spblas-tests
+
+  gpu_amd:
+    runs-on: 'gpu_amd'
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      run: |
+        ls /opt
+        cmake -B build
+    - name: Build
+      run: |
+        make -C build -j `nproc`
+    - name: Test
+      run: |
+        ./build/test/gtest/spblas-tests
+
