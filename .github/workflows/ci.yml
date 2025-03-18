@@ -99,13 +99,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: CMake
+      shell: bash -l {0}
       run: |
-        cmake --version
+        module load cmake
         ls /opt
         cmake -B build
     - name: Build
+      shell: bash -l {0}
       run: |
         make -C build -j `nproc`
     - name: Test
+      shell: bash -l {0}
       run: |
         ./build/test/gtest/spblas-tests
