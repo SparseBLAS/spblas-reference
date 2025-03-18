@@ -37,7 +37,7 @@ public:
   }
 
   ~spmv_state_t() {
-    alloc_.deallocate((char*) workspace_, buffer_size_);
+    alloc_.deallocate(workspace_, buffer_size_);
   }
 
   template <matrix A, vector B, vector C>
@@ -83,9 +83,9 @@ public:
     // only allocate the new workspace when the requiring workspace larger than
     // current
     if (buffer_size > buffer_size_) {
-      alloc_.deallocate((char*) workspace_, buffer_size_);
+      alloc_.deallocate(workspace_, buffer_size_);
       buffer_size_ = buffer_size;
-      workspace_ = (void*) alloc_.allocate(buffer_size);
+      workspace_ = alloc_.allocate(buffer_size);
     }
     __rocsparse::throw_if_error(rocsparse_spmv(
         handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
@@ -108,7 +108,7 @@ private:
   handle_manager handle_;
   rocsparse::hip_allocator<char> alloc_;
   long unsigned int buffer_size_;
-  void* workspace_;
+  char* workspace_;
 };
 
 template <matrix A, vector B, vector C>
