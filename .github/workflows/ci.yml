@@ -100,7 +100,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: CMake
       run: |
-        module load cmake
+        cmake --version
         ls /opt
         cmake -B build
     - name: Build
