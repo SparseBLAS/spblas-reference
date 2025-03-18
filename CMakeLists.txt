@@ -35,11 +35,11 @@ if (ENABLE_ARMPL)
 endif()
 
 if (ENABLE_ROCSPARSE)
+  set(SPBLAS_GPU_BACKEND ON)
   project(spblas LANGUAGES HIP)
   find_package(hip REQUIRED)
   find_package(rocsparse REQUIRED)
-  find_package(rocthrust REQUIRED)
-  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host roc::rocthrust)
+  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
   set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
 endif()
 
