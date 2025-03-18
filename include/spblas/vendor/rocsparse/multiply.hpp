@@ -7,30 +7,29 @@
 #include <hip/hip_runtime.h>
 #include <rocsparse/rocsparse.h>
 
-#include <spblas/allocator.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
-#include "allocator.hpp"
 #include "exception.hpp"
+#include "hip_allocator.hpp"
 #include "types.hpp"
 
 namespace spblas {
 
 class spmv_state_t {
 public:
-  spmv_state_t() : spmv_state_t(std::make_shared<detail::rocm_allocator>()) {}
+  spmv_state_t() : spmv_state_t(rocsparse::hip_allocator<char>{}) {}
 
-  spmv_state_t(std::shared_ptr<allocator> alloc)
+  spmv_state_t(rocsparse::hip_allocator<char> alloc)
       : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
     rocsparse_handle handle;
-    detail::throw_if_error(rocsparse_create_handle(&handle));
+    __rocsparse::throw_if_error(rocsparse_create_handle(&handle));
     handle_ = handle_manager(handle, [](rocsparse_handle handle) {
-      detail::throw_if_error(rocsparse_destroy_handle(handle));
+      __rocsparse::throw_if_error(rocsparse_destroy_handle(handle));
     });
   }
 
-  spmv_state_t(std::shared_ptr<allocator> alloc, rocsparse_handle handle)
+  spmv_state_t(rocsparse::hip_allocator<char> alloc, rocsparse_handle handle)
       : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
     handle_ = handle_manager(handle, [](rocsparse_handle handle) {
       // it is provided by user, we do not delete it at all.
@@ -38,7 +37,7 @@ public:
   }
 
   ~spmv_state_t() {
-    alloc_->free(workspace_);
+    alloc_.deallocate(workspace_, buffer_size_);
   }
 
   template <matrix A, vector B, vector C>
@@ -58,7 +57,7 @@ public:
     auto handle = handle_.get();
 
     rocsparse_spmat_descr mat;
-    detail::throw_if_error(rocsparse_create_csr_descr(
+    __rocsparse::throw_if_error(rocsparse_create_csr_descr(
         &mat, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
         a_base.values().size(), a_base.rowptr().data(), a_base.colind().data(),
         a_base.values().data(),
@@ -67,38 +66,38 @@ public:
         rocsparse_index_base_zero, to_rocsparse_datatype<value_type>()));
     rocsparse_dnvec_descr vecb;
     rocsparse_dnvec_descr vecc;
-    detail::throw_if_error(rocsparse_create_dnvec_descr(
+    __rocsparse::throw_if_error(rocsparse_create_dnvec_descr(
         &vecb, b_base.size(), b_base.data(),
         to_rocsparse_datatype<typename input_type::value_type>()));
-    detail::throw_if_error(rocsparse_create_dnvec_descr(
+    __rocsparse::throw_if_error(rocsparse_create_dnvec_descr(
         &vecc, c.size(), c.data(),
         to_rocsparse_datatype<typename output_type::value_type>()));
     value_type alpha_val = alpha;
     value_type beta = 0.0;
     long unsigned int buffer_size = 0;
     // TODO: create a compute type for mixed precision computation
-    detail::throw_if_error(rocsparse_spmv(
+    __rocsparse::throw_if_error(rocsparse_spmv(
         handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
         rocsparse_spmv_stage_buffer_size, &buffer_size, nullptr));
     // only allocate the new workspace when the requiring workspace larger than
     // current
     if (buffer_size > buffer_size_) {
+      alloc_.deallocate(workspace_, buffer_size_);
       buffer_size_ = buffer_size;
-      alloc_->free(workspace_);
-      workspace_ = alloc_->alloc(buffer_size);
+      workspace_ = alloc_.allocate(buffer_size);
     }
-    detail::throw_if_error(rocsparse_spmv(
+    __rocsparse::throw_if_error(rocsparse_spmv(
         handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
         rocsparse_spmv_stage_preprocess, &buffer_size_, workspace_));
-    detail::throw_if_error(rocsparse_spmv(
+    __rocsparse::throw_if_error(rocsparse_spmv(
         handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
         rocsparse_spmv_stage_compute, &buffer_size_, workspace_));
-    detail::throw_if_error(rocsparse_destroy_spmat_descr(mat));
-    detail::throw_if_error(rocsparse_destroy_dnvec_descr(vecc));
-    detail::throw_if_error(rocsparse_destroy_dnvec_descr(vecb));
+    __rocsparse::throw_if_error(rocsparse_destroy_spmat_descr(mat));
+    __rocsparse::throw_if_error(rocsparse_destroy_dnvec_descr(vecc));
+    __rocsparse::throw_if_error(rocsparse_destroy_dnvec_descr(vecb));
   }
 
 private:
@@ -107,9 +106,9 @@ private:
                       std::function<void(rocsparse_handle)>>;
   // rocsparse_handle handle_;
   handle_manager handle_;
-  std::shared_ptr<allocator> alloc_;
+  rocsparse::hip_allocator<char> alloc_;
   long unsigned int buffer_size_;
-  void* workspace_;
+  char* workspace_;
 };
 
 template <matrix A, vector B, vector C>

@@ -93,3 +93,21 @@ jobs:
     - name: Test
       run: |
         ./build/test/gtest/spblas-tests
+
+  rocsparse:
+    runs-on: 'gpu_amd'
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      shell: bash -l {0}
+      run: |
+        module load cmake
+        cmake -B build -DENABLE_ROCSPARSE=ON -DCMAKE_PREFIX_PATH=/opt/rocm
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        make -C build -j `nproc`
+    - name: Test
+      shell: bash -l {0}
+      run: |
+        ./build/test/gtest/spblas-tests

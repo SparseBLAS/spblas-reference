@@ -104,7 +104,8 @@ brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build
 
 ### Compiling with a Vendor Backend
 A vendor backend can be enabled by passing in an `-DENABLE_{BACKEND}=ON` switch
-to `cmake`.  Currently, oneMKL is the only supported backend.
+to `cmake`.  Currently, oneMKL, ArmPL, and rocSPARSE are the supported vendor
+backends.
 
 ### Compiling with oneMKL
 The most straightforward way to build with oneMKL is by installing the [oneAPI
@@ -116,6 +117,28 @@ You can then use the built-in `icpx` compiler to build with the oneMKL backend.
 brock@slothius:~/src/spblas-reference$ source /opt/intel/oneapi/setvars.sh
 # Compile with icpx and oneMKL backend.
 brock@slothius:~/src/spblas-reference$ CXX=icpx cmake -B build -DENABLE_ONEMKL_SYCL=ON
+```
+
+### Compiling with ArmPL
+In order to compile with ArmPL, the library must be installed and the
+environment variable `ARMPL_DIR` set.
+
+```bash
+# Set the environemnt variable `ARMPL_DIR` to the install location of ArmPL.
+brock@slothius:~/src/spblas-reference$ export ARMPL_DIR=/opt/arm/armpl_24.10_flang-new_clang_19
+# Compile with the ArmPL backend.
+brock@slothius:~/src/spblas-reference$ cmake -B build -DENABLE_ARMPL=ON
+```
+
+### Compiling with rocSPARSE
+In order to compile with rocSPARSE, ROCm must be installed and the install
+location of ROCm added to `CMAKE_PREFIX_PATH`.  Your package manager will likely
+take care of this for you, but you can also manually specify the location if you
+have ROCm installed in a non-standard location.
+
+```bash
+# Explicitly set the location of ROCm using `CMAKE_PREFIX_PATH`.
+brock@slothius:~/src/spblas-reference$ cmake -B build -DENABLE_ROCSPARSE=ON -DCMAKE_PREFIX_PATH=/opt/rocm-6.1.2
 ```
 
 #### Compiling with GCC on Mac OS
