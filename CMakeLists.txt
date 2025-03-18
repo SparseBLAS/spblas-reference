@@ -40,7 +40,8 @@ if (ENABLE_ROCSPARSE)
   find_package(hip REQUIRED)
   find_package(rocsparse REQUIRED)
   target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
-  set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
+  set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
 
 # turn on/off debug logging

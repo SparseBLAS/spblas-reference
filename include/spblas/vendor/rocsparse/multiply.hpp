@@ -18,7 +18,7 @@ namespace spblas {
 
 class spmv_state_t {
 public:
-  spmv_state_t() : spmv_state_t({}) {}
+  spmv_state_t() : spmv_state_t(rocsparse::hip_allocator<char>{}) {}
 
   spmv_state_t(rocsparse::hip_allocator<char> alloc)
       : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
