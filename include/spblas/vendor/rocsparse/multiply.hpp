@@ -57,7 +57,7 @@ public:
 
     auto alpha_optional = __detail::get_scaling_factor(a, b);
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
-    auto handle = handle_.get();
+    auto handle = this->handle_.get();
 
     rocsparse_spmat_descr mat;
     __rocsparse::throw_if_error(rocsparse_create_csr_descr(
@@ -85,19 +85,20 @@ public:
         rocsparse_spmv_stage_buffer_size, &buffer_size, nullptr));
     // only allocate the new workspace when the requiring workspace larger than
     // current
-    if (buffer_size > buffer_size_) {
-      alloc_.deallocate(workspace_, buffer_size_);
-      buffer_size_ = buffer_size;
-      workspace_ = alloc_.allocate(buffer_size);
+    if (buffer_size > this->buffer_size_) {
+      this->alloc_.deallocate(this->workspace_, buffer_size_);
+      this->buffer_size_ = buffer_size;
+      this->workspace_ = this->alloc_.allocate(buffer_size);
     }
     __rocsparse::throw_if_error(rocsparse_spmv(
         handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
-        rocsparse_spmv_stage_preprocess, &buffer_size_, workspace_));
+        rocsparse_spmv_stage_preprocess, &this->buffer_size_,
+        this->workspace_));
     __rocsparse::throw_if_error(rocsparse_spmv(
         handle, rocsparse_operation_none, &alpha_val, mat, vecb, &beta, vecc,
         to_rocsparse_datatype<value_type>(), rocsparse_spmv_alg_csr_stream,
-        rocsparse_spmv_stage_compute, &buffer_size_, workspace_));
+        rocsparse_spmv_stage_compute, &this->buffer_size_, this->workspace_));
     __rocsparse::throw_if_error(rocsparse_destroy_spmat_descr(mat));
     __rocsparse::throw_if_error(rocsparse_destroy_dnvec_descr(vecc));
     __rocsparse::throw_if_error(rocsparse_destroy_dnvec_descr(vecb));
