@@ -29,7 +29,8 @@ TEST(CsrView, SpMV) {
     std::span<T> b_span(d_b.data().get(), n);
     std::span<T> c_span(d_c.data().get(), m);
 
-    spblas::multiply(a, b_span, c_span);
+    spblas::spmv_state_t state;
+    spblas::multiply(state, a, b_span, c_span);
 
     thrust::copy(d_c.begin(), d_c.end(), c.begin());
 
@@ -76,7 +77,8 @@ TEST(CsrView, SpMV_Ascaled) {
       std::span<T> b_span(d_b.data().get(), n);
       std::span<T> c_span(d_c.data().get(), m);
 
-      spblas::multiply(spblas::scaled(alpha, a), b_span, c_span);
+      spblas::spmv_state_t state;
+      spblas::multiply(state, spblas::scaled(alpha, a), b_span, c_span);
 
       thrust::copy(d_c.begin(), d_c.end(), c.begin());
 
@@ -124,7 +126,8 @@ TEST(CsrView, SpMV_BScaled) {
       std::span<T> b_span(d_b.data().get(), n);
       std::span<T> c_span(d_c.data().get(), m);
 
-      spblas::multiply(a, spblas::scaled(alpha, b_span), c_span);
+      spblas::spmv_state_t state;
+      spblas::multiply(state, a, spblas::scaled(alpha, b_span), c_span);
 
       thrust::copy(d_c.begin(), d_c.end(), c.begin());
 

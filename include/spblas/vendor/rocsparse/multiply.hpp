@@ -24,6 +24,9 @@ public:
       : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
     rocsparse_handle handle;
     __rocsparse::throw_if_error(rocsparse_create_handle(&handle));
+    if (auto stream = alloc.stream()) {
+      rocsparse_set_stream(handle, stream);
+    }
     handle_ = handle_manager(handle, [](rocsparse_handle handle) {
       __rocsparse::throw_if_error(rocsparse_destroy_handle(handle));
     });
@@ -104,7 +107,6 @@ private:
   using handle_manager =
       std::unique_ptr<std::pointer_traits<rocsparse_handle>::element_type,
                       std::function<void(rocsparse_handle)>>;
-  // rocsparse_handle handle_;
   handle_manager handle_;
   rocsparse::hip_allocator<char> alloc_;
   long unsigned int buffer_size_;
@@ -116,16 +118,6 @@ template <matrix A, vector B, vector C>
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<C>
 void multiply(spmv_state_t& spmv_state, A&& a, B&& b, C&& c) {
-  spmv_state.multiply(a, b, c);
-}
-
-// simple function without state
-template <matrix A, vector B, vector C>
-  requires __detail::has_csr_base<A> &&
-           __detail::has_contiguous_range_base<B> &&
-           __ranges::contiguous_range<C>
-void multiply(A&& a, B&& b, C&& c) {
-  spmv_state_t spmv_state;
   spmv_state.multiply(a, b, c);
 }
 
