@@ -3,7 +3,7 @@
     or bug being address if it exists
 
 **Details:**
-    
+
  - list of key changes to aide present and future reviewers in understanding what
  - is happening in this PR
 
