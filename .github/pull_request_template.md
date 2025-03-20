@@ -14,4 +14,4 @@
  - [ ] Additional Test/example added (if applicable) and passing
  - [ ] At least one reviewer approval
  - [ ] (optional) Clang sanitizer scan run and triaged
- - [ ] Clang formatter applied
+ - [ ] Clang formatter applied (verified as part of passing CI)
