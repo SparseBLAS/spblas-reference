@@ -128,6 +128,13 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 11.1.3)
   FetchContent_MakeAvailable(fmt)
 
+  if (ENABLE_ROCSPARSE)
+    find_package(rocthrust REQUIRED)
+  elseif (ENABLE_CUSPARSE)
+    # It is required to be compiled on the node with available NVIDIA GPU
+    find_package(Thrust REQUIRED)
+    thrust_create_target(Thrust)
+  endif()
   add_subdirectory(examples)
   add_subdirectory(test)
 endif()
