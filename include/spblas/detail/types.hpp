@@ -11,7 +11,6 @@
 #include <spblas/vendor/armpl/types.hpp>
 #endif
 
-
 #ifdef SPBLAS_ENABLE_AOCLSPARSE
 #include <spblas/vendor/aoclsparse/types.hpp>
 #endif

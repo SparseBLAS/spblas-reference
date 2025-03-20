@@ -76,8 +76,8 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   index_t* c_colind = nullptr;
   T* c_values = nullptr;
 
-  const aoclsparse_int nnzA = a_base.rowptr().data()[a_nrows];
-  const aoclsparse_int nnzB = b_base.rowptr().data()[b_nrows];
+  const aoclsparse_int nnzA = a_base.rowptr().data()[a_nrows] - indexingA;
+  const aoclsparse_int nnzB = b_base.rowptr().data()[b_nrows] - indexingB;
 
   status = __aoclsparse::aoclsparse_create_csr(
       &csrA, indexingA, a_nrows, a_ncols, nnzA, a_base.rowptr().data(),
@@ -85,7 +85,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   if (status != aoclsparse_status_success) {
     fmt::print("\t csr matrix A creation failed\n");
   }
-  __aoclsparse::aoclsparse_create_csr(
+  status = __aoclsparse::aoclsparse_create_csr(
       &csrB, indexingB, b_nrows, b_ncols, nnzB, b_base.rowptr().data(),
       b_base.colind().data(), b_base.values().data());
   if (status != aoclsparse_status_success) {

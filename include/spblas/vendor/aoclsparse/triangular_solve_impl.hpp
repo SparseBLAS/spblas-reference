@@ -67,7 +67,7 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
   const index_t a_ncols = __backend::shape(a_base)[1];
   const aoclsparse_int nnz = a_base.rowptr().data()[a_nrows];
 
-  status = spblas::__aoclsparse::aoclsparse_create_csr(
+  status = __aoclsparse::aoclsparse_create_csr(
       &csrA, indexing, a_nrows, a_ncols, nnz, a_base.rowptr().data(),
       a_base.colind().data(), a_base.values().data());
   if (status != aoclsparse_status_success) {
@@ -85,7 +85,7 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
     aoclsparse_set_mat_diag_type(descr, aoclsparse_diag_type_unit);
   }
 
-  status = spblas::__aoclsparse::aoclsparse_trsv(
+  status = __aoclsparse::aoclsparse_trsv(
       opA, alpha, csrA, descr, __ranges::data(b_base), __ranges::data(x));
   if (status != aoclsparse_status_success) {
     fmt::print("\t triangular solve failed: {} \n", (int) status);

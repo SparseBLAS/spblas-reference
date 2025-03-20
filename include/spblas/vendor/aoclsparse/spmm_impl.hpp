@@ -68,9 +68,9 @@ void multiply(A&& a, X&& x, Y&& y) {
   const index_t ldx = x_base.extent(1);
   const index_t ldy = y_base.extent(1);
 
-  const aoclsparse_int nnz = a_base.rowptr().data()[a_nrows];
+  const aoclsparse_int nnz = a_base.rowptr().data()[a_nrows] - indexing;
 
-  status = spblas::__aoclsparse::aoclsparse_create_csr(
+  status = __aoclsparse::aoclsparse_create_csr(
       &csrA, indexing, a_nrows, a_ncols, nnz, a_base.rowptr().data(),
       a_base.colind().data(), a_base.values().data());
   if (status != aoclsparse_status_success) {
@@ -78,9 +78,9 @@ void multiply(A&& a, X&& x, Y&& y) {
   }
 
   T beta = static_cast<T>(0.0);
-  status = spblas::__aoclsparse::aoclsparse_csrmm(
-      opA, alpha, csrA, descr, layout, x_base.data_handle(), nrhs, ldx, beta,
-      y.data_handle(), ldy);
+  status = __aoclsparse::aoclsparse_csrmm(opA, alpha, csrA, descr, layout,
+                                          x_base.data_handle(), nrhs, ldx, beta,
+                                          y.data_handle(), ldy);
   if (status != aoclsparse_status_success) {
     fmt::print("\t SpMM failed: {}\n", (int) status);
   }

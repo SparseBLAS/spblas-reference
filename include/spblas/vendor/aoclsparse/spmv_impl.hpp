@@ -59,7 +59,7 @@ void multiply(A&& a, X&& x, Y&& y) {
   const index_t a_ncols = __backend::shape(a_base)[1];
   const aoclsparse_int nnz = a_base.rowptr().data()[a_nrows];
 
-  status = spblas::__aoclsparse::aoclsparse_create_csr(
+  status = __aoclsparse::aoclsparse_create_csr(
       &csrA, indexing, a_nrows, a_ncols, nnz, a_base.rowptr().data(),
       a_base.colind().data(), a_base.values().data());
   if (status != aoclsparse_status_success) {
@@ -71,9 +71,9 @@ void multiply(A&& a, X&& x, Y&& y) {
   aoclsparse_optimize(csrA);
 
   T beta = static_cast<T>(0.0);
-  status = spblas::__aoclsparse::aoclsparse_mv(opA, &alpha, csrA, descr,
-                                               __ranges::data(x_base), &beta,
-                                               __ranges::data(y));
+  status = __aoclsparse::aoclsparse_mv(opA, &alpha, csrA, descr,
+                                       __ranges::data(x_base), &beta,
+                                       __ranges::data(y));
   if (status != aoclsparse_status_success) {
     fmt::print("\t SpMV failed: {}\n", (int) status);
   }
