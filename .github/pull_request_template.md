@@ -13,5 +13,5 @@
  - [ ] Update documentation or README.md
  - [ ] Additional Test/example added (if applicable) and passing
  - [ ] At least one reviewer approval
- - [ ] Clang sanitizer scan run and triaged
+ - [ ] (optional) Clang sanitizer scan run and triaged
  - [ ] Clang formatter applied
