@@ -11,8 +11,13 @@
 #include <spblas/vendor/armpl/types.hpp>
 #endif
 
+
 #ifdef SPBLAS_ENABLE_AOCLSPARSE
 #include <spblas/vendor/aoclsparse/types.hpp>
+#endif
+
+#ifdef SPBLAS_ENABLE_ROCSPARSE
+#include <spblas/vendor/rocsparse/types.hpp>
 #endif
 
 namespace spblas {
