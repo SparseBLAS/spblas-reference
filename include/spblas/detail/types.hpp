@@ -19,6 +19,10 @@
 #include <spblas/vendor/rocsparse/types.hpp>
 #endif
 
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/types.hpp>
+#endif
+
 namespace spblas {
 
 #ifndef SPBLAS_VENDOR_BACKEND

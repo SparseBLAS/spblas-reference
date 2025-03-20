@@ -1,6 +1,16 @@
 enable_testing()
+function(add_device_test test_name)
+  add_executable(spblas-tests device/${test_name}.cpp)
+  if (ENABLE_ROCSPARSE)
+    set_source_files_properties(device/${test_name}.cpp PROPERTIES LANGUAGE HIP)
+  elseif (ENABLE_CUSPARSE)
+    target_link_libraries(spblas-tests Thrust)
+  else()
+    message(FATAL_ERROR "Device backend not found.")
+  endif()
+endfunction()
 
-if (NOT ENABLE_ROCSPARSE)
+if (NOT SPBLAS_GPU_BACKEND)
   add_executable(
     spblas-tests
     spmv_test.cpp
@@ -11,10 +21,8 @@ if (NOT ENABLE_ROCSPARSE)
     transpose_test.cpp
     triangular_solve_test.cpp
   )
-elseif(ENABLE_ROCSPARSE)
-  set_source_files_properties(rocsparse/spmv_test.cpp PROPERTIES LANGUAGE HIP)
-  add_executable(spblas-tests
-                 rocsparse/spmv_test.cpp)
+else()
+  add_device_test(spmv_test)
 endif()
 
 target_link_libraries(spblas-tests spblas fmt GTest::gtest_main)
