@@ -120,7 +120,7 @@ jobs:
       shell: bash -l {0}
       run: |
         module load cmake
-        cmake -B build -DENABLE_CUSPARSE=ON
+        cmake -B build -DENABLE_CUSPARSE=ON -DCMAKE_PREFIX_PATH=/usr/local/cuda/targets/x86_64-linux/lib/cmake/thrust
     - name: Build
       shell: bash -l {0}
       run: |
