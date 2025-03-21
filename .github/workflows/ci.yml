@@ -94,6 +94,27 @@ jobs:
       run: |
         ./build/test/gtest/spblas-tests
 
+  aocl:
+    runs-on: 'cpu_amd'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Add AOCL-Sparse to Environment
+      run: |
+        source /apps/spacks/current/share/spack/setup-env.sh
+        echo "AOCLSPARSE_DIR=$(spack location -i aocl-sparse)" >> $GITHUB_ENV
+        echo "AOCLUTILS_DIR=$(spack location -i aocl-utils)" >> $GITHUB_ENV
+    - name: CMake
+      run: |
+        source /apps/spacks/current/share/spack/setup-env.sh
+        spack load /ia2365b
+        cmake -B build -DENABLE_AOCLSPARSE=ON
+    - name: Build
+      run: |
+        make -C build -j `nproc`
+    - name: Test
+      run: |
+        ./build/test/gtest/spblas-tests
+
   rocsparse:
     runs-on: 'gpu_amd'
     steps:
