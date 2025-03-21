@@ -111,3 +111,21 @@ jobs:
       shell: bash -l {0}
       run: |
         ./build/test/gtest/spblas-tests
+
+  cusparse:
+    runs-on: 'gpu_nvidia'
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      shell: bash -l {0}
+      run: |
+        module load cmake
+        cmake -B build -DENABLE_CUSPARSE=ON
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        make -C build -j `nproc`
+    - name: Test
+      shell: bash -l {0}
+      run: |
+        ./build/test/gtest/spblas-tests
