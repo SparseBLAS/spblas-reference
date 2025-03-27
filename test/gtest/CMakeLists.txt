@@ -22,7 +22,11 @@ if (NOT SPBLAS_GPU_BACKEND)
     triangular_solve_test.cpp
   )
 else()
-  set(TEST_SOURCES device/spmv_test.cpp)
+  if(ENABLE_ROCSPARSE)
+    set(TEST_SOURCES device/spmv_test.cpp device/spgemm_test.cpp)
+  else()
+    set(TEST_SOURCES device/spmv_test.cpp)
+  endif()
   add_device_test(TEST_SOURCES)
 endif()
 
