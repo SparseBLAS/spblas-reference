@@ -86,7 +86,7 @@ public:
     // only allocate the new workspace when the requiring workspace larger than
     // current
     if (buffer_size > this->buffer_size_) {
-      this->alloc_.deallocate(this->workspace_, buffer_size_);
+      this->alloc_.deallocate(this->workspace_, this->buffer_size_);
       this->buffer_size_ = buffer_size;
       this->workspace_ = this->alloc_.allocate(buffer_size);
     }
