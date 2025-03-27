@@ -15,10 +15,12 @@ elseif(ENABLE_ROCSPARSE)
   # general one is handle in another pr
   set_source_files_properties(rocsparse/spmv_test.cpp PROPERTIES LANGUAGE HIP)
   set_source_files_properties(rocsparse/spgemm_test.cpp PROPERTIES LANGUAGE HIP)
+  set_source_files_properties(rocsparse/spgemm_reuse_test.cpp PROPERTIES LANGUAGE HIP)
   set_source_files_properties(rocsparse/spgemm_4args_test.cpp PROPERTIES LANGUAGE HIP)
   add_executable(spblas-tests
                  rocsparse/spmv_test.cpp
                  rocsparse/spgemm_test.cpp
+                 rocsparse/spgemm_reuse_test.cpp
                  rocsparse/spgemm_4args_test.cpp)
 endif()
 
