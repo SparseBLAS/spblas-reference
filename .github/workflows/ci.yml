@@ -69,7 +69,7 @@ jobs:
     - name: Test
       run: |
         source /opt/intel/oneapi/setvars.sh
-        ./build/test/gtest/spblas-tests
+        ONEMKL_DEVICE_SELECTOR=*:cpu ./build/test/gtest/spblas-tests
 
   macos:
     runs-on: 'macos-latest'
