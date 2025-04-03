@@ -3,7 +3,12 @@
 #include <spblas/spblas.hpp>
 
 #include <gtest/gtest.h>
+
+#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
+#include "onemkl/device_vector.hpp"
+#else
 #include <thrust/device_vector.h>
+#endif
 
 using value_t = float;
 using index_t = spblas::index_t;
