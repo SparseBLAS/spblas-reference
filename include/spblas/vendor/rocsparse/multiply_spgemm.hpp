@@ -202,6 +202,7 @@ public:
   void multiply_numeric(A&& a, B&& b, C&& c, D&& d) {
     auto a_base = __detail::get_ultimate_base(a);
     auto b_base = __detail::get_ultimate_base(b);
+    auto d_base = __detail::get_ultimate_base(d);
     using matrix_type = decltype(a_base);
     using input_type = decltype(b_base);
     using output_type = std::remove_reference_t<decltype(c)>;
@@ -213,6 +214,22 @@ public:
     auto beta_optional = __detail::get_scaling_factor(d);
     value_type beta = beta_optional.value_or(1);
 
+    // Update the pointer from the matrix but they must contains the same
+    // sparsity as the previous call.
+    __rocsparse::throw_if_error(rocsparse_csr_set_pointers(
+        this->mat_a_, a_base.rowptr().data(), a_base.colind().data(),
+        a_base.values().data()));
+    __rocsparse::throw_if_error(rocsparse_csr_set_pointers(
+        this->mat_b_, b_base.rowptr().data(), b_base.colind().data(),
+        b_base.values().data()));
+    __rocsparse::throw_if_error(rocsparse_csr_set_pointers(
+        this->mat_c_, c.rowptr().data(), c.colind().data(), c.values().data()));
+    if (d_base.values().data()) {
+      // when it is still a null matrix, we can not use set pointer function
+      __rocsparse::throw_if_error(rocsparse_csr_set_pointers(
+          this->mat_d_, d_base.rowptr().data(), d_base.colind().data(),
+          d_base.values().data()));
+    }
     __rocsparse::throw_if_error(rocsparse_spgemm(
         this->handle_.get(), rocsparse_operation_none, rocsparse_operation_none,
         &alpha, this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
