@@ -30,13 +30,16 @@
 namespace spblas {
 
 template <matrix A, vector X, vector Y>
-  requires __detail::has_csr_base<A> &&
-           __detail::has_contiguous_range_base<X> &&
-           __ranges::contiguous_range<Y>
+  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+          __detail::has_contiguous_range_base<X> &&
+          __ranges::contiguous_range<Y>
 void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto x_base = __detail::get_ultimate_base(x);
+
+  aoclsparse_matrix csrA = __aoclsparse::create_matrix_handle(a_base);
+  aoclsparse_operation opA = __aoclsparse::get_transpose(a);
 
   using T = tensor_scalar_t<A>;
   using I = tensor_index_t<A>;
@@ -45,26 +48,13 @@ void multiply(A&& a, X&& x, Y&& y) {
   auto alpha_optional = __detail::get_scaling_factor(a, x);
   T alpha = alpha_optional.value_or(1);
 
-  aoclsparse_matrix csrA = nullptr;
-  aoclsparse_mat_descr descr;
+  aoclsparse_mat_descr descr = NULL;
   aoclsparse_status status = aoclsparse_create_mat_descr(&descr);
   if (status != aoclsparse_status_success) {
     fmt::print("\t descr creation failed\n");
   }
   aoclsparse_set_mat_type(descr, aoclsparse_matrix_type_general);
   aoclsparse_index_base indexing = aoclsparse_index_base_zero;
-  aoclsparse_operation opA = aoclsparse_operation_none;
-
-  const index_t a_nrows = __backend::shape(a_base)[0];
-  const index_t a_ncols = __backend::shape(a_base)[1];
-  const aoclsparse_int nnz = a_base.rowptr().data()[a_nrows];
-
-  status = __aoclsparse::aoclsparse_create_csr(
-      &csrA, indexing, a_nrows, a_ncols, nnz, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data());
-  if (status != aoclsparse_status_success) {
-    fmt::print("\t csr matrix creation failed: {}\n", (int) status);
-  }
 
   // Do we need these two
   aoclsparse_set_mv_hint(csrA, opA, descr, 1);
@@ -79,6 +69,7 @@ void multiply(A&& a, X&& x, Y&& y) {
   }
 
   aoclsparse_destroy(&csrA);
+  aoclsparse_destroy_mat_descr(descr);
 }
 
 } // namespace spblas

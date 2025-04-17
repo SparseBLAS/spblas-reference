@@ -53,8 +53,8 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
   auto alpha_optional = __detail::get_scaling_factor(a, x);
   T alpha = alpha_optional.value_or(1);
 
-  aoclsparse_matrix csrA = nullptr;
-  aoclsparse_mat_descr descr;
+  aoclsparse_matrix csrA = NULL;
+  aoclsparse_mat_descr descr = NULL;
   aoclsparse_status status = aoclsparse_create_mat_descr(&descr);
   if (status != aoclsparse_status_success) {
     fmt::print("\t descr creation failed\n");
@@ -92,6 +92,7 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
   }
 
   aoclsparse_destroy(&csrA);
+  aoclsparse_destroy_mat_descr(descr);
 }
 
 } // namespace spblas
