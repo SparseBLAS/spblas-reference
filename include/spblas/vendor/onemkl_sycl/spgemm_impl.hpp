@@ -8,13 +8,10 @@
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
-<<<<<<< HEAD
 #include <spblas/views/matrix_opt.hpp>
 
 #include "matrix_wrapper.hpp"
-=======
 #include <spblas/vendor/onemkl_sycl/detail/create_matrix_handle.hpp>
->>>>>>> main
 
 //
 // Defines the following APIs for SpGEMM:
@@ -39,10 +36,11 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   auto b_base = __detail::get_ultimate_base(b);
 
   bool a_is_matrix_opt = false;
-  if constexpr (__detail::is_matrix_opt_view_v<decltype(a_base)>) a_is_matrix_opt = true;
+  if constexpr (__detail::is_matrix_opt_view_v<decltype(a_base)>)
+    a_is_matrix_opt = true;
   bool b_is_matrix_opt = false;
-  if constexpr (__detail::is_matrix_opt_view_v<decltype(b_base)>) b_is_matrix_opt = true;
-
+  if constexpr (__detail::is_matrix_opt_view_v<decltype(b_base)>)
+    b_is_matrix_opt = true;
 
   using oneapi::mkl::transpose;
   using oneapi::mkl::sparse::matmat_request;
@@ -50,39 +48,16 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   sycl::queue q(sycl::cpu_selector_v);
 
-<<<<<<< HEAD
-  oneapi::mkl::sparse::init_matmat_descr(&descr);
-
-  oneapi::mkl::sparse::set_matmat_data(
-      descr, matrix_view_descr::general, transpose::nontrans, // view/op for A
-      matrix_view_descr::general, transpose::nontrans,        // view/op for B
-      matrix_view_descr::general);                            // view for C
-
-
   auto a_handle = __mkl::get_matrix_handle(q, a_base);
   auto b_handle = __mkl::get_matrix_handle(q, b_base);
-//  auto c_handle = __mkl::get_matrix_handle(q, c);
 
   oneapi::mkl::sparse::matrix_handle_t c_handle = nullptr;
-
   oneapi::mkl::sparse::init_matrix_handle(&c_handle);
 
-=======
->>>>>>> main
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
   using O = tensor_offset_t<C>;
 
-<<<<<<< HEAD
-  O* c_rowptr;
-=======
-  oneapi::mkl::sparse::matrix_handle_t a_handle =
-      __mkl::create_matrix_handle(q, a_base);
-  oneapi::mkl::sparse::matrix_handle_t b_handle =
-      __mkl::create_matrix_handle(q, b_base);
-
-  I* c_rowptr;
->>>>>>> main
   if (c.rowptr().size() >= __backend::shape(c)[0] + 1) {
     c_rowptr = c.rowptr().data();
   } else {
@@ -135,10 +110,9 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   return operation_info_t{
       index<>{__backend::shape(c)[0], __backend::shape(c)[1]}, nnz,
-      __mkl::operation_state_t{
-        a_is_matrix_opt ? nullptr : a_handle, 
-        b_is_matrix_opt ? nullptr : b_handle, 
-        c_handle, nullptr, descr, (void*)c_rowptr, q}};
+      __mkl::operation_state_t{a_is_matrix_opt ? nullptr : a_handle,
+                               b_is_matrix_opt ? nullptr : b_handle, c_handle,
+                               nullptr, descr, (void*) c_rowptr, q}};
 }
 
 template <matrix A, matrix B, matrix C>

@@ -25,8 +25,7 @@ struct operation_state_t {
                     oneapi::mkl::sparse::matrix_handle_t b_handle,
                     oneapi::mkl::sparse::matrix_handle_t c_handle,
                     oneapi::mkl::sparse::matrix_handle_t d_handle,
-                    oneapi::mkl::sparse::matmat_descr_t descr,
-                    void* c_rowptr,
+                    oneapi::mkl::sparse::matmat_descr_t descr, void* c_rowptr,
                     sycl::queue q)
       : a_handle(a_handle), b_handle(b_handle), c_handle(c_handle),
         d_handle(d_handle), descr(descr), c_rowptr(c_rowptr), q(q) {}

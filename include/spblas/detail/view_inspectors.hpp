@@ -83,23 +83,25 @@ bool has_scaling_factor(T&& t) {
 
 template <tensor T>
 auto get_ultimate_base(T&& t) {
-    if constexpr (has_base<T>) {
-        if constexpr (is_matrix_opt_view_v<T>) {
-            return t;
-        } else { 
-            return get_ultimate_base(t.base());
-        }
+  if constexpr (has_base<T>) {
+    if constexpr (is_matrix_opt_view_v<T>) {
+      return t;
     } else {
-        return t;
+      return get_ultimate_base(t.base());
     }
+  } else {
+    return t;
+  }
 }
 
 template <typename T>
 using ultimate_base_type_t = decltype(get_ultimate_base(std::declval<T>()));
 
 template <typename T>
-concept has_csr_base = is_csr_view_v<ultimate_base_type_t<T>> 
-                     || (is_matrix_opt_view_v<ultimate_base_type_t<T>> && is_csr_view_v<decltype(std::declval<ultimate_base_type_t<T>>().base())> );
+concept has_csr_base =
+    is_csr_view_v<ultimate_base_type_t<T>> ||
+    (is_matrix_opt_view_v<ultimate_base_type_t<T>> &&
+     is_csr_view_v<decltype(std::declval<ultimate_base_type_t<T>>().base())>);
 
 template <typename T>
 concept has_csc_base = is_csc_view_v<ultimate_base_type_t<T>>;

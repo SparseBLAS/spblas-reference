@@ -47,22 +47,13 @@ void multiply(A&& a, X&& x, Y&& y) {
 
   sycl::queue q(sycl::cpu_selector_v);
 
-<<<<<<< HEAD
   auto a_handle = __mkl::get_matrix_handle(q, a_base);
-
-  oneapi::mkl::sparse::gemm(
-      q, oneapi::mkl::layout::row_major, oneapi::mkl::transpose::nontrans,
-      oneapi::mkl::transpose::nontrans, alpha, a_handle, x_base.data_handle(),
-      x_base.extent(1), x_base.extent(1), 0.0, y.data_handle(), y.extent(1))
-=======
-  auto a_handle = __mkl::create_matrix_handle(q, a_base);
   auto a_transpose = __mkl::get_transpose(a);
 
   oneapi::mkl::sparse::gemm(q, oneapi::mkl::layout::row_major, a_transpose,
                             oneapi::mkl::transpose::nontrans, alpha, a_handle,
                             x_base.data_handle(), x_base.extent(1),
                             x_base.extent(1), 0.0, y.data_handle(), y.extent(1))
->>>>>>> main
       .wait();
 
   if constexpr (!__detail::is_matrix_opt_view_v<decltype(a_base)>) {
