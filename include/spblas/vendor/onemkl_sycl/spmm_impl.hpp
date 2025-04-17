@@ -2,7 +2,6 @@
 
 #include <oneapi/mkl.hpp>
 
-#include "matrix_wrapper.hpp"
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
@@ -31,15 +30,13 @@ namespace spblas {
 template <matrix A, matrix X, matrix Y>
   requires(
       (__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
-      __detail::has_mdspan_matrix_base<X> &&
-      __detail::is_matrix_instantiation_of_mdspan_v<Y> &&
+      __detail::has_mdspan_matrix_base<X> && __detail::is_matrix_mdspan_v<Y> &&
       std::is_same_v<typename __detail::ultimate_base_type_t<X>::layout_type,
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
 void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
-  auto a_base = __detail::get_ultimate_base(a);
   auto x_base = __detail::get_ultimate_base(x);
 
   auto alpha_optional = __detail::get_scaling_factor(a, x);
@@ -47,7 +44,7 @@ void multiply(A&& a, X&& x, Y&& y) {
 
   sycl::queue q(sycl::cpu_selector_v);
 
-  auto a_handle = __mkl::get_matrix_handle(q, a_base);
+  auto a_handle = __mkl::get_matrix_handle(q, a);
   auto a_transpose = __mkl::get_transpose(a);
 
   oneapi::mkl::sparse::gemm(q, oneapi::mkl::layout::row_major, a_transpose,
@@ -56,7 +53,7 @@ void multiply(A&& a, X&& x, Y&& y) {
                             x_base.extent(1), 0.0, y.data_handle(), y.extent(1))
       .wait();
 
-  if constexpr (!__detail::is_matrix_opt_view_v<decltype(a_base)>) {
+  if (!__detail::has_matrix_opt(a)) {
     oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
   }
 }

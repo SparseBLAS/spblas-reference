@@ -168,7 +168,7 @@ __ranges::range_reference_t<V> tag_invoke(__backend::lookup_fn_, V&& v,
 // Customization point implementations for mdspan
 
 template <typename M>
-  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+  requires(__detail::is_matrix_mdspan_v<M>)
 struct tensor_traits<M> {
   using scalar_type = typename std::remove_cvref_t<M>::value_type;
   using scalar_reference = typename std::remove_cvref_t<M>::reference;
@@ -179,13 +179,13 @@ struct tensor_traits<M> {
 namespace __backend {
 
 template <typename M>
-  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+  requires(__detail::is_matrix_mdspan_v<M>)
 auto tag_invoke(__backend::size_fn_, M&& m) {
   return m.extent(0) * m.extent(1);
 }
 
 template <typename M>
-  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+  requires(__detail::is_matrix_mdspan_v<M>)
 auto tag_invoke(__backend::shape_fn_, M&& m) {
   using index_type = decltype(m.extent(0));
   return index<index_type>(m.extent(0), m.extent(1));
@@ -228,7 +228,7 @@ auto tag_invoke(__backend::rows_fn_,
 }
 
 template <typename M>
-  requires(__detail::is_matrix_instantiation_of_mdspan_v<M>)
+  requires(__detail::is_matrix_mdspan_v<M>)
 tensor_scalar_reference_t<M> tag_invoke(__backend::lookup_fn_, M&& m,
                                         tensor_index_t<M> i,
                                         tensor_index_t<M> j) {

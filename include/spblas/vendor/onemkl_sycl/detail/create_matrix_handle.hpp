@@ -38,6 +38,13 @@ oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
   return handle;
 }
 
+template <matrix M>
+  requires __detail::has_base<M>
+oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
+                                                          M&& m) {
+  return create_matrix_handle(q, m.base());
+}
+
 //
 // Takes in a CSR or CSR_transpose (aka CSC) or CSC or CSC_transpose
 //  and returns the transpose value associated with it being represented

@@ -17,9 +17,8 @@ namespace spblas {
 */
 
 template <typename M>
-concept matrix =
-    __detail::is_csr_view_v<M> || __detail::is_csc_view_v<M> ||
-    __detail::is_matrix_instantiation_of_mdspan_v<M> || __detail::matrix<M>;
+concept matrix = __detail::is_csr_view_v<M> || __detail::is_csc_view_v<M> ||
+                 __detail::is_matrix_mdspan_v<M> || __detail::matrix<M>;
 
 /*
   The following types fulfill the vector concept:
@@ -33,9 +32,8 @@ template <typename T>
 concept tensor = matrix<T> || vector<T>;
 
 template <typename T>
-concept view =
-    tensor<T> && (std::derived_from<std::remove_cvref_t<T>, view_base> ||
-                  __detail::is_matrix_instantiation_of_mdspan_v<T> ||
-                  __detail::__ranges::view<T>);
+concept view = tensor<T> &&
+               (std::derived_from<std::remove_cvref_t<T>, view_base> ||
+                __detail::is_matrix_mdspan_v<T> || __detail::__ranges::view<T>);
 
 } // namespace spblas
