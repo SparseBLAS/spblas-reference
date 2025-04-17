@@ -8,93 +8,35 @@
 #include <spblas/detail/view_inspectors.hpp>
 #include <spblas/views/matrix_opt.hpp>
 
+#include <spblas/vendor/onemkl_sycl/detail/create_matrix_handle.hpp>
+
 namespace spblas {
+
 namespace __mkl {
 
-template <matrix A>
-  requires __detail::has_csr_base<A>
-oneapi::mkl::sparse::matrix_handle_t get_matrix_handle(sycl::queue& q,
-                                                       A&& a_base) {
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
-  if constexpr (__detail::is_matrix_opt_view_v<decltype(a_base)>) {
-
+template <matrix M>
+oneapi::mkl::sparse::matrix_handle_t
+get_matrix_handle(sycl::queue& q, M&& m,
+                  oneapi::mkl::sparse::matrix_handle_t handle = nullptr) {
+  if constexpr (__detail::is_matrix_opt_view_v<decltype(m)>) {
     log_trace("using A as matrix_opt");
-    a_handle = a_base.matrix_handle_;
 
-    if (a_handle == nullptr) {
-      oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-      auto a_csr = a_base.base();
-      oneapi::mkl::sparse::set_csr_data(
-          q, a_handle, __backend::shape(a_csr)[0], __backend::shape(a_csr)[1],
-          oneapi::mkl::index_base::zero, a_csr.rowptr().data(),
-          a_csr.colind().data(), a_csr.values().data())
-          .wait();
-
-      a_base.matrix_handle_ = a_handle;
+    if (m.matrix_handle_ == nullptr) {
+      m.matrix_handle_ = create_matrix_handle(q, m.base());
     }
+
+    return m.matrix_handle_;
+  } else if (handle != nullptr) {
+    log_trace("using A from operation_info_t");
+
+    return handle;
   } else {
     log_trace("using A as csr_base");
 
-    oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-    oneapi::mkl::sparse::set_csr_data(
-        q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-        oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-        a_base.colind().data(), a_base.values().data())
-        .wait();
-  }
-
-  return a_handle;
-}
-
-//
-// potentially extract a_handle from info or a_base or build it
-//
-template <matrix A>
-  requires __detail::has_csr_base<A>
-oneapi::mkl::sparse::matrix_handle_t
-get_matrix_handle(sycl::queue& q, A&& a_base,
-                  oneapi::mkl::sparse::matrix_handle_t info_a_handle) {
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
-
-  if constexpr (__detail::is_matrix_opt_view_v<decltype(a_base)>) {
-
-    log_trace("using A as matrix_opt");
-    a_handle = a_base.matrix_handle_;
-
-    if (a_handle == nullptr) {
-      oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-      auto a_csr = a_base.base();
-      oneapi::mkl::sparse::set_csr_data(
-          q, a_handle, __backend::shape(a_csr)[0], __backend::shape(a_csr)[1],
-          oneapi::mkl::index_base::zero, a_csr.rowptr().data(),
-          a_csr.colind().data(), a_csr.values().data())
-          .wait();
-
-      a_base.matrix_handle_ = a_handle;
-    }
-  } else {
-
-    if (info_a_handle != nullptr) {
-      log_trace("using A from operation_info_t");
-      return info_a_handle;
-    } else {
-      log_trace("using A as csr_base");
-
-      oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-      oneapi::mkl::sparse::set_csr_data(
-          q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-          oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-          a_base.colind().data(), a_base.values().data())
-          .wait();
-    }
-
-    return a_handle;
+    return create_matrix_handle(q, m);
   }
 }
 
 } // namespace __mkl
+
 } // namespace spblas

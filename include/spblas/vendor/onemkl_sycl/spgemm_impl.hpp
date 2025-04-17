@@ -51,13 +51,11 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   auto a_handle = __mkl::get_matrix_handle(q, a_base);
   auto b_handle = __mkl::get_matrix_handle(q, b_base);
 
-  oneapi::mkl::sparse::matrix_handle_t c_handle = nullptr;
-  oneapi::mkl::sparse::init_matrix_handle(&c_handle);
-
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
   using O = tensor_offset_t<C>;
 
+  O* c_rowptr;
   if (c.rowptr().size() >= __backend::shape(c)[0] + 1) {
     c_rowptr = c.rowptr().data();
   } else {
