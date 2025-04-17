@@ -102,6 +102,9 @@ concept has_csr_base = is_csr_view_v<ultimate_base_type_t<T>>
                      || (is_matrix_opt_view_v<ultimate_base_type_t<T>> && is_csr_view_v<decltype(std::declval<ultimate_base_type_t<T>>().base())> );
 
 template <typename T>
+concept has_csc_base = is_csc_view_v<ultimate_base_type_t<T>>;
+
+template <typename T>
 concept has_mdspan_matrix_base =
     is_matrix_instantiation_of_mdspan_v<ultimate_base_type_t<T>>;
 

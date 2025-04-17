@@ -177,6 +177,42 @@ private:
            });
   }
 
+  friend auto tag_invoke(__backend::columns_fn_, scaled_view matrix)
+    requires(__backend::column_iterable<M>)
+  {
+    S alpha = matrix.alpha();
+    auto unscaled_columns = __backend::columns(matrix.base());
+
+    return unscaled_columns |
+           __ranges::views::transform([alpha](auto&& column_tuple) {
+             auto&& [row_index, column] = column_tuple;
+
+             auto scaled_column =
+                 column |
+                 __ranges::views::transform([alpha](auto&& element_tuple) {
+                   auto&& [row_index, value] = element_tuple;
+                   return std::pair(row_index, alpha * value);
+                 });
+
+             return std::pair(row_index, scaled_column);
+           });
+  }
+
+  friend auto tag_invoke(__backend::lookup_column_fn_, scaled_view matrix,
+                         index_type column_index)
+    requires(__backend::column_lookupable<M>)
+  {
+    S alpha = matrix.alpha();
+    auto unscaled_column =
+        __backend::lookup_column(matrix.base(), column_index);
+
+    return unscaled_column |
+           __ranges::views::transform([alpha](auto&& element_tuple) {
+             auto&& [row_index, value] = element_tuple;
+             return std::pair(row_index, alpha * value);
+           });
+  }
+
 private:
   S alpha_;
   M matrix_;

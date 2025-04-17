@@ -2,11 +2,11 @@
 
 #include <oneapi/mkl.hpp>
 
+#include "matrix_wrapper.hpp"
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
-#include "matrix_wrapper.hpp"
 
 //
 // Defines the following APIs for SpMV:
@@ -26,9 +26,9 @@
 namespace spblas {
 
 template <matrix A, vector X, vector Y>
-  requires __detail::has_csr_base<A> &&
+  requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
            __detail::has_contiguous_range_base<X> &&
-           __ranges::contiguous_range<Y>
+           __ranges::contiguous_range<Y>)
 void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
@@ -39,17 +39,24 @@ void multiply(A&& a, X&& x, Y&& y) {
 
   sycl::queue q(sycl::cpu_selector_v);
 
+<<<<<<< HEAD
   auto a_handle = __mkl::get_matrix_handle(q, a_base);
 
   oneapi::mkl::sparse::gemv(q, oneapi::mkl::transpose::nontrans, alpha,
                             a_handle, __ranges::data(x_base), 0.0,
                             __ranges::data(y))
+=======
+  auto a_handle = __mkl::create_matrix_handle(q, a_base);
+  auto a_transpose = __mkl::get_transpose(a);
+
+  oneapi::mkl::sparse::gemv(q, a_transpose, alpha, a_handle,
+                            __ranges::data(x_base), 0.0, __ranges::data(y))
+>>>>>>> main
       .wait();
 
   if constexpr (!__detail::is_matrix_opt_view_v<decltype(a_base)>) {
-      oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+    oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
   }
-
 }
 
 } // namespace spblas

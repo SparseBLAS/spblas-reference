@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
+option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
+option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
+
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
 
@@ -31,9 +34,38 @@ if (ENABLE_ARMPL)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
 endif()
 
+if (ENABLE_AOCLSPARSE)
+  if (NOT DEFINED ENV{AOCLSPARSE_DIR})
+    message(FATAL_ERROR "Environment variable AOCLSPARSE_DIR must be set when the AOCLSPARSE is enabled.")
+  endif()
+  if (NOT DEFINED ENV{AOCLUTILS_DIR})
+    message(FATAL_ERROR "Environment variable AOCLUTILS_DIR must be set when the AOCLSPARSE is enabled.")
+  endif()
+  target_include_directories(spblas INTERFACE $ENV{AOCLSPARSE_DIR}/include $ENV{AOCLUTILS_DIR}/include)
+  target_link_libraries(spblas INTERFACE $ENV{AOCLSPARSE_DIR}/lib/libaoclsparse.a $ENV{AOCLUTILS_DIR}/lib/libaoclutils.a)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_AOCLSPARSE")
+endif()
+
+if (ENABLE_ROCSPARSE)
+  set(SPBLAS_GPU_BACKEND ON)
+  project(spblas LANGUAGES HIP)
+  find_package(hip REQUIRED)
+  find_package(rocsparse REQUIRED)
+  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
+  set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
+endif()
+
+# Enable sanitizers
+if (ENABLE_SANITIZERS)
+    set(SANITIZER_FLAGS "-fsanitize=address,undefined")
+    target_compile_options(spblas INTERFACE ${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
+    target_link_options(spblas INTERFACE ${SANITIZER_FLAGS})
 endif()
 
 # mdspan

@@ -70,3 +70,44 @@ jobs:
       run: |
         source /opt/intel/oneapi/setvars.sh
         ./build/test/gtest/spblas-tests
+
+  macos:
+    runs-on: 'macos-latest'
+    strategy:
+      matrix:
+        armpl: [OFF, ON]
+    name: macos${{ matrix.armpl == 'ON' && '-armpl' || '' }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up ArmPL
+      run: |
+        brew install --cask arm-performance-libraries
+        ARMPL_PATH=$(echo /opt/arm/armpl*)
+        echo "ARMPL_DIR=$ARMPL_PATH" >> $GITHUB_ENV
+    - name: CMake
+      run: |
+        cmake -B build -DENABLE_ARMPL=${{ matrix.armpl }}
+    - name: Build
+      run: |
+        make -C build -j 3
+    - name: Test
+      run: |
+        ./build/test/gtest/spblas-tests
+
+  rocsparse:
+    runs-on: 'gpu_amd'
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      shell: bash -l {0}
+      run: |
+        module load cmake
+        cmake -B build -DENABLE_ROCSPARSE=ON -DCMAKE_PREFIX_PATH=/opt/rocm
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        make -C build -j `nproc`
+    - name: Test
+      shell: bash -l {0}
+      run: |
+        ./build/test/gtest/spblas-tests
