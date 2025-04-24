@@ -8,7 +8,10 @@
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
+#include <spblas/views/matrix_opt.hpp>
+
 #include <spblas/vendor/onemkl_sycl/detail/create_matrix_handle.hpp>
+#include <spblas/vendor/onemkl_sycl/detail/get_matrix_handle.hpp>
 
 //
 // Defines the following APIs for SpGEMM:
@@ -29,8 +32,6 @@ template <matrix A, matrix B, matrix C>
           __detail::is_csr_view_v<C>
 operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
-  auto a_base = __detail::get_ultimate_base(a);
-  auto b_base = __detail::get_ultimate_base(b);
 
   using oneapi::mkl::transpose;
   using oneapi::mkl::sparse::matmat_request;
@@ -38,15 +39,14 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   sycl::queue q(sycl::cpu_selector_v);
 
+  auto a_handle = __mkl::get_matrix_handle(q, a);
+  auto b_handle = __mkl::get_matrix_handle(q, b);
+
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
+  using O = tensor_offset_t<C>;
 
-  oneapi::mkl::sparse::matrix_handle_t a_handle =
-      __mkl::create_matrix_handle(q, a_base);
-  oneapi::mkl::sparse::matrix_handle_t b_handle =
-      __mkl::create_matrix_handle(q, b_base);
-
-  I* c_rowptr;
+  O* c_rowptr;
   if (c.rowptr().size() >= __backend::shape(c)[0] + 1) {
     c_rowptr = c.rowptr().data();
   } else {
@@ -86,7 +86,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 
   ev3_1.wait(); // sync is required to read c_nnz
 
-  index_t nnz = 0;
+  offset_t nnz = 0;
   if (*c_nnz <= std::numeric_limits<offset_t>::max()) {
     nnz = static_cast<offset_t>(*c_nnz);
   } else {
@@ -97,10 +97,15 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_info("computed c_nnz = %d", nnz);
   sycl::free(c_nnz, q);
 
+  // Return the operation info.  Only store a matrix handle inside the
+  // operation info if we allocated (i.e. if there is a matrix_opt
+  // housing the info, don't store it, passing nullptr instead).
+
   return operation_info_t{
       index<>{__backend::shape(c)[0], __backend::shape(c)[1]}, nnz,
-      __mkl::operation_state_t{a_handle, b_handle, c_handle, nullptr, descr,
-                               (void*) c_rowptr, q}};
+      __mkl::operation_state_t{__detail::has_matrix_opt(a) ? nullptr : a_handle,
+                               __detail::has_matrix_opt(b) ? nullptr : b_handle,
+                               c_handle, nullptr, descr, (void*) c_rowptr, q}};
 }
 
 template <matrix A, matrix B, matrix C>
@@ -110,20 +115,19 @@ template <matrix A, matrix B, matrix C>
 void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
 
   log_trace("");
-  auto a_base = __detail::get_ultimate_base(a);
-  auto b_base = __detail::get_ultimate_base(b);
 
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
 
   using oneapi::mkl::sparse::matmat_request;
   sycl::queue q(sycl::cpu_selector_v);
-  using I = tensor_index_t<C>;
+  using O = tensor_offset_t<C>;
 
-  I* c_rowptr = (I*) info.state_.c_rowptr;
+  O* c_rowptr = (O*) info.state_.c_rowptr;
 
-  auto a_handle = info.state_.a_handle;
-  auto b_handle = info.state_.b_handle;
+  auto a_handle = __mkl::get_matrix_handle(q, a, info.state_.a_handle);
+  auto b_handle = __mkl::get_matrix_handle(q, b, info.state_.b_handle);
+
   auto c_handle = info.state_.c_handle;
 
   auto descr = info.state_.descr;
@@ -141,7 +145,7 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
 
   if (c_rowptr != c.rowptr().data()) {
     q.memcpy(c.rowptr().data(), c_rowptr,
-             sizeof(I) * (__backend::shape(c)[0] + 1))
+             sizeof(O) * (__backend::shape(c)[0] + 1))
         .wait();
 
     sycl::free(c_rowptr, q);

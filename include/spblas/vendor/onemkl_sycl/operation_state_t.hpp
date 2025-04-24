@@ -7,6 +7,7 @@ namespace spblas {
 namespace __mkl {
 
 struct operation_state_t {
+
   oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
   oneapi::mkl::sparse::matrix_handle_t b_handle = nullptr;
   oneapi::mkl::sparse::matrix_handle_t c_handle = nullptr;

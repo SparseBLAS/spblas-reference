@@ -31,14 +31,13 @@
 namespace spblas {
 
 template <matrix A, matrix X, matrix Y>
-  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
-          __detail::has_mdspan_matrix_base<X> &&
-          __detail::is_matrix_instantiation_of_mdspan_v<Y> &&
-          std::is_same_v<
-              typename __detail::ultimate_base_type_t<X>::layout_type,
-              __mdspan::layout_right> &&
-          std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
-                         __mdspan::layout_right>
+  requires(
+      (__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+      __detail::has_mdspan_matrix_base<X> && __detail::is_matrix_mdspan_v<Y> &&
+      std::is_same_v<typename __detail::ultimate_base_type_t<X>::layout_type,
+                     __mdspan::layout_right> &&
+      std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
+                     __mdspan::layout_right>)
 void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);

@@ -37,8 +37,7 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(
       (__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
-      __detail::has_mdspan_matrix_base<B> &&
-      __detail::is_matrix_instantiation_of_mdspan_v<C> &&
+      __detail::has_mdspan_matrix_base<B> && __detail::is_matrix_mdspan_v<C> &&
       std::is_same_v<typename __detail::ultimate_base_type_t<B>::layout_type,
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<C>::layout_type,

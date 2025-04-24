@@ -7,6 +7,8 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+#include <spblas/vendor/onemkl_sycl/detail/detail.hpp>
+
 //
 // Defines the following APIs for SpMV:
 //
@@ -30,7 +32,6 @@ template <matrix A, vector X, vector Y>
            __ranges::contiguous_range<Y>)
 void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
-  auto a_base = __detail::get_ultimate_base(a);
   auto x_base = __detail::get_ultimate_base(x);
 
   auto alpha_optional = __detail::get_scaling_factor(a, x);
@@ -38,14 +39,16 @@ void multiply(A&& a, X&& x, Y&& y) {
 
   sycl::queue q(sycl::cpu_selector_v);
 
-  auto a_handle = __mkl::create_matrix_handle(q, a_base);
+  auto a_handle = __mkl::get_matrix_handle(q, a);
   auto a_transpose = __mkl::get_transpose(a);
 
   oneapi::mkl::sparse::gemv(q, a_transpose, alpha, a_handle,
                             __ranges::data(x_base), 0.0, __ranges::data(y))
       .wait();
 
-  oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  if (!__detail::has_matrix_opt(a)) {
+    oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  }
 }
 
 } // namespace spblas
