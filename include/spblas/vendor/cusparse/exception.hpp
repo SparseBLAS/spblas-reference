@@ -10,7 +10,7 @@ namespace spblas {
 namespace __cusparse {
 
 // Throw an exception if the cudaError_t is not cudaSuccess.
-void throw_if_error(cudaError_t error_code, std::string prefix = "") {
+inline void throw_if_error(cudaError_t error_code, std::string prefix = "") {
   if (error_code == cudaSuccess) {
     return;
   }
@@ -21,7 +21,7 @@ void throw_if_error(cudaError_t error_code, std::string prefix = "") {
 }
 
 // Throw an exception if the cusparseStatus_t is not CUSPARSE_STATUS_SUCCESS.
-void throw_if_error(cusparseStatus_t error_code) {
+inline void throw_if_error(cusparseStatus_t error_code) {
   if (error_code == CUSPARSE_STATUS_SUCCESS) {
     return;
   } else if (error_code == CUSPARSE_STATUS_NOT_INITIALIZED) {
