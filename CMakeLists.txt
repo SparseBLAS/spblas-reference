@@ -42,7 +42,24 @@ if (ENABLE_AOCLSPARSE)
     message(FATAL_ERROR "Environment variable AOCLUTILS_DIR must be set when the AOCLSPARSE is enabled.")
   endif()
   target_include_directories(spblas INTERFACE $ENV{AOCLSPARSE_DIR}/include $ENV{AOCLUTILS_DIR}/include)
-  target_link_libraries(spblas INTERFACE $ENV{AOCLSPARSE_DIR}/lib/libaoclsparse.a $ENV{AOCLUTILS_DIR}/lib/libaoclutils.a)
+
+  find_library(AOCLSPARSE_LIBRARY NAMES aoclsparse libaoclsparse
+               PATHS $ENV{AOCLSPARSE_DIR}/lib
+               NO_DEFAULT_PATH)
+
+  find_library(AOCLUTILS_LIBRARY NAMES aoclutils libaoclutils
+               PATHS $ENV{AOCLUTILS_DIR}/lib
+               NO_DEFAULT_PATH)
+
+  if (NOT AOCLSPARSE_LIBRARY)
+    message(FATAL_ERROR "Could not find AOCL-Sparse library in $ENV{AOCLSPARSE_DIR}/lib")
+  endif()
+  if (NOT AOCLUTILS_LIBRARY)
+    message(FATAL_ERROR "Could not find AOCL-Utils library in $ENV{AOCLUTILS_DIR}/lib")
+  endif()
+
+  target_link_libraries(spblas INTERFACE ${AOCLSPARSE_LIBRARY} ${AOCLUTILS_LIBRARY})
+
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_AOCLSPARSE")
 endif()
 

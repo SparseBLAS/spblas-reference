@@ -58,8 +58,7 @@ oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
 //
 template <matrix M>
 oneapi::mkl::transpose get_transpose(M&& m) {
-  static_assert(__detail::has_base<M> || __detail::is_csr_view_v<M> ||
-                __detail::is_csc_view_v<M>);
+  static_assert(__detail::has_csr_base<M> || __detail::has_csc_base<M>);
   if constexpr (__detail::has_base<M>) {
     return get_transpose(m.base());
   } else if constexpr (__detail::is_csr_view_v<M>) {
