@@ -22,7 +22,7 @@ include(FetchContent)
 if (ENABLE_ONEMKL_SYCL)
   find_package(MKL REQUIRED)
   target_link_libraries(spblas INTERFACE MKL::MKL_SYCL) # SYCL APIs
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL_SYCL")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl -DSPBLAS_ENABLE_ONEMKL_SYCL")
 endif()
 
 if (ENABLE_ARMPL)
