@@ -119,6 +119,32 @@ inline aoclsparse_status aoclsparse_create_csr<double>(
   return aoclsparse_create_dcsr(mat, base, M, N, nnz, row_ptr, col_idx, val);
 }
 
+template <class T>
+inline aoclsparse_status
+aoclsparse_create_csc(aoclsparse_matrix* mat, aoclsparse_index_base base,
+                      aoclsparse_int M, aoclsparse_int N, aoclsparse_int nnz,
+                      aoclsparse_int* col_ptr, aoclsparse_int* row_idx,
+                      T* val) {
+  log_warning("matrix creating with this data type is currently not supported");
+  return aoclsparse_status_not_implemented;
+}
+
+template <>
+inline aoclsparse_status
+aoclsparse_create_csc<float>(aoclsparse_matrix* mat, aoclsparse_index_base base,
+                             aoclsparse_int M, aoclsparse_int N,
+                             aoclsparse_int nnz, aoclsparse_int* col_ptr,
+                             aoclsparse_int* row_idx, float* val) {
+  return aoclsparse_create_scsc(mat, base, M, N, nnz, col_ptr, row_idx, val);
+}
+template <>
+inline aoclsparse_status aoclsparse_create_csc<double>(
+    aoclsparse_matrix* mat, aoclsparse_index_base base, aoclsparse_int M,
+    aoclsparse_int N, aoclsparse_int nnz, aoclsparse_int* col_ptr,
+    aoclsparse_int* row_idx, double* val) {
+  return aoclsparse_create_dcsc(mat, base, M, N, nnz, col_ptr, row_idx, val);
+}
+
 template <typename T>
 inline aoclsparse_status
 aoclsparse_export_csr(const aoclsparse_matrix mat, aoclsparse_index_base* base,
