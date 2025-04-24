@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sycl.hpp>
+#include <sycl/sycl.hpp>
 
 namespace spblas {
 namespace mkl {
@@ -25,6 +25,7 @@ public:
                                                }});
   }
 
+  // taking a shallow copy of queue from elsewhere, so we don't own destruction
   mkl_allocator(sycl::queue* q) noexcept
       : queue_manager_(q, [](sycl::queue* q) {}) {}
 

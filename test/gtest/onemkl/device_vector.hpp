@@ -2,7 +2,7 @@
 #include <iterator>
 #include <memory>
 #include <spblas/vendor/onemkl_sycl/mkl_allocator.hpp>
-#include <sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <vector>
 
 namespace thrust {
