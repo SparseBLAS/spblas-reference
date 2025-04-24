@@ -20,9 +20,17 @@ endif()
 include(FetchContent)
 
 if (ENABLE_ONEMKL_SYCL)
+  set(SPBLAS_GPU_BACKEND ON)
   find_package(MKL REQUIRED)
   target_link_libraries(spblas INTERFACE MKL::MKL_SYCL) # SYCL APIs
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL_SYCL")
+
+  FetchContent_Declare(
+  sycl_thrust
+  GIT_REPOSITORY https://github.com/SparseBLAS/sycl-thrust.git
+  GIT_TAG main)
+  FetchContent_MakeAvailable(sycl_thrust)
+  target_link_libraries(spblas INTERFACE sycl_thrust)
 endif()
 
 if (ENABLE_ARMPL)

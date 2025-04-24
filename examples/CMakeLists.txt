@@ -11,7 +11,6 @@ if (NOT SPBLAS_GPU_BACKEND)
   add_example(matrix_opt_example)
   add_example(spmm_csc)
 else()
-  find_package(rocthrust REQUIRED)
   add_subdirectory(device)
 endif()
 
