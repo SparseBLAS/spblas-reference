@@ -69,7 +69,7 @@ jobs:
     - name: Test
       run: |
         source /opt/intel/oneapi/setvars.sh
-        ./build/test/gtest/spblas-tests
+        ONEMKL_DEVICE_SELECTOR=*:cpu ./build/test/gtest/spblas-tests
 
   macos:
     runs-on: 'macos-latest'
@@ -132,3 +132,23 @@ jobs:
       shell: bash -l {0}
       run: |
         ./build/test/gtest/spblas-tests
+
+  intel-llvm-gpu:
+    runs-on: 'gpu_intel'
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      shell: bash -l {0}
+      run: |
+        module load intel-oneapi-compilers intel-oneapi-dpl intel-oneapi-mkl cmake
+        cmake -B build -DCMAKE_CXX_COMPILER=icpx -DENABLE_ONEMKL_SYCL=ON
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        module load intel-oneapi-compilers intel-oneapi-dpl intel-oneapi-mkl
+        make -C build -j `nproc`
+    - name: Test
+      shell: bash -l {0}
+      run: |
+        module load intel-oneapi-compilers intel-oneapi-dpl intel-oneapi-mkl
+        ONEMKL_DEVICE_SELECTOR=level_zero:gpu ./build/test/gtest/spblas-gpu-tests
