@@ -30,7 +30,6 @@ if (ENABLE_ONEMKL_SYCL)
   GIT_REPOSITORY https://github.com/SparseBLAS/sycl-thrust.git
   GIT_TAG main)
   FetchContent_MakeAvailable(sycl_thrust)
-  target_link_libraries(spblas INTERFACE sycl_thrust)
 endif()
 
 if (ENABLE_ARMPL)
