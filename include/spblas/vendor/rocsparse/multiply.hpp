@@ -61,14 +61,8 @@ public:
     auto handle = this->handle_.get();
 
     rocsparse_spmat_descr mat = __rocsparse::create_matrix_descr(a_base);
-    rocsparse_dnvec_descr vecb;
-    rocsparse_dnvec_descr vecc;
-    __rocsparse::throw_if_error(rocsparse_create_dnvec_descr(
-        &vecb, b_base.size(), b_base.data(),
-        to_rocsparse_datatype<typename input_type::value_type>()));
-    __rocsparse::throw_if_error(rocsparse_create_dnvec_descr(
-        &vecc, c.size(), c.data(),
-        to_rocsparse_datatype<typename output_type::value_type>()));
+    rocsparse_dnvec_descr vecb = __rocsparse::create_vector_descr(b_base);
+    rocsparse_dnvec_descr vecc = __rocsparse::create_vector_descr(c);
     value_type alpha_val = alpha;
     value_type beta = 0.0;
     long unsigned int buffer_size = 0;
