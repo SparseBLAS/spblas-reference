@@ -10,6 +10,7 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+#include "descriptor.hpp"
 #include "exception.hpp"
 #include "hip_allocator.hpp"
 #include "types.hpp"
@@ -85,36 +86,10 @@ public:
     value_type beta = beta_optional.value_or(1);
     auto handle = this->handle_.get();
     // Create sparse matrix A in CSR format
-    __rocsparse::throw_if_error(rocsparse_create_csr_descr(
-        &this->mat_a_, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-        a_base.values().size(), a_base.rowptr().data(), a_base.colind().data(),
-        a_base.values().data(),
-        to_rocsparse_indextype<typename matrix_type::offset_type>(),
-        to_rocsparse_indextype<typename matrix_type::index_type>(),
-        rocsparse_index_base_zero, to_rocsparse_datatype<value_type>()));
-    __rocsparse::throw_if_error(rocsparse_create_csr_descr(
-        &this->mat_b_, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
-        b_base.values().size(), b_base.rowptr().data(), b_base.colind().data(),
-        b_base.values().data(),
-        to_rocsparse_indextype<typename input_type::offset_type>(),
-        to_rocsparse_indextype<typename input_type::index_type>(),
-        rocsparse_index_base_zero,
-        to_rocsparse_datatype<typename input_type::scalar_type>()));
-    __rocsparse::throw_if_error(rocsparse_create_csr_descr(
-        &this->mat_c_, __backend::shape(a_base)[0], __backend::shape(b_base)[1],
-        0, c.rowptr().data(), NULL, NULL,
-        to_rocsparse_indextype<typename output_type::offset_type>(),
-        to_rocsparse_indextype<typename output_type::index_type>(),
-        rocsparse_index_base_zero,
-        to_rocsparse_datatype<typename output_type::scalar_type>()));
-    __rocsparse::throw_if_error(rocsparse_create_csr_descr(
-        &this->mat_d_, __backend::shape(d_base)[0], __backend::shape(d_base)[1],
-        d_base.values().size(), d_base.rowptr().data(), d_base.colind().data(),
-        d_base.values().data(),
-        to_rocsparse_indextype<typename output_type::offset_type>(),
-        to_rocsparse_indextype<typename output_type::index_type>(),
-        rocsparse_index_base_zero,
-        to_rocsparse_datatype<typename output_type::scalar_type>()));
+    this->mat_a_ = __rocsparse::create_matrix_descr(a_base);
+    this->mat_b_ = __rocsparse::create_matrix_descr(b_base);
+    this->mat_c_ = __rocsparse::create_matrix_descr(c);
+    this->mat_d_ = __rocsparse::create_matrix_descr(d_base);
     //--------------------------------------------------------------------------
     // SpGEMM Computation
     // ask buffer_size bytes for external memory
