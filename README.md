@@ -104,7 +104,7 @@ brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build
 
 ### Compiling with a Vendor Backend
 A vendor backend can be enabled by passing in an `-DENABLE_{BACKEND}=ON` switch
-to `cmake`.  Currently, oneMKL, ArmPL, and rocSPARSE are the supported vendor
+to `cmake`.  Currently, oneMKL, ArmPL, rocSPARSE and cuSPARSE are the supported vendor
 backends.
 
 ### Compiling with oneMKL
@@ -139,6 +139,17 @@ have ROCm installed in a non-standard location.
 ```bash
 # Explicitly set the location of ROCm using `CMAKE_PREFIX_PATH`.
 brock@slothius:~/src/spblas-reference$ cmake -B build -DENABLE_ROCSPARSE=ON -DCMAKE_PREFIX_PATH=/opt/rocm-6.1.2
+```
+
+### Compiling with cuSPARSE
+In order to compile with cuSPARSE, CUDA must be installed and the install
+location of CUDA added to `CMAKE_PREFIX_PATH`.  Your package manager will likely
+take care of this for you, but you can also manually specify the location if you
+have CUDA installed in a non-standard location.
+
+```bash
+# Explicitly set the location of CUDA using `CMAKE_PREFIX_PATH`.
+brock@slothius:~/src/spblas-reference$ cmake -B build -DENABLE_CUSPARSE=ON -DCMAKE_PREFIX_PATH=/usr/local/cuda-12.6
 ```
 
 #### Compiling with GCC on Mac OS

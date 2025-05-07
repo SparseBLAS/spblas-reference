@@ -21,3 +21,7 @@
 #ifdef SPBLAS_ENABLE_ROCSPARSE
 #include <spblas/vendor/rocsparse/rocsparse.hpp>
 #endif
+
+#ifdef SPBLAS_ENABLE_CUSPARSE
+#include <spblas/vendor/cusparse/cusparse.hpp>
+#endif
