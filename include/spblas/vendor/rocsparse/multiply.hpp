@@ -10,6 +10,7 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+#include "descriptor.hpp"
 #include "exception.hpp"
 #include "hip_allocator.hpp"
 #include "types.hpp"
@@ -59,14 +60,7 @@ public:
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
     auto handle = this->handle_.get();
 
-    rocsparse_spmat_descr mat;
-    __rocsparse::throw_if_error(rocsparse_create_csr_descr(
-        &mat, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-        a_base.values().size(), a_base.rowptr().data(), a_base.colind().data(),
-        a_base.values().data(),
-        to_rocsparse_indextype<typename matrix_type::offset_type>(),
-        to_rocsparse_indextype<typename matrix_type::index_type>(),
-        rocsparse_index_base_zero, to_rocsparse_datatype<value_type>()));
+    rocsparse_spmat_descr mat = __rocsparse::create_matrix_descr(a_base);
     rocsparse_dnvec_descr vecb;
     rocsparse_dnvec_descr vecc;
     __rocsparse::throw_if_error(rocsparse_create_dnvec_descr(
