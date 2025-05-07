@@ -29,5 +29,17 @@ rocsparse_spmat_descr create_matrix_descr(mat&& a) {
   return descr;
 }
 
+// create dense vector from mdspan
+template <vector vec>
+  requires __ranges::contiguous_range<vec>
+rocsparse_dnvec_descr create_vector_descr(vec&& v) {
+  using vector_type = std::remove_cvref_t<vec>;
+  rocsparse_dnvec_descr descr;
+  throw_if_error(rocsparse_create_dnvec_descr(
+      &descr, v.size(), v.data(),
+      to_rocsparse_datatype<typename vector_type::value_type>()));
+  return descr;
+}
+
 } // namespace __rocsparse
 } // namespace spblas
