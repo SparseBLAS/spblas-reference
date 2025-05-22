@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -85,19 +86,19 @@ public:
     auto beta_optional = __detail::get_scaling_factor(d);
     value_type beta = beta_optional.value_or(1);
     auto handle = this->handle_.get();
-    // Create sparse matrix A in CSR format
+    // Create sparse matrix in CSR format
     this->mat_a_ = __rocsparse::create_matrix_descr(a_base);
     this->mat_b_ = __rocsparse::create_matrix_descr(b_base);
     this->mat_c_ = __rocsparse::create_matrix_descr(c);
     this->mat_d_ = __rocsparse::create_matrix_descr(d_base);
-    //--------------------------------------------------------------------------
-    // SpGEMM Computation
     // ask buffer_size bytes for external memory
     __rocsparse::throw_if_error(rocsparse_spgemm(
         handle, rocsparse_operation_none, rocsparse_operation_none, &alpha,
         this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
         to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_buffer_size, &buffer_size, nullptr));
+    // allocate the new buffer if it requires more than what the buffer
+    // currently has.
     if (buffer_size > this->buffer_size_) {
       this->alloc_.deallocate(workspace_, this->buffer_size_);
       this->buffer_size_ = buffer_size;
@@ -113,6 +114,7 @@ public:
     int64_t c_num_cols;
     __rocsparse::throw_if_error(rocsparse_spmat_get_size(
         this->mat_c_, &c_num_rows, &c_num_cols, &this->result_nnz_));
+    // form a shape
     this->result_shape_ = index<index_t>(c_num_rows, c_num_cols);
   }
 
@@ -218,10 +220,10 @@ private:
                       std::function<void(rocsparse_handle)>>;
   handle_manager handle_;
   rocsparse::hip_allocator<char> alloc_;
-  long unsigned int buffer_size_;
+  std::uint64_t buffer_size_;
   char* workspace_;
   index<index_t> result_shape_;
-  index_t result_nnz_;
+  std::int64_t result_nnz_;
   rocsparse_spmat_descr mat_a_;
   rocsparse_spmat_descr mat_b_;
   rocsparse_spmat_descr mat_c_;
