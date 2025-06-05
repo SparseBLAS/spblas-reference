@@ -11,6 +11,7 @@
 #include <spblas/detail/view_inspectors.hpp>
 
 #include "cuda_allocator.hpp"
+#include "descriptor.hpp"
 #include "exception.hpp"
 #include "types.hpp"
 
@@ -78,27 +79,12 @@ public:
     value_type alpha = alpha_optional.value_or(1);
     value_type beta = 1;
     auto handle = this->handle_.get();
-    // Create sparse matrix A in CSR format
-    __cusparse::throw_if_error(cusparseCreateCsr(
-        &mat_a_, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-        a_base.values().size(), a_base.rowptr().data(), a_base.colind().data(),
-        a_base.values().data(),
-        to_cusparse_indextype<typename matrix_type::offset_type>(),
-        to_cusparse_indextype<typename matrix_type::index_type>(),
-        CUSPARSE_INDEX_BASE_ZERO, to_cuda_datatype<value_type>()));
-    __cusparse::throw_if_error(cusparseCreateCsr(
-        &mat_b_, __backend::shape(b_base)[0], __backend::shape(b_base)[1],
-        b_base.values().size(), b_base.rowptr().data(), b_base.colind().data(),
-        b_base.values().data(),
-        to_cusparse_indextype<typename matrix_type::offset_type>(),
-        to_cusparse_indextype<typename matrix_type::index_type>(),
-        CUSPARSE_INDEX_BASE_ZERO, to_cuda_datatype<value_type>()));
-    __cusparse::throw_if_error(cusparseCreateCsr(
-        &mat_c_, __backend::shape(a)[0], __backend::shape(b)[1], 0,
-        c.rowptr().data(), NULL, NULL,
-        to_cusparse_indextype<typename matrix_type::offset_type>(),
-        to_cusparse_indextype<typename matrix_type::index_type>(),
-        CUSPARSE_INDEX_BASE_ZERO, to_cuda_datatype<value_type>()));
+    __cusparse::throw_if_error(cusparseDestroySpMat(mat_a_));
+    __cusparse::throw_if_error(cusparseDestroySpMat(mat_b_));
+    __cusparse::throw_if_error(cusparseDestroySpMat(mat_c_));
+    mat_a_ = __cusparse::create_matrix_descr(a_base);
+    mat_b_ = __cusparse::create_matrix_descr(b_base);
+    mat_c_ = __cusparse::create_matrix_descr(c);
 
     // ask bufferSize1 bytes for external memory
     size_t buffer_size_1 = 0;
@@ -183,9 +169,9 @@ private:
   char* workspace_2_;
   index<index_t> result_shape_;
   index_t result_nnz_;
-  cusparseSpMatDescr_t mat_a_;
-  cusparseSpMatDescr_t mat_b_;
-  cusparseSpMatDescr_t mat_c_;
+  cusparseSpMatDescr_t mat_a_ = nullptr;
+  cusparseSpMatDescr_t mat_b_ = nullptr;
+  cusparseSpMatDescr_t mat_c_ = nullptr;
   cusparseSpGEMMDescr_t descr_;
 };
 
