@@ -33,8 +33,10 @@ TEST(CsrView, SpGEMM) {
           d_b_colind.data().get(), b_shape, b_nnz);
       spblas::csr_view<value_t, index_t, offset_t> b(b_values, b_rowptr,
                                                      b_colind, b_shape, b_nnz);
-
-      thrust::device_vector<offset_t> d_c_rowptr(m + 1);
+      std::vector<offset_t> c_rowptr(m + 1);
+      // Can not create the vector with the size because it will use for_each to
+      // initilize the value in cuda.
+      thrust::device_vector<offset_t> d_c_rowptr(c_rowptr);
 
       spblas::csr_view<value_t, index_t, offset_t> d_c(
           nullptr, d_c_rowptr.data().get(), nullptr, {m, n}, 0);
@@ -42,8 +44,10 @@ TEST(CsrView, SpGEMM) {
       spblas::spgemm_state_t state;
       spblas::multiply_compute(state, d_a, d_b, d_c);
       auto nnz = state.result_nnz();
-      thrust::device_vector<value_t> d_c_values(nnz);
-      thrust::device_vector<index_t> d_c_colind(nnz);
+      std::vector<value_t> c_values(nnz);
+      std::vector<index_t> c_colind(nnz);
+      thrust::device_vector<value_t> d_c_values(c_values);
+      thrust::device_vector<index_t> d_c_colind(c_colind);
       std::span<value_t> d_c_values_span(d_c_values.data().get(), nnz);
       std::span<offset_t> d_c_rowptr_span(d_c_rowptr.data().get(), m + 1);
       std::span<index_t> d_c_colind_span(d_c_colind.data().get(), nnz);
@@ -52,9 +56,6 @@ TEST(CsrView, SpGEMM) {
 
       spblas::multiply_fill(state, d_a, d_b, d_c);
 
-      std::vector<value_t> c_values(nnz);
-      std::vector<offset_t> c_rowptr(m + 1);
-      std::vector<index_t> c_colind(nnz);
       thrust::copy(d_c_values.begin(), d_c_values.end(), c_values.begin());
       thrust::copy(d_c_rowptr.begin(), d_c_rowptr.end(), c_rowptr.begin());
       thrust::copy(d_c_colind.begin(), d_c_colind.end(), c_colind.begin());
@@ -121,8 +122,8 @@ TEST(CsrView, SpGEMM_AScaled) {
           d_b_colind.data().get(), b_shape, b_nnz);
       spblas::csr_view<value_t, index_t, offset_t> b(b_values, b_rowptr,
                                                      b_colind, b_shape, b_nnz);
-
-      thrust::device_vector<offset_t> d_c_rowptr(m + 1);
+      std::vector<offset_t> c_rowptr(m + 1);
+      thrust::device_vector<offset_t> d_c_rowptr(c_rowptr);
 
       spblas::csr_view<value_t, index_t, offset_t> d_c(
           nullptr, d_c_rowptr.data().get(), nullptr, {m, n}, 0);
@@ -130,8 +131,10 @@ TEST(CsrView, SpGEMM_AScaled) {
       spblas::spgemm_state_t state;
       spblas::multiply_compute(state, spblas::scaled(alpha, d_a), d_b, d_c);
       auto nnz = state.result_nnz();
-      thrust::device_vector<value_t> d_c_values(nnz);
-      thrust::device_vector<index_t> d_c_colind(nnz);
+      std::vector<value_t> c_values(nnz);
+      std::vector<index_t> c_colind(nnz);
+      thrust::device_vector<value_t> d_c_values(c_values);
+      thrust::device_vector<index_t> d_c_colind(c_colind);
       std::span<value_t> d_c_values_span(d_c_values.data().get(), nnz);
       std::span<offset_t> d_c_rowptr_span(d_c_rowptr.data().get(), m + 1);
       std::span<index_t> d_c_colind_span(d_c_colind.data().get(), nnz);
@@ -140,9 +143,6 @@ TEST(CsrView, SpGEMM_AScaled) {
 
       spblas::multiply_fill(state, spblas::scaled(alpha, d_a), d_b, d_c);
 
-      std::vector<value_t> c_values(nnz);
-      std::vector<offset_t> c_rowptr(m + 1);
-      std::vector<index_t> c_colind(nnz);
       thrust::copy(d_c_values.begin(), d_c_values.end(), c_values.begin());
       thrust::copy(d_c_rowptr.begin(), d_c_rowptr.end(), c_rowptr.begin());
       thrust::copy(d_c_colind.begin(), d_c_colind.end(), c_colind.begin());
@@ -210,7 +210,8 @@ TEST(CsrView, SpGEMM_BScaled) {
       spblas::csr_view<value_t, index_t, offset_t> b(b_values, b_rowptr,
                                                      b_colind, b_shape, b_nnz);
 
-      thrust::device_vector<offset_t> d_c_rowptr(m + 1);
+      std::vector<offset_t> c_rowptr(m + 1);
+      thrust::device_vector<offset_t> d_c_rowptr(c_rowptr);
 
       spblas::csr_view<value_t, index_t, offset_t> d_c(
           nullptr, d_c_rowptr.data().get(), nullptr, {m, n}, 0);
@@ -218,8 +219,10 @@ TEST(CsrView, SpGEMM_BScaled) {
       spblas::spgemm_state_t state;
       spblas::multiply_compute(state, d_a, spblas::scaled(alpha, d_b), d_c);
       auto nnz = state.result_nnz();
-      thrust::device_vector<value_t> d_c_values(nnz);
-      thrust::device_vector<index_t> d_c_colind(nnz);
+      std::vector<value_t> c_values(nnz);
+      std::vector<index_t> c_colind(nnz);
+      thrust::device_vector<value_t> d_c_values(c_values);
+      thrust::device_vector<index_t> d_c_colind(c_colind);
       std::span<value_t> d_c_values_span(d_c_values.data().get(), nnz);
       std::span<offset_t> d_c_rowptr_span(d_c_rowptr.data().get(), m + 1);
       std::span<index_t> d_c_colind_span(d_c_colind.data().get(), nnz);
@@ -228,9 +231,6 @@ TEST(CsrView, SpGEMM_BScaled) {
 
       spblas::multiply_fill(state, d_a, spblas::scaled(alpha, d_b), d_c);
 
-      std::vector<value_t> c_values(nnz);
-      std::vector<offset_t> c_rowptr(m + 1);
-      std::vector<index_t> c_colind(nnz);
       thrust::copy(d_c_values.begin(), d_c_values.end(), c_values.begin());
       thrust::copy(d_c_rowptr.begin(), d_c_rowptr.end(), c_rowptr.begin());
       thrust::copy(d_c_colind.begin(), d_c_colind.end(), c_colind.begin());

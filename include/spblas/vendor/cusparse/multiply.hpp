@@ -11,6 +11,7 @@
 #include <spblas/detail/view_inspectors.hpp>
 
 #include "cuda_allocator.hpp"
+#include "descriptor.hpp"
 #include "exception.hpp"
 #include "types.hpp"
 
@@ -59,23 +60,9 @@ public:
     tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
     auto handle = this->handle_.get();
 
-    cusparseSpMatDescr_t mat;
-    __cusparse::throw_if_error(cusparseCreateCsr(
-        &mat, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-        a_base.values().size(), a_base.rowptr().data(), a_base.colind().data(),
-        a_base.values().data(),
-        to_cusparse_indextype<typename matrix_type::offset_type>(),
-        to_cusparse_indextype<typename matrix_type::index_type>(),
-        CUSPARSE_INDEX_BASE_ZERO, to_cuda_datatype<value_type>()));
-
-    cusparseDnVecDescr_t vecb;
-    cusparseDnVecDescr_t vecc;
-    __cusparse::throw_if_error(cusparseCreateDnVec(
-        &vecb, b_base.size(), b_base.data(),
-        to_cuda_datatype<typename input_type::value_type>()));
-    __cusparse::throw_if_error(cusparseCreateDnVec(
-        &vecc, c.size(), c.data(),
-        to_cuda_datatype<typename output_type::value_type>()));
+    auto mat = __cusparse::create_matrix_descr(a_base);
+    auto vecb = __cusparse::create_vector_descr(b_base);
+    auto vecc = __cusparse::create_vector_descr(c);
 
     value_type alpha_val = alpha;
     value_type beta = 0.0;
