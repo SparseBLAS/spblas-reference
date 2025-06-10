@@ -87,18 +87,14 @@ public:
     mat_b_ = __cusparse::create_matrix_descr(b_base);
     mat_c_ = __cusparse::create_matrix_descr(c);
 
-    // ask bufferSize1 bytes for external memory
+    // ask buffer_size_1 bytes for external memory
     size_t buffer_size_1 = 0;
     __cusparse::throw_if_error(cusparseSpGEMM_workEstimation(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
         to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_,
         &buffer_size_1, NULL));
-    if (buffer_size_1 > this->buffer_size_1_) {
-      this->alloc_.deallocate(this->workspace_1_, buffer_size_1_);
-      this->buffer_size_1_ = buffer_size_1;
-      this->workspace_1_ = this->alloc_.allocate(buffer_size_1);
-    }
+    // buffer preparation
     // inspect the matrices A and B to understand the memory requirement for
     // the next step
     __cusparse::throw_if_error(cusparseSpGEMM_workEstimation(
@@ -114,11 +110,7 @@ public:
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
         to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_,
         &buffer_size_2, NULL));
-    if (buffer_size_2 > this->buffer_size_2_) {
-      this->alloc_.deallocate(this->workspace_2_, buffer_size_2_);
-      this->buffer_size_2_ = buffer_size_2;
-      this->workspace_2_ = this->alloc_.allocate(buffer_size_2);
-    }
+    // buffer preparation
 
     // compute the intermediate product of A * B
     cusparseSpGEMM_compute(
@@ -181,17 +173,13 @@ public:
     mat_b_ = __cusparse::create_matrix_descr(b_base);
     mat_c_ = __cusparse::create_matrix_descr(c);
 
-    // ask bufferSize1 bytes for external memory
+    // ask buffer_size_1 bytes for external memory
     size_t buffer_size_1 = 0;
     __cusparse::throw_if_error(cusparseSpGEMMreuse_workEstimation(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, mat_a_, mat_b_, mat_c_,
         CUSPARSE_SPGEMM_DEFAULT, this->descr_, &buffer_size_1, NULL));
-    if (buffer_size_1 > this->buffer_size_1_) {
-      this->alloc_.deallocate(this->workspace_1_, buffer_size_1_);
-      this->buffer_size_1_ = buffer_size_1;
-      this->workspace_1_ = this->alloc_.allocate(buffer_size_1);
-    }
+    // buffer preparation
     // inspect the matrices A and B to understand the memory requirement for
     // the next step
     __cusparse::throw_if_error(cusparseSpGEMMreuse_workEstimation(
@@ -209,21 +197,9 @@ public:
                             mat_c_, CUSPARSE_SPGEMM_DEFAULT, this->descr_,
                             &buffer_size_2, NULL, &buffer_size_3, NULL,
                             &buffer_size_4, NULL);
-    if (buffer_size_2 > this->buffer_size_2_) {
-      this->alloc_.deallocate(this->workspace_2_, buffer_size_2_);
-      this->buffer_size_2_ = buffer_size_2;
-      this->workspace_2_ = this->alloc_.allocate(buffer_size_2);
-    }
-    if (buffer_size_3 > this->buffer_size_3_) {
-      this->alloc_.deallocate(this->workspace_3_, buffer_size_3_);
-      this->buffer_size_3_ = buffer_size_3;
-      this->workspace_3_ = this->alloc_.allocate(buffer_size_3);
-    }
-    if (buffer_size_4 > this->buffer_size_4_) {
-      this->alloc_.deallocate(this->workspace_4_, buffer_size_4_);
-      this->buffer_size_4_ = buffer_size_4;
-      this->workspace_4_ = this->alloc_.allocate(buffer_size_4);
-    }
+    // buffer preparation
+    // buffer preparation
+    // buffer preparation
 
     // compute nnz
     cusparseSpGEMMreuse_nnz(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
@@ -263,11 +239,7 @@ public:
                              CUSPARSE_OPERATION_NON_TRANSPOSE, mat_a_, mat_b_,
                              mat_c_, CUSPARSE_SPGEMM_DEFAULT, this->descr_,
                              &buffer_size_5, NULL);
-    if (buffer_size_5 > this->buffer_size_5_) {
-      this->alloc_.deallocate(this->workspace_5_, buffer_size_5_);
-      this->buffer_size_5_ = buffer_size_5;
-      this->workspace_5_ = this->alloc_.allocate(buffer_size_5);
-    }
+    // buffer preparation
     cusparseSpGEMMreuse_copy(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
                              CUSPARSE_OPERATION_NON_TRANSPOSE, mat_a_, mat_b_,
                              mat_c_, CUSPARSE_SPGEMM_DEFAULT, this->descr_,

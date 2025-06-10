@@ -97,13 +97,7 @@ public:
         this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
         to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_buffer_size, &buffer_size, nullptr));
-    // allocate the new buffer if it requires more than what the buffer
-    // currently has.
-    if (buffer_size > this->buffer_size_) {
-      this->alloc_.deallocate(workspace_, this->buffer_size_);
-      this->buffer_size_ = buffer_size;
-      workspace_ = this->alloc_.allocate(buffer_size);
-    }
+    // buffer preparation
     __rocsparse::throw_if_error(rocsparse_spgemm(
         handle, rocsparse_operation_none, rocsparse_operation_none, &alpha,
         this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
