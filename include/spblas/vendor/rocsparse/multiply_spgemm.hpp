@@ -67,6 +67,7 @@ public:
     return this->result_nnz_;
   }
 
+  // it is the same procedure for symbolic_compute
   template <matrix A, matrix B, matrix C, matrix D>
     requires __detail::has_csr_base<A> && __detail::has_csr_base<B> &&
              __detail::is_csr_view_v<C> && __detail::has_csr_base<D>
