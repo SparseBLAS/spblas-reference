@@ -1,4 +1,3 @@
-
 #include "../util.hpp"
 #include <spblas/spblas.hpp>
 
@@ -9,7 +8,7 @@ using value_t = float;
 using index_t = spblas::index_t;
 using offset_t = spblas::offset_t;
 
-TEST(CsrView, SpMV) {
+TEST(thrust_CsrView, SpMV) {
   for (auto&& [num_rows, num_cols, nnz] : util::dims) {
     auto [values, rowptr, colind, shape, _] =
         spblas::generate_csr<value_t, index_t, offset_t>(num_rows, num_cols,
@@ -32,8 +31,7 @@ TEST(CsrView, SpMV) {
     std::span<value_t> b_span(d_b.data().get(), num_cols);
     std::span<value_t> c_span(d_c.data().get(), num_rows);
 
-    spblas::spmv_state_t state;
-    spblas::multiply(state, a, b_span, c_span);
+    spblas::multiply(a, b_span, c_span);
 
     thrust::copy(d_c.begin(), d_c.end(), c.begin());
 
@@ -53,7 +51,7 @@ TEST(CsrView, SpMV) {
   }
 }
 
-TEST(CsrView, SpMV_Ascaled) {
+TEST(thrust_CsrView, SpMV_Ascaled) {
   for (auto&& [num_rows, num_cols, nnz] :
        {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
         std::tuple(40, 40, 1000)}) {
@@ -79,8 +77,7 @@ TEST(CsrView, SpMV_Ascaled) {
       std::span<value_t> b_span(d_b.data().get(), num_cols);
       std::span<value_t> c_span(d_c.data().get(), num_rows);
 
-      spblas::spmv_state_t state;
-      spblas::multiply(state, spblas::scaled(alpha, a), b_span, c_span);
+      spblas::multiply(spblas::scaled(alpha, a), b_span, c_span);
 
       thrust::copy(d_c.begin(), d_c.end(), c.begin());
 
@@ -101,7 +98,7 @@ TEST(CsrView, SpMV_Ascaled) {
   }
 }
 
-TEST(CsrView, SpMV_BScaled) {
+TEST(thrust_CsrView, SpMV_BScaled) {
   for (auto&& [num_rows, num_cols, nnz] :
        {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
         std::tuple(40, 40, 1000)}) {
@@ -127,8 +124,7 @@ TEST(CsrView, SpMV_BScaled) {
       std::span<value_t> b_span(d_b.data().get(), num_cols);
       std::span<value_t> c_span(d_c.data().get(), num_rows);
 
-      spblas::spmv_state_t state;
-      spblas::multiply(state, a, spblas::scaled(alpha, b_span), c_span);
+      spblas::multiply(a, spblas::scaled(alpha, b_span), c_span);
 
       thrust::copy(d_c.begin(), d_c.end(), c.begin());
 

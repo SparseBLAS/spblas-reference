@@ -56,8 +56,7 @@ int main(int argc, char** argv) {
   std::span<value_t> y_span(d_y.data().get(), m);
 
   // y = A * x
-  spblas::spmv_state_t state;
-  spblas::multiply(state, a, x_span, y_span);
+  spblas::multiply(a, x_span, y_span);
 
   thrust::copy(d_y.begin(), d_y.end(), y.begin());
 
