@@ -13,4 +13,4 @@ function(add_device_example example_name)
   target_link_libraries(${example_name} spblas fmt)
 endfunction()
 
-add_device_example(simple_spmv)
+add_device_example(device_spmv)
