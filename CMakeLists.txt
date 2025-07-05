@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
 option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
 option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
+option(ENABLE_CUSPARSE "Enable cuSPARSE" OFF)
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -80,6 +81,13 @@ if (ENABLE_ROCSPARSE)
   set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
 
+if (ENABLE_CUSPARSE)
+  set(SPBLAS_GPU_BACKEND ON)
+  find_package(CUDAToolkit REQUIRED)
+  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
@@ -144,6 +152,13 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     GIT_TAG 11.1.3)
   FetchContent_MakeAvailable(fmt)
 
+  if (ENABLE_ROCSPARSE)
+    find_package(rocthrust REQUIRED)
+  elseif (ENABLE_CUSPARSE)
+    # It is required to be compiled on the node with available NVIDIA GPU
+    find_package(Thrust REQUIRED)
+    thrust_create_target(Thrust)
+  endif()
   add_subdirectory(examples)
   add_subdirectory(test)
 endif()

@@ -1,8 +1,22 @@
 enable_testing()
+function(add_device_test file_list)
+  add_executable(spblas-tests ${${file_list}})
+  if (ENABLE_ROCSPARSE)
+    set_source_files_properties(${${file_list}} PROPERTIES LANGUAGE HIP)
+    find_package(rocthrust REQUIRED)
+    target_link_libraries(spblas-tests rocthrust)
+  elseif (ENABLE_CUSPARSE)
+    target_link_libraries(spblas-tests Thrust)
+  elseif (ENABLE_ONEMKL_SYCL)
+    target_link_libraries(spblas-tests sycl_thrust)
+  else()
+    message(FATAL_ERROR "Device backend not found.")
+  endif()
+endfunction()
 
 set(TEST_SOURCES)
 
-if (NOT ENABLE_ROCSPARSE)
+if (NOT SPBLAS_GPU_BACKEND)
   list(APPEND TEST_SOURCES
        spmv_test.cpp
        spmm_test.cpp
@@ -11,29 +25,13 @@ if (NOT ENABLE_ROCSPARSE)
        add_test.cpp
        transpose_test.cpp
        triangular_solve_test.cpp)
-endif()
-
-if (SPBLAS_GPU_BACKEND)
-  list(APPEND TEST_SOURCES
-       thrust/spmv_test.cpp)
-
-  if (ENABLE_ROCSPARSE)
-    set_source_files_properties(${TEST_SOURCES} PROPERTIES LANGUAGE HIP)
-  endif()
+else()
+   list(APPEND TEST_SOURCES device/spmv_test.cpp)
 endif()
 
 add_executable(spblas-tests ${TEST_SOURCES})
 
 target_link_libraries(spblas-tests spblas fmt GTest::gtest_main)
-
-if (ENABLE_ROCSPARSE)
-  find_package(rocthrust REQUIRED)
-  target_link_libraries(spblas-tests rocthrust)
-endif()
-
-if (ENABLE_ONEMKL_SYCL)
-  target_link_libraries(spblas-tests sycl_thrust)
-endif()
 
 include(GoogleTest)
 gtest_discover_tests(spblas-tests)
