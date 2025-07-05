@@ -8,6 +8,11 @@
 #ifndef SPBLAS_VENDOR_BACKEND
 #include <spblas/algorithms/multiply_impl.hpp>
 #include <spblas/algorithms/triangular_solve_impl.hpp>
+
+#ifdef SPBLAS_ENABLE_SYCL_REFERENCE
+#include <spblas/backend/sycl/multiply_impl.hpp>
+#endif
+
 #endif
 
 #include <spblas/algorithms/add.hpp>
