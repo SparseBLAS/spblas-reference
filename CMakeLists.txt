@@ -20,29 +20,32 @@ endif()
 # Download dependencies
 include(FetchContent)
 
+set(SPBLAS_CPU_BACKEND OFF)
+set(SPBLAS_GPU_BACKEND OFF)
+
 if (ENABLE_ONEMKL_SYCL)
+  set(SPBLAS_CPU_BACKEND ON)
   set(SPBLAS_GPU_BACKEND ON)
   find_package(MKL REQUIRED)
   target_link_libraries(spblas INTERFACE MKL::MKL_SYCL) # SYCL APIs
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL_SYCL")
 
   FetchContent_Declare(
-  sycl_thrust
-  GIT_REPOSITORY https://github.com/SparseBLAS/sycl-thrust.git
-  GIT_TAG main)
+    sycl_thrust
+    GIT_REPOSITORY https://github.com/SparseBLAS/sycl-thrust.git
+    GIT_TAG main)
   FetchContent_MakeAvailable(sycl_thrust)
 endif()
 
 if (ENABLE_ARMPL)
-  if (NOT DEFINED ENV{ARMPL_DIR})
-    message(FATAL_ERROR "Environment variable ARMPL_DIR must be set when the ArmPL is enabled.")
-  endif()
-  target_include_directories(spblas INTERFACE $ENV{ARMPL_DIR}/include)
-  target_link_libraries(spblas INTERFACE $ENV{ARMPL_DIR}/lib/libarmpl.a $ENV{ARMPL_DIR}/lib/libamath.a m)
+  set(SPBLAS_CPU_BACKEND ON)
+  find_package(ArmPL REQUIRED)
+  target_link_libraries(spblas INTERFACE ArmPL::ArmPL)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
 endif()
 
 if (ENABLE_AOCLSPARSE)
+  set(SPBLAS_CPU_BACKEND ON)
   if (NOT DEFINED ENV{AOCLSPARSE_DIR})
     message(FATAL_ERROR "Environment variable AOCLSPARSE_DIR must be set when the AOCLSPARSE is enabled.")
   endif()
