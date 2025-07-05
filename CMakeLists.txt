@@ -91,6 +91,15 @@ if (ENABLE_CUSPARSE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
 endif()
 
+# If no vendor backend is enabled, enable CPU backend for reference implementation
+if (NOT ENABLE_ONEMKL_SYCL AND 
+    NOT ENABLE_ARMPL AND 
+    NOT ENABLE_AOCLSPARSE AND 
+    NOT ENABLE_ROCSPARSE AND 
+    NOT ENABLE_CUSPARSE)
+  set(SPBLAS_CPU_BACKEND ON)
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
