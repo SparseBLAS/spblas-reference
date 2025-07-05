@@ -7,8 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-O3 -march=native")
 
 option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
-option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
-option(ENABLE_CUSPARSE "Enable cuSPARSE" OFF)
+option(ENABLE_SYCL_REFERENCE "Enable SYCL kernels in reference backend" OFF)
+
+# Vendor backends
+option(ENABLE_ONEMKL_SYCL "Enable oneMKL (SYCL) vendor backend" OFF)
+option(ENABLE_ARMPL "Enable ArmPL vendor backend" OFF)
+option(ENABLE_ROCSPARSE "Enable rocSPARSE vendor backend" OFF)
+option(ENABLE_CUSPARSE "Enable cuSPARSE vendor backend" OFF)
+option(ENABLE_AOCLSPARSE "Enable AOCL-Sparse vendor backend" OFF)
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -19,6 +25,31 @@ endif()
 
 # Download dependencies
 include(FetchContent)
+
+# Enable sanitizers
+if (ENABLE_SANITIZERS)
+    set(SANITIZER_FLAGS "-fsanitize=address,undefined")
+    target_compile_options(spblas INTERFACE ${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
+    target_link_options(spblas INTERFACE ${SANITIZER_FLAGS})
+endif()
+
+if (ENABLE_SYCL_REFERENCE)
+  if (ENABLE_ONEMKL_SYCL OR ENABLE_ARMPL OR ENABLE_ROCSPARSE OR ENABLE_CUSPARSE OR ENABLE_AOCLSPARSE)
+    message(FATAL_ERROR "SYCL reference backend cannot be enabled together with vendor backends")
+  endif()
+
+  # Check for SYCL support
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-fsycl" COMPILER_SUPPORTS_SYCL)
+
+  if(COMPILER_SUPPORTS_SYCL)
+    target_compile_options(spblas INTERFACE -fsycl)
+  else()
+    message(FATAL_ERROR "Compiler does not support SYCL (-fsycl flag not available)")
+  endif()
+
+  target_compile_definitions(spblas INTERFACE SPBLAS_ENABLE_SYCL_REFERENCE)
+endif()
 
 if (ENABLE_ONEMKL_SYCL)
   find_package(MKL REQUIRED)
@@ -33,6 +64,23 @@ if (ENABLE_ARMPL)
   target_include_directories(spblas INTERFACE $ENV{ARMPL_DIR}/include)
   target_link_libraries(spblas INTERFACE $ENV{ARMPL_DIR}/lib/libarmpl.a $ENV{ARMPL_DIR}/lib/libamath.a m)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
+endif()
+
+if (ENABLE_ROCSPARSE)
+  set(SPBLAS_GPU_BACKEND ON)
+  project(spblas LANGUAGES HIP)
+  find_package(hip REQUIRED)
+  find_package(rocsparse REQUIRED)
+  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
+  set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
+if (ENABLE_CUSPARSE)
+  set(SPBLAS_GPU_BACKEND ON)
+  find_package(CUDAToolkit REQUIRED)
+  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
 endif()
 
 if (ENABLE_AOCLSPARSE)
@@ -64,33 +112,9 @@ if (ENABLE_AOCLSPARSE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_AOCLSPARSE")
 endif()
 
-if (ENABLE_ROCSPARSE)
-  set(SPBLAS_GPU_BACKEND ON)
-  project(spblas LANGUAGES HIP)
-  find_package(hip REQUIRED)
-  find_package(rocsparse REQUIRED)
-  target_link_libraries(spblas INTERFACE roc::rocsparse hip::host)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ROCSPARSE")
-  set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS}")
-endif()
-
-if (ENABLE_CUSPARSE)
-  set(SPBLAS_GPU_BACKEND ON)
-  find_package(CUDAToolkit REQUIRED)
-  target_link_libraries(spblas INTERFACE CUDA::cudart CUDA::cusparse CUDA::cublas)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_CUSPARSE")
-endif()
-
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO
-endif()
-
-# Enable sanitizers
-if (ENABLE_SANITIZERS)
-    set(SANITIZER_FLAGS "-fsanitize=address,undefined")
-    target_compile_options(spblas INTERFACE ${SANITIZER_FLAGS} -g -O1 -fno-omit-frame-pointer)
-    target_link_options(spblas INTERFACE ${SANITIZER_FLAGS})
 endif()
 
 # mdspan
