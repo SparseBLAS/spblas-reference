@@ -39,8 +39,10 @@ endif()
 
 if (ENABLE_ARMPL)
   set(SPBLAS_CPU_BACKEND ON)
-  find_package(ArmPL REQUIRED)
-  target_link_libraries(spblas INTERFACE ArmPL::ArmPL)
+    if (NOT DEFINED ENV{ARMPL_DIR})
+    message(FATAL_ERROR "Environment variable ARMPL_DIR must be set when the ArmPL is enabled.")
+  endif()
+  target_include_directories(spblas INTERFACE $ENV{ARMPL_DIR}/include)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ARMPL")
 endif()
 
