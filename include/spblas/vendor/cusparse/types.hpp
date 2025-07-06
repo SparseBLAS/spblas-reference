@@ -2,9 +2,12 @@
 
 #include <complex>
 #include <cstdint>
+#include <type_traits>
 
 #include <cuda.h>
 #include <cusparse.h>
+
+#include <spblas/detail/types.hpp>
 
 namespace spblas {
 
@@ -13,66 +16,74 @@ using offset_t = index_t;
 
 namespace detail {
 
-/**
- * mapping the type to cudaDataType_t
- */
 template <typename T>
-struct cuda_datatype_traits {};
+constexpr static bool is_valid_cusparse_scalar_type_v =
+    std::is_floating_point_v<T> || std::is_same_v<T, std::int8_t> ||
+    std::is_same_v<T, std::int32_t>;
 
-#define MAP_CUDA_DATATYPE(_type, _value)                                       \
-  template <>                                                                  \
-  struct cuda_datatype_traits<_type> {                                         \
-    constexpr static cudaDataType_t value = _value;                            \
-  }
-
-MAP_CUDA_DATATYPE(float, CUDA_R_32F);
-MAP_CUDA_DATATYPE(double, CUDA_R_64F);
-MAP_CUDA_DATATYPE(std::complex<float>, CUDA_C_32F);
-MAP_CUDA_DATATYPE(std::complex<double>, CUDA_C_64F);
-
-#undef MAP_CUDA_DATATYPE
-
-/**
- * mapping the type to cusparseIndexType_t
- */
 template <typename T>
-struct cusparse_indextype_traits {};
+constexpr static bool is_valid_cusparse_index_type_v =
+    std::is_same_v<T, std::int32_t> || std::is_same_v<T, std::int64_t>;
 
-#define MAP_CUSPARSE_INDEXTYPE(_type, _value)                                  \
-  template <>                                                                  \
-  struct cusparse_indextype_traits<_type> {                                    \
-    constexpr static cusparseIndexType_t value = _value;                       \
-  }
+template <typename T>
+struct cuda_data_type;
 
-MAP_CUSPARSE_INDEXTYPE(std::int32_t, CUSPARSE_INDEX_32I);
-MAP_CUSPARSE_INDEXTYPE(std::int64_t, CUSPARSE_INDEX_64I);
+template <>
+struct cuda_data_type<float> {
+  constexpr static cudaDataType_t value = CUDA_R_32F;
+};
 
-#undef MAP_CUSPARSE_INDEXTYPE
+template <>
+struct cuda_data_type<double> {
+  constexpr static cudaDataType_t value = CUDA_R_64F;
+};
+
+template <>
+struct cuda_data_type<std::complex<float>> {
+  constexpr static cudaDataType_t value = CUDA_C_32F;
+};
+
+template <>
+struct cuda_data_type<std::complex<double>> {
+  constexpr static cudaDataType_t value = CUDA_C_64F;
+};
+
+template <>
+struct cuda_data_type<std::int8_t> {
+  constexpr static cudaDataType_t value = CUDA_R_8I;
+};
+
+template <>
+struct cuda_data_type<std::int32_t> {
+  constexpr static cudaDataType_t value = CUDA_R_32I;
+};
+
+template <typename T>
+constexpr static cudaDataType_t cuda_data_type_v = cuda_data_type<T>::value;
+
+template <typename T>
+struct cuda_index_type;
+
+template <>
+struct cuda_index_type<std::int32_t> {
+  constexpr static cusparseIndexType_t value = CUSPARSE_INDEX_32I;
+};
+
+template <>
+struct cuda_index_type<std::int64_t> {
+  constexpr static cusparseIndexType_t value = CUSPARSE_INDEX_64I;
+};
+
+template <typename T>
+constexpr static cusparseIndexType_t cusparse_index_type_v =
+    cuda_index_type<T>::value;
+
+template <typename T>
+static constexpr bool has_valid_cusparse_types_v =
+    is_valid_cusparse_scalar_type_v<tensor_scalar_t<T>> &&
+    is_valid_cusparse_index_type_v<tensor_index_t<T>> &&
+    is_valid_cusparse_index_type_v<tensor_offset_t<T>>;
 
 } // namespace detail
-
-/**
- * This is an alias for the `cudaDataType_t` equivalent of `T`.
- *
- * @tparam T  a type
- *
- * @returns the actual `cudaDataType_t`
- */
-template <typename T>
-constexpr cudaDataType_t to_cuda_datatype() {
-  return detail::cuda_datatype_traits<T>::value;
-}
-
-/**
- * This is an alias for the `cudaIndexType_t` equivalent of `T`.
- *
- * @tparam T  a type
- *
- * @returns the actual `cusparseIndexType_t`
- */
-template <typename T>
-constexpr cusparseIndexType_t to_cusparse_indextype() {
-  return detail::cusparse_indextype_traits<T>::value;
-}
 
 } // namespace spblas
