@@ -33,6 +33,10 @@ if (ENABLE_SANITIZERS)
     target_link_options(spblas INTERFACE ${SANITIZER_FLAGS})
 endif()
 
+# Initialize backend flags
+set(SPBLAS_CPU_BACKEND OFF)
+set(SPBLAS_GPU_BACKEND OFF)
+
 if (ENABLE_SYCL_REFERENCE)
   if (ENABLE_ONEMKL_SYCL OR ENABLE_ARMPL OR ENABLE_ROCSPARSE OR ENABLE_CUSPARSE OR ENABLE_AOCLSPARSE)
     message(FATAL_ERROR "SYCL reference backend cannot be enabled together with vendor backends")
@@ -52,12 +56,21 @@ if (ENABLE_SYCL_REFERENCE)
 endif()
 
 if (ENABLE_ONEMKL_SYCL)
+  set(SPBLAS_CPU_BACKEND ON)
+  set(SPBLAS_GPU_BACKEND ON)
   find_package(MKL REQUIRED)
   target_link_libraries(spblas INTERFACE MKL::MKL_SYCL) # SYCL APIs
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL_SYCL")
+
+  FetchContent_Declare(
+    sycl_thrust
+    GIT_REPOSITORY https://github.com/SparseBLAS/sycl-thrust.git
+    GIT_TAG main)
+  FetchContent_MakeAvailable(sycl_thrust)
 endif()
 
 if (ENABLE_ARMPL)
+  set(SPBLAS_CPU_BACKEND ON)
   if (NOT DEFINED ENV{ARMPL_DIR})
     message(FATAL_ERROR "Environment variable ARMPL_DIR must be set when the ArmPL is enabled.")
   endif()
@@ -84,6 +97,7 @@ if (ENABLE_CUSPARSE)
 endif()
 
 if (ENABLE_AOCLSPARSE)
+  set(SPBLAS_CPU_BACKEND ON)
   if (NOT DEFINED ENV{AOCLSPARSE_DIR})
     message(FATAL_ERROR "Environment variable AOCLSPARSE_DIR must be set when the AOCLSPARSE is enabled.")
   endif()
@@ -110,6 +124,15 @@ if (ENABLE_AOCLSPARSE)
   target_link_libraries(spblas INTERFACE ${AOCLSPARSE_LIBRARY} ${AOCLUTILS_LIBRARY})
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_AOCLSPARSE")
+endif()
+
+# If no vendor backend is enabled, enable CPU backend for reference implementation
+if (NOT ENABLE_ONEMKL_SYCL AND
+    NOT ENABLE_ARMPL AND
+    NOT ENABLE_AOCLSPARSE AND
+    NOT ENABLE_ROCSPARSE AND
+    NOT ENABLE_CUSPARSE)
+  set(SPBLAS_CPU_BACKEND ON)
 endif()
 
 # turn on/off debug logging
