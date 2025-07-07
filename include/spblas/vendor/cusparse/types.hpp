@@ -7,8 +7,6 @@
 #include <cuda.h>
 #include <cusparse.h>
 
-#include <spblas/detail/types.hpp>
-
 namespace spblas {
 
 using index_t = std::int32_t;
@@ -77,12 +75,6 @@ struct cuda_index_type<std::int64_t> {
 template <typename T>
 constexpr static cusparseIndexType_t cusparse_index_type_v =
     cuda_index_type<T>::value;
-
-template <typename T>
-static constexpr bool has_valid_cusparse_types_v =
-    is_valid_cusparse_scalar_type_v<tensor_scalar_t<T>> &&
-    is_valid_cusparse_index_type_v<tensor_index_t<T>> &&
-    is_valid_cusparse_index_type_v<tensor_offset_t<T>>;
 
 } // namespace detail
 

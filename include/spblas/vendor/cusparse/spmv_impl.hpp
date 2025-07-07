@@ -8,8 +8,9 @@
 #include <spblas/detail/view_inspectors.hpp>
 #include <spblas/vendor/cusparse/detail/cusparse_tensors.hpp>
 #include <spblas/vendor/cusparse/detail/get_transpose.hpp>
+#include <spblas/vendor/cusparse/detail/spmv_state_t.hpp>
 #include <spblas/vendor/cusparse/operation_state_t.hpp>
-#include <spblas/vendor/cusparse/types.hpp>
+#include <spblas/vendor/cusparse/type_validation.hpp>
 
 namespace spblas {
 
@@ -17,9 +18,9 @@ template <matrix A, vector X, vector Y>
   requires(__detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<X> &&
            __ranges::contiguous_range<Y> &&
-           detail::has_valid_cusparse_types_v<A> &&
-           detail::has_valid_cusparse_types_v<X> &&
-           detail::has_valid_cusparse_types_v<Y>)
+           detail::has_valid_cusparse_matrix_types_v<A> &&
+           detail::has_valid_cusparse_vector_types_v<X> &&
+           detail::has_valid_cusparse_vector_types_v<Y>)
 void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   log_trace("");
 
@@ -84,9 +85,9 @@ template <matrix A, vector X, vector Y>
   requires(__detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<X> &&
            __ranges::contiguous_range<Y> &&
-           detail::has_valid_cusparse_types_v<A> &&
-           detail::has_valid_cusparse_types_v<X> &&
-           detail::has_valid_cusparse_types_v<Y>)
+           detail::has_valid_cusparse_matrix_types_v<A> &&
+           detail::has_valid_cusparse_vector_types_v<X> &&
+           detail::has_valid_cusparse_vector_types_v<Y>)
 void multiply(A&& a, X&& x, Y&& y) {
   operation_info_t info;
   multiply(info, std::forward<A>(a), std::forward<X>(x), std::forward<Y>(y));

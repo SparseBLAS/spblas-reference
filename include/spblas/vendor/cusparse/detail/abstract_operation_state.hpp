@@ -8,12 +8,13 @@ namespace __cusparse {
 
 class abstract_operation_state_t {
 public:
-  virtual ~abstract_operation_state_t() = default;
-
   // Common state that all operations need
   cusparseHandle_t handle() const {
     return handle_;
   }
+
+  // Make std::default_delete a friend so unique_ptr can delete us
+  friend struct std::default_delete<abstract_operation_state_t>;
 
 protected:
   abstract_operation_state_t() {

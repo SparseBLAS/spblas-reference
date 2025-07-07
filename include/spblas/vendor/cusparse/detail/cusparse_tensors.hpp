@@ -4,6 +4,7 @@
 
 #include <spblas/detail/types.hpp>
 #include <spblas/detail/view_inspectors.hpp>
+#include <spblas/vendor/cusparse/exception.hpp>
 #include <spblas/vendor/cusparse/types.hpp>
 
 namespace spblas {
