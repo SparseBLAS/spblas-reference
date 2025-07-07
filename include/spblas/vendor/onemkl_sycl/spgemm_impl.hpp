@@ -11,6 +11,7 @@
 #include <spblas/views/matrix_opt.hpp>
 
 #include <spblas/vendor/onemkl_sycl/detail/create_matrix_handle.hpp>
+#include <spblas/vendor/onemkl_sycl/detail/detail.hpp>
 #include <spblas/vendor/onemkl_sycl/detail/get_matrix_handle.hpp>
 
 //
@@ -26,18 +27,20 @@
 
 namespace spblas {
 
-template <matrix A, matrix B, matrix C>
+template <typename ExecutionPolicy, matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
-operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
+operation_info_t
+    multiply_compute(ExecutionPolicy&& policy, A&& a, B&& b, C&& c) {
   log_trace("");
 
   using oneapi::mkl::transpose;
   using oneapi::mkl::sparse::matmat_request;
   using oneapi::mkl::sparse::matrix_view_descr;
 
-  sycl::queue q(sycl::cpu_selector_v);
+  auto a_data = __detail::get_ultimate_base(a).values().data();
+  auto&& q = __mkl::get_queue(policy, a_data);
 
   auto a_handle = __mkl::get_matrix_handle(q, a);
   auto b_handle = __mkl::get_matrix_handle(q, b);
@@ -108,20 +111,21 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
                                c_handle, nullptr, descr, (void*) c_rowptr, q}};
 }
 
-template <matrix A, matrix B, matrix C>
+template <typename ExecutionPolicy, matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
-void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
-
+void multiply_fill(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
+                   B&& b, C&& c) {
   log_trace("");
 
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
 
   using oneapi::mkl::sparse::matmat_request;
-  sycl::queue q(sycl::cpu_selector_v);
   using O = tensor_offset_t<C>;
+
+  auto&& q = info.state_.q;
 
   O* c_rowptr = (O*) info.state_.c_rowptr;
 
@@ -154,6 +158,24 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
   if (alpha_optional.has_value()) {
     scale(alpha, c);
   }
+}
+
+template <matrix A, matrix B, matrix C>
+  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+          (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
+          __detail::is_csr_view_v<C>
+operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
+  return multiply_compute(mkl::par, std::forward<A>(a), std::forward<B>(b),
+                          std::forward<C>(c));
+}
+
+template <matrix A, matrix B, matrix C>
+  requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+          (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
+          __detail::is_csr_view_v<C>
+void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
+  multiply_fill(mkl::par, info, std::forward<A>(a), std::forward<B>(b),
+                std::forward<C>(c));
 }
 
 template <matrix A, matrix B, matrix C>
