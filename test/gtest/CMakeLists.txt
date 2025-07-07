@@ -27,7 +27,7 @@ target_link_libraries(spblas-tests spblas fmt GTest::gtest_main)
 
 # Backend-specific test configuration
 if (ENABLE_ROCSPARSE)
-  target_link_libraries(spblas-tests rocthrust)
+  target_link_libraries(spblas-tests roc::rocthrust)
 elseif (ENABLE_CUSPARSE)
   target_link_libraries(spblas-tests Thrust)
 elseif (ENABLE_ONEMKL_SYCL)

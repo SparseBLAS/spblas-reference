@@ -19,6 +19,10 @@
 #include <spblas/vendor/cusparse/operation_state_t.hpp>
 #endif
 
+#ifdef SPBLAS_ENABLE_ROCSPARSE
+#include <spblas/vendor/rocsparse/operation_state_t.hpp>
+#endif
+
 namespace spblas {
 
 class operation_info_t {
@@ -91,6 +95,11 @@ public:
 #ifdef SPBLAS_ENABLE_CUSPARSE
 public:
   __cusparse::operation_state_t state_;
+#endif
+
+#ifdef SPBLAS_ENABLE_ROCSPARSE
+public:
+  __rocsparse::operation_state_t state_;
 #endif
 };
 
