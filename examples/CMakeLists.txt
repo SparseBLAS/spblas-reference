@@ -23,3 +23,7 @@ if (SPBLAS_GPU_BACKEND)
     add_subdirectory(rocsparse)
   endif()
 endif()
+
+if (ENABLE_SYCL_REFERENCE)
+  add_subdirectory(sycl_reference)
+endif()
