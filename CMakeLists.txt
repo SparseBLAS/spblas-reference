@@ -46,8 +46,16 @@ if (ENABLE_SYCL_REFERENCE)
   include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag("-fsycl" COMPILER_SUPPORTS_SYCL)
 
+  FetchContent_Declare(
+    sycl_thrust
+    GIT_REPOSITORY https://github.com/SparseBLAS/sycl-thrust.git
+    GIT_TAG main)
+  FetchContent_MakeAvailable(sycl_thrust)
+
   if(COMPILER_SUPPORTS_SYCL)
     target_compile_options(spblas INTERFACE -fsycl)
+    # target_compile_options(spblas INTERFACE -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --offload-arch=sm_90)
+
   else()
     message(FATAL_ERROR "Compiler does not support SYCL (-fsycl flag not available)")
   endif()
