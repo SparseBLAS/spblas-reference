@@ -11,7 +11,6 @@
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
-#include "descriptor.hpp"
 #include "exception.hpp"
 #include "hip_allocator.hpp"
 #include "types.hpp"
@@ -87,15 +86,15 @@ public:
     value_type beta = beta_optional.value_or(1);
     auto handle = this->handle_.get();
     // Create sparse matrix in CSR format
-    this->mat_a_ = __rocsparse::create_matrix_descr(a_base);
-    this->mat_b_ = __rocsparse::create_matrix_descr(b_base);
-    this->mat_c_ = __rocsparse::create_matrix_descr(c);
-    this->mat_d_ = __rocsparse::create_matrix_descr(d_base);
+    this->mat_a_ = __rocsparse::create_rocsparse_handle(a_base);
+    this->mat_b_ = __rocsparse::create_rocsparse_handle(b_base);
+    this->mat_c_ = __rocsparse::create_rocsparse_handle(c);
+    this->mat_d_ = __rocsparse::create_rocsparse_handle(d_base);
     // ask buffer_size bytes for external memory
     __rocsparse::throw_if_error(rocsparse_spgemm(
         handle, rocsparse_operation_none, rocsparse_operation_none, &alpha,
         this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
-        to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
+        detail::rocsparse_data_type_v<value_type>, rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_buffer_size, &buffer_size, nullptr));
     // allocate the new buffer if it requires more than what the buffer
     // currently has.
@@ -107,7 +106,7 @@ public:
     __rocsparse::throw_if_error(rocsparse_spgemm(
         handle, rocsparse_operation_none, rocsparse_operation_none, &alpha,
         this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
-        to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
+        detail::rocsparse_data_type_v<value_type>, rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_nnz, &this->buffer_size_, this->workspace_));
     // get matrix C non-zero entries and size
     int64_t c_num_rows;
@@ -141,7 +140,7 @@ public:
     __rocsparse::throw_if_error(rocsparse_spgemm(
         handle_.get(), rocsparse_operation_none, rocsparse_operation_none,
         &alpha, this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
-        to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
+        detail::rocsparse_data_type_v<value_type>, rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_compute, &this->buffer_size_, workspace_));
   }
 
@@ -168,7 +167,7 @@ public:
     __rocsparse::throw_if_error(rocsparse_spgemm(
         this->handle_.get(), rocsparse_operation_none, rocsparse_operation_none,
         &alpha, this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
-        to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
+        detail::rocsparse_data_type_v<value_type>, rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_symbolic, &this->buffer_size_,
         this->workspace_));
   }
@@ -210,7 +209,7 @@ public:
     __rocsparse::throw_if_error(rocsparse_spgemm(
         this->handle_.get(), rocsparse_operation_none, rocsparse_operation_none,
         &alpha, this->mat_a_, this->mat_b_, &beta, this->mat_d_, this->mat_c_,
-        to_rocsparse_datatype<value_type>(), rocsparse_spgemm_alg_default,
+        detail::rocsparse_data_type_v<value_type>, rocsparse_spgemm_alg_default,
         rocsparse_spgemm_stage_numeric, &this->buffer_size_, this->workspace_));
   }
 

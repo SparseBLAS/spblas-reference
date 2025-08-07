@@ -9,7 +9,7 @@ using value_t = float;
 using index_t = spblas::index_t;
 using offset_t = spblas::offset_t;
 
-TEST(CsrView, SpGEMM) {
+TEST(thrust_CsrView, SpGEMM) {
   for (auto&& [m, k, nnz] : util::dims) {
     for (auto&& n : {m, k}) {
       auto [a_values, a_rowptr, a_colind, a_shape, a_nnz] =
@@ -96,7 +96,7 @@ TEST(CsrView, SpGEMM) {
   }
 }
 
-TEST(CsrView, SpGEMM_AScaled) {
+TEST(thrust_CsrView, SpGEMM_AScaled) {
   value_t alpha = 2.0f;
   for (auto&& [m, k, nnz] : util::dims) {
     for (auto&& n : {m, k}) {
@@ -184,7 +184,7 @@ TEST(CsrView, SpGEMM_AScaled) {
   }
 }
 
-TEST(CsrView, SpGEMM_BScaled) {
+TEST(thrust_CsrView, SpGEMM_BScaled) {
   value_t alpha = 2.0f;
   for (auto&& [m, k, nnz] : util::dims) {
     for (auto&& n : {m, k}) {
