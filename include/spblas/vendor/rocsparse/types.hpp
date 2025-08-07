@@ -2,76 +2,86 @@
 
 #include <complex>
 #include <cstdint>
+#include <type_traits>
 
 #include <rocsparse/rocsparse.h>
 
 namespace spblas {
 
-using index_t = std::int64_t;
-using offset_t = std::int64_t;
+using index_t = std::int32_t;
+using offset_t = index_t;
 
 namespace detail {
 
-/**
- * mapping the type to rocsparse_datatype
- */
 template <typename T>
-struct rocsparse_datatype_traits {};
+constexpr static bool is_valid_rocsparse_scalar_type_v =
+    std::is_same_v<T, std::int32_t> || std::is_same_v<T, std::uint32_t> ||
+    std::is_floating_point_v<T>;
 
-#define MAP_ROCSPARSE_DATATYPE(_type, _value)                                  \
-  template <>                                                                  \
-  struct rocsparse_datatype_traits<_type> {                                    \
-    constexpr static rocsparse_datatype value = _value;                        \
-  }
-
-MAP_ROCSPARSE_DATATYPE(float, rocsparse_datatype_f32_r);
-MAP_ROCSPARSE_DATATYPE(double, rocsparse_datatype_f64_r);
-MAP_ROCSPARSE_DATATYPE(std::complex<float>, rocsparse_datatype_f32_c);
-MAP_ROCSPARSE_DATATYPE(std::complex<double>, rocsparse_datatype_f64_c);
-
-#undef MAP_ROCSPARSE_DATATYPE
-
-/**
- * mapping the type to rocsparse_indextype
- */
 template <typename T>
-struct rocsparse_indextype_traits {};
+constexpr static bool is_valid_rocsparse_index_type_v =
+    std::is_same_v<T, std::uint16_t> || std::is_same_v<T, std::int32_t> ||
+    std::is_same_v<T, std::int64_t>;
 
-#define MAP_ROCSPARSE_INDEXTYPE(_type, _value)                                 \
-  template <>                                                                  \
-  struct rocsparse_indextype_traits<_type> {                                   \
-    constexpr static rocsparse_indextype value = _value;                       \
-  }
+template <typename T>
+struct rocsparse_data_type;
 
-MAP_ROCSPARSE_INDEXTYPE(std::int32_t, rocsparse_indextype_i32);
-MAP_ROCSPARSE_INDEXTYPE(std::int64_t, rocsparse_indextype_i64);
+template <>
+struct rocsparse_data_type<std::int32_t> {
+  constexpr static rocsparse_datatype value = rocsparse_datatype_i32_r;
+};
 
-#undef MAP_ROCSPARSE_INDEXTYPE
+template <>
+struct rocsparse_data_type<std::uint32_t> {
+  constexpr static rocsparse_datatype value = rocsparse_datatype_u32_r;
+};
+
+template <>
+struct rocsparse_data_type<float> {
+  constexpr static rocsparse_datatype value = rocsparse_datatype_f32_r;
+};
+
+template <>
+struct rocsparse_data_type<double> {
+  constexpr static rocsparse_datatype value = rocsparse_datatype_f64_r;
+};
+
+template <>
+struct rocsparse_data_type<std::complex<float>> {
+  constexpr static rocsparse_datatype value = rocsparse_datatype_f32_c;
+};
+
+template <>
+struct rocsparse_data_type<std::complex<double>> {
+  constexpr static rocsparse_datatype value = rocsparse_datatype_f64_c;
+};
+
+template <typename T>
+constexpr static rocsparse_datatype rocsparse_data_type_v =
+    rocsparse_data_type<T>::value;
+
+template <typename T>
+struct rocsparse_index_type;
+
+template <>
+struct rocsparse_index_type<std::uint16_t> {
+  constexpr static rocsparse_indextype value = rocsparse_indextype_u16;
+};
+
+template <>
+struct rocsparse_index_type<std::int32_t> {
+  constexpr static rocsparse_indextype value = rocsparse_indextype_i32;
+};
+
+template <>
+struct rocsparse_index_type<std::int64_t> {
+  constexpr static rocsparse_indextype value = rocsparse_indextype_i64;
+};
+
+template <typename T>
+constexpr static rocsparse_indextype rocsparse_index_type_v =
+    rocsparse_index_type<T>::value;
 
 } // namespace detail
-
-/**
- * This is an alias for the `rocsparse_datatype` equivalent of `T`.
- *
- * @tparam T  a type
- *
- * @returns the actual `rocsparse_datatype`
- */
-template <typename T>
-constexpr rocsparse_datatype to_rocsparse_datatype() {
-  return detail::rocsparse_datatype_traits<T>::value;
-}
-
-/**
- * This is an alias for the `rocsparse_indextype` equivalent of `T`.
- *
- * @tparam T  a type
- *
- * @returns the actual `rocsparse_indextype`
- */
-template <typename T>
-constexpr rocsparse_indextype to_rocsparse_indextype() {
-  return detail::rocsparse_indextype_traits<T>::value;
-}
 
 } // namespace spblas
