@@ -13,16 +13,12 @@ if (SPBLAS_CPU_BACKEND)
        transpose_test.cpp
        triangular_solve_test.cpp)
 endif()
-function(add_rocsparse_lang file_list)
-  if (ENABLE_ROCSPARSE)
-    set_source_files_properties(${${file_list}} PROPERTIES LANGUAGE HIP)
-  endif()
-endfunction()
+
 # GPU tests
 if (SPBLAS_GPU_BACKEND)
   if (ENABLE_ROCSPARSE)
     set(GPUTEST_SOURCES device/spmv_test.cpp device/spgemm_test.cpp device/spgemm_reuse_test.cpp device/rocsparse/spgemm_4args_test.cpp)
-    add_rocsparse_lang(GPUTEST_SOURCES)
+    set_source_files_properties(${GPUTEST_SOURCES} PROPERTIES LANGUAGE HIP)
   else ()
     set(GPUTEST_SOURCES device/spmv_test.cpp)
   endif ()
