@@ -36,6 +36,18 @@ cusparseDnVecDescr_t create_cusparse_handle(V&& v) {
   return vec_descr;
 }
 
+template <matrix M>
+  requires __detail::has_mdspan_matrix_base<M>
+cusparseDnMatDescr_t create_cusparse_handle(M&& m) {
+  cusparseDnMatDescr_t mat_descr;
+  __cusparse::throw_if_error(cusparseCreateDnMat(
+      &mat_descr, __backend::shape(m)[0], __backend::shape(m)[1],
+      __backend::shape(m)[1], __ranges::data(m),
+      detail::cuda_data_type_v<tensor_scalar_t<M>>, CUSPARSE_ORDER_ROW));
+
+  return mat_descr;
+}
+
 } // namespace __cusparse
 
 } // namespace spblas
