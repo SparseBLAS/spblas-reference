@@ -2,3 +2,4 @@
 
 #include "multiply.hpp"
 #include "multiply_spgemm.hpp"
+#include "trisolve.hpp"

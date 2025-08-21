@@ -22,7 +22,7 @@ endif()
 # GPU tests
 if (SPBLAS_GPU_BACKEND)
   if (ENABLE_ROCSPARSE)
-    set(GPUTEST_SOURCES device/spmv_test.cpp device/spgemm_test.cpp device/spgemm_reuse_test.cpp device/rocsparse/spgemm_4args_test.cpp)
+    set(GPUTEST_SOURCES device/spmv_test.cpp device/spgemm_test.cpp device/spgemm_reuse_test.cpp device/rocsparse/spgemm_4args_test.cpp device/triangular_solve_test.cpp)
     set_source_files_properties(${GPUTEST_SOURCES} PROPERTIES LANGUAGE HIP)
   else ()
     set(GPUTEST_SOURCES device/spmv_test.cpp)
