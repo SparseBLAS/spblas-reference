@@ -11,7 +11,7 @@
 #include <spblas/detail/view_inspectors.hpp>
 
 #include "cuda_allocator.hpp"
-#include "descriptor.hpp"
+#include "detail/cusparse_tensors.hpp"
 #include "exception.hpp"
 #include "types.hpp"
 
@@ -83,17 +83,17 @@ public:
     __cusparse::throw_if_error(cusparseDestroySpMat(mat_a_));
     __cusparse::throw_if_error(cusparseDestroySpMat(mat_b_));
     __cusparse::throw_if_error(cusparseDestroySpMat(mat_c_));
-    mat_a_ = __cusparse::create_matrix_descr(a_base);
-    mat_b_ = __cusparse::create_matrix_descr(b_base);
-    mat_c_ = __cusparse::create_matrix_descr(c);
+    mat_a_ = __cusparse::create_cusparse_handle(a_base);
+    mat_b_ = __cusparse::create_cusparse_handle(b_base);
+    mat_c_ = __cusparse::create_cusparse_handle(c);
 
     // ask bufferSize1 bytes for external memory
     size_t buffer_size_1 = 0;
     __cusparse::throw_if_error(cusparseSpGEMM_workEstimation(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
-        to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_,
-        &buffer_size_1, NULL));
+        detail::cuda_data_type_v<value_type>, CUSPARSE_SPGEMM_DEFAULT,
+        this->descr_, &buffer_size_1, NULL));
     if (buffer_size_1 > this->buffer_size_1_) {
       this->alloc_.deallocate(this->workspace_1_, buffer_size_1_);
       this->buffer_size_1_ = buffer_size_1;
@@ -104,16 +104,16 @@ public:
     __cusparse::throw_if_error(cusparseSpGEMM_workEstimation(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
-        to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_,
-        &buffer_size_1, this->workspace_1_));
+        detail::cuda_data_type_v<value_type>, CUSPARSE_SPGEMM_DEFAULT,
+        this->descr_, &buffer_size_1, this->workspace_1_));
 
     // ask buffer_size_2 bytes for external memory
     size_t buffer_size_2 = 0;
     __cusparse::throw_if_error(cusparseSpGEMM_compute(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
-        to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_,
-        &buffer_size_2, NULL));
+        detail::cuda_data_type_v<value_type>, CUSPARSE_SPGEMM_DEFAULT,
+        this->descr_, &buffer_size_2, NULL));
     if (buffer_size_2 > this->buffer_size_2_) {
       this->alloc_.deallocate(this->workspace_2_, buffer_size_2_);
       this->buffer_size_2_ = buffer_size_2;
@@ -124,8 +124,8 @@ public:
     cusparseSpGEMM_compute(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
-        to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_,
-        &buffer_size_2, this->workspace_2_);
+        detail::cuda_data_type_v<value_type>, CUSPARSE_SPGEMM_DEFAULT,
+        this->descr_, &buffer_size_2, this->workspace_2_);
     // get matrix C non-zero entries c_nnz
     int64_t c_num_rows, c_num_cols, c_nnz;
     cusparseSpMatGetSize(mat_c_, &c_num_rows, &c_num_cols, &c_nnz);
@@ -155,7 +155,8 @@ public:
     __cusparse::throw_if_error(cusparseSpGEMM_copy(
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
         CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
-        to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_));
+        detail::cuda_data_type_v<value_type>, CUSPARSE_SPGEMM_DEFAULT,
+        this->descr_));
   }
 
   template <matrix A, matrix B, matrix C>
@@ -177,9 +178,9 @@ public:
     __cusparse::throw_if_error(cusparseDestroySpMat(mat_a_));
     __cusparse::throw_if_error(cusparseDestroySpMat(mat_b_));
     __cusparse::throw_if_error(cusparseDestroySpMat(mat_c_));
-    mat_a_ = __cusparse::create_matrix_descr(a_base);
-    mat_b_ = __cusparse::create_matrix_descr(b_base);
-    mat_c_ = __cusparse::create_matrix_descr(c);
+    mat_a_ = __cusparse::create_cusparse_handle(a_base);
+    mat_b_ = __cusparse::create_cusparse_handle(b_base);
+    mat_c_ = __cusparse::create_cusparse_handle(c);
 
     // ask bufferSize1 bytes for external memory
     size_t buffer_size_1 = 0;
@@ -302,10 +303,11 @@ public:
                                b_base.colind().data(), b_base.values().data()));
     __cusparse::throw_if_error(cusparseCsrSetPointers(
         this->mat_c_, c.rowptr().data(), c.colind().data(), c.values().data()));
-    cusparseSpGEMMreuse_compute(
-        handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-        CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_a_, mat_b_, &beta, mat_c_,
-        to_cuda_datatype<value_type>(), CUSPARSE_SPGEMM_DEFAULT, this->descr_);
+    cusparseSpGEMMreuse_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
+                                mat_a_, mat_b_, &beta, mat_c_,
+                                detail::cuda_data_type_v<value_type>,
+                                CUSPARSE_SPGEMM_DEFAULT, this->descr_);
   }
 
 private:
