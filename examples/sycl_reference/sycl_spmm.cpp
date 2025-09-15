@@ -5,21 +5,58 @@
 
 #include <thrust/device_vector.h>
 
+#include <cassert>
+
 #include <cmath>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
 int main(int argc, char** argv) {
   using value_t = float;
-  using index_t = spblas::index_t;
-  using offset_t = spblas::offset_t;
+  using index_t = int32_t;
+  using offset_t = int32_t;
   namespace md = spblas::__mdspan;
 
-  offset_t nnz_row = 1000;
+  offset_t nnz_row = 100;
 
-  index_t m = 10000;
+  index_t m = 100000;
   index_t n = 1;
-  index_t k = 10000;
+  index_t k = 100000;
+
+  char method = 'k';
+
+  std::size_t wg_size = 32;
+
+  if (argc >= 2) {
+    m = std::atoll(argv[1]);
+  }
+
+  if (argc >= 3) {
+    k = std::atoll(argv[2]);
+  }
+
+  if (argc >= 4) {
+    n = std::atoll(argv[3]);
+  }
+
+  if (argc >= 5) {
+    nnz_row = std::atoll(argv[4]);
+  }
+
+  if (argc >= 6) {
+    method = argv[5][0];
+  }
+
+  if (argc >= 7) {
+    wg_size = std::atoll(argv[6]);
+  }
+
+  assert(method == 'k' || method == 'j');
+
+  fmt::print("Multiplying {} x {} matrix with {} nnz/row by {} columns.\n", m,
+             k, nnz_row, n);
+  fmt::print("Using method {} with WG size {}\n", method, wg_size);
+
   offset_t nnz_in = m * nnz_row;
 
   auto&& [values, rowptr, colind, shape, nnz] =
@@ -44,7 +81,11 @@ int main(int argc, char** argv) {
 
   sycl::queue q(sycl::gpu_selector_v);
 
-  spblas::spmm(q, a, b, c);
+  if (method == 'k') {
+    spblas::spmm_wgsplitk(q, a, b, c, wg_size);
+  } else {
+    spblas::spmm_wgsplitj(q, a, b, c, wg_size);
+  }
 
   thrust::copy(d_c.begin(), d_c.end(), c_values.begin());
 
@@ -78,23 +119,49 @@ int main(int argc, char** argv) {
   }
 
   if (results_match) {
-    std::cout << "SYCL and reference results match!\n";
+    fmt::print("OK!\n");
+  } else {
+    fmt::print("Error!\n");
+    return 1;
   }
+
+  double gb = 1e-9 * (nnz * sizeof(value_t) + nnz * sizeof(index_t) +
+                      (m + 1) * sizeof(offset_t) + k * n * sizeof(value_t) +
+                      m * n * sizeof(value_t));
 
   std::size_t n_iterations = 10;
 
+  std::vector<double> durations;
+  durations.reserve(n_iterations);
+
+  double max_bw = 456;
+
   for (std::size_t i = 0; i < n_iterations; i++) {
     auto begin = std::chrono::high_resolution_clock::now();
-    spblas::spmm(q, a, b, c);
+    if (method == 'k') {
+      spblas::spmm_wgsplitk(q, a, b, c, wg_size);
+    } else {
+      spblas::spmm_wgsplitj(q, a, b, c, wg_size);
+    }
     auto end = std::chrono::high_resolution_clock::now();
     double duration = std::chrono::duration<double>(end - begin).count();
-    double gb = 1e-9 * (nnz * sizeof(value_t) + nnz * sizeof(index_t) +
-                        (m + 1) * sizeof(offset_t) + k * n * sizeof(value_t) +
-                        m * n * sizeof(value_t));
     double gb_s = gb / duration;
 
     fmt::print("Completed in {} s (achieved {} GB/s)\n", duration, gb_s);
+
+    durations.push_back(duration);
   }
+
+  fmt::print("Durations: {}\n", durations);
+
+  std::sort(durations.begin(), durations.end());
+
+  double median_duration = durations[durations.size() / 2];
+
+  double median_gb_s = gb / median_duration;
+
+  fmt::print("Median duration {} ({} GB/s) {}% of peak.\n", median_duration,
+             median_gb_s, 100 * (median_gb_s / max_bw));
 
   return 0;
 }

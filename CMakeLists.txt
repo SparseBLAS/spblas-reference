@@ -53,7 +53,7 @@ if (ENABLE_SYCL_REFERENCE)
   FetchContent_MakeAvailable(sycl_thrust)
 
   if(COMPILER_SUPPORTS_SYCL)
-    target_compile_options(spblas INTERFACE -fsycl)
+    target_compile_options(spblas INTERFACE -fsycl -fsycl-device-code-split=per_kernel)
     # target_compile_options(spblas INTERFACE -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --offload-arch=sm_90)
 
   else()
