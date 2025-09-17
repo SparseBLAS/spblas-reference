@@ -125,16 +125,34 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // Warmup: call `SpMM` repeatedly for at least 2 seconds.
+
+  double min_warmup_duration = 2;
+  auto warmup_begin = std::chrono::high_resolution_clock::now();
+  auto warmup_end = warmup_begin;
+
+  while (std::chrono::duration<double>(warmup_end - warmup_begin).count() <
+         min_warmup_duration) {
+    if (method == 'k') {
+      spblas::spmm_wgsplitk(q, a, b, c, wg_size);
+    } else {
+      spblas::spmm_wgsplitj(q, a, b, c, wg_size);
+    }
+    warmup_end = std::chrono::high_resolution_clock::now();
+  }
+
   double gb = 1e-9 * (nnz * sizeof(value_t) + nnz * sizeof(index_t) +
                       (m + 1) * sizeof(offset_t) + k * n * sizeof(value_t) +
                       m * n * sizeof(value_t));
+
+  double gflops = 1e-9 * 2 * nnz * n;
+
+  double max_bw = 456;
 
   std::size_t n_iterations = 10;
 
   std::vector<double> durations;
   durations.reserve(n_iterations);
-
-  double max_bw = 456;
 
   for (std::size_t i = 0; i < n_iterations; i++) {
     auto begin = std::chrono::high_resolution_clock::now();
@@ -146,8 +164,10 @@ int main(int argc, char** argv) {
     auto end = std::chrono::high_resolution_clock::now();
     double duration = std::chrono::duration<double>(end - begin).count();
     double gb_s = gb / duration;
+    double gflops_s = gflops / duration;
 
     fmt::print("Completed in {} s (achieved {} GB/s)\n", duration, gb_s);
+    fmt::print("Achieved {} GFLOPs\n", gflops_s);
 
     durations.push_back(duration);
   }
@@ -159,9 +179,11 @@ int main(int argc, char** argv) {
   double median_duration = durations[durations.size() / 2];
 
   double median_gb_s = gb / median_duration;
+  double median_gflops_s = gflops / median_duration;
 
   fmt::print("Median duration {} ({} GB/s) {}% of peak.\n", median_duration,
              median_gb_s, 100 * (median_gb_s / max_bw));
+  fmt::print("Median achieved {} GFLOPs\n", median_gflops_s);
 
   return 0;
 }

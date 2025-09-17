@@ -137,7 +137,6 @@ int main(int argc, char** argv) {
     auto end = std::chrono::high_resolution_clock::now();
     double duration = std::chrono::duration<double>(end - begin).count();
     double gb_s = gb / duration;
-
     double gflops_s = gflops / duration;
 
     fmt::print("Completed in {} s (achieved {} GB/s)\n", duration, gb_s);
