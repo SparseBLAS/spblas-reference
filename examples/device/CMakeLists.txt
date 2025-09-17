@@ -14,3 +14,4 @@ function(add_device_example example_name)
 endfunction()
 
 add_device_example(device_spmv)
+add_device_example(spmm_benchmark)
