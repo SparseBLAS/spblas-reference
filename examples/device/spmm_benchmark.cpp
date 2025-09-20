@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
   md::mdspan c(d_c.data().get(), m, n);
 
   // Perform computation on the GPU.
-  spblas::multiply(a, b, c);
+  spblas::multiply(thrust::device, a, b, c);
 
   // Copy the result back to the CPU.
   thrust::copy(d_c.begin(), d_c.end(), c_values.begin());
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
 
   while (std::chrono::duration<double>(warmup_end - warmup_begin).count() <
          min_warmup_duration) {
-    spblas::multiply(a, b, c);
+    spblas::multiply(thrust::device, a, b, c);
     warmup_end = std::chrono::high_resolution_clock::now();
   }
 
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
 
   for (std::size_t i = 0; i < n_iterations; i++) {
     auto begin = std::chrono::high_resolution_clock::now();
-    spblas::multiply(a, b, c);
+    spblas::multiply(thrust::device, a, b, c);
     auto end = std::chrono::high_resolution_clock::now();
     double duration = std::chrono::duration<double>(end - begin).count();
     double gb_s = gb / duration;
