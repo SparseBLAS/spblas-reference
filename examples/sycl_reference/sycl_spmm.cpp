@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     wg_size = std::atoll(argv[6]);
   }
 
-  assert(method == 'k' || method == 'j');
+  assert(method == 'k' || method == 'r' || method == 'j');
 
   fmt::print("Multiplying {} x {} matrix with {} nnz/row by {} columns.\n", m,
              k, nnz_row, n);
@@ -83,7 +83,9 @@ int main(int argc, char** argv) {
 
   if (method == 'k') {
     spblas::spmm_wgsplitk(q, a, b, c, wg_size);
-  } else {
+  } else if (method == 'r') {
+    spblas::spmm_wgsplitk_reorder(q, a, b, c, wg_size);
+  } else if (method == 'j') {
     spblas::spmm_wgsplitj(q, a, b, c, wg_size);
   }
 
