@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     wg_size = std::atoll(argv[6]);
   }
 
-  assert(method == 'k' || method == 'r' || method == 'j');
+  assert(method == 'k' || method == 'r' || method == 'j' || method == 's');
 
   fmt::print("Multiplying {} x {} matrix with {} nnz/row by {} columns.\n", m,
              k, nnz_row, n);
@@ -73,6 +73,12 @@ int main(int argc, char** argv) {
   std::vector<value_t> b_values(k * n, 1);
   std::vector<value_t> c_values(m * n, 0);
 
+  for (std::size_t k_ = 0; k_ < k; k_++) {
+    for (std::size_t j = 0; j < n; j++) {
+      b_values[k_ * n + j] = 10 * drand48();
+    }
+  }
+
   thrust::device_vector<value_t> d_b(b_values);
   thrust::device_vector<value_t> d_c(c_values);
 
@@ -87,6 +93,8 @@ int main(int argc, char** argv) {
     spblas::spmm_wgsplitk_reorder(q, a, b, c, wg_size);
   } else if (method == 'j') {
     spblas::spmm_wgsplitj(q, a, b, c, wg_size);
+  } else if (method == 's') {
+    spblas::spmm_wgsplitk_smem(q, a, b, c, wg_size);
   }
 
   thrust::copy(d_c.begin(), d_c.end(), c_values.begin());
@@ -137,8 +145,12 @@ int main(int argc, char** argv) {
          min_warmup_duration) {
     if (method == 'k') {
       spblas::spmm_wgsplitk(q, a, b, c, wg_size);
-    } else {
+    } else if (method == 'r') {
+      spblas::spmm_wgsplitk_reorder(q, a, b, c, wg_size);
+    } else if (method == 'j') {
       spblas::spmm_wgsplitj(q, a, b, c, wg_size);
+    } else if (method == 's') {
+      spblas::spmm_wgsplitk_smem(q, a, b, c, wg_size);
     }
     warmup_end = std::chrono::high_resolution_clock::now();
   }
@@ -160,8 +172,12 @@ int main(int argc, char** argv) {
     auto begin = std::chrono::high_resolution_clock::now();
     if (method == 'k') {
       spblas::spmm_wgsplitk(q, a, b, c, wg_size);
-    } else {
+    } else if (method == 'r') {
+      spblas::spmm_wgsplitk_reorder(q, a, b, c, wg_size);
+    } else if (method == 'j') {
       spblas::spmm_wgsplitj(q, a, b, c, wg_size);
+    } else if (method == 's') {
+      spblas::spmm_wgsplitk_smem(q, a, b, c, wg_size);
     }
     auto end = std::chrono::high_resolution_clock::now();
     double duration = std::chrono::duration<double>(end - begin).count();
