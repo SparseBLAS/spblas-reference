@@ -2,6 +2,8 @@
 
 #include <oneapi/mkl.hpp>
 
+#include <stdexcept>
+
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
@@ -34,6 +36,11 @@ void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
   log_trace("");
   auto x_base = __detail::get_ultimate_base(x);
 
+  if (__detail::is_conjugated(x) || __detail::is_conjugated(y)) {
+    throw std::runtime_error(
+        "oneMKL SYCL backend does not support conjugated dense vectors.");
+  }
+
   auto alpha_optional = __detail::get_scaling_factor(a, x);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
 
@@ -42,7 +49,7 @@ void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
   auto&& q = __mkl::get_queue(policy, a_data);
 
   auto a_handle = __mkl::get_matrix_handle(q, a);
-  auto a_transpose = __mkl::get_transpose(a);
+  auto a_transpose = __mkl::get_transpose(a, __detail::is_conjugated(a));
 
   oneapi::mkl::sparse::gemv(q, a_transpose, alpha, a_handle,
                             __ranges::data(x_base), 0.0, __ranges::data(y))

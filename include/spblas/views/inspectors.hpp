@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spblas/detail/mdspan.hpp>
+#include <spblas/views/conjugated_view.hpp>
 #include <spblas/views/csc_view.hpp>
 #include <spblas/views/csr_view.hpp>
 #include <spblas/views/matrix_opt.hpp>
@@ -78,6 +79,24 @@ static constexpr bool is_scaled_view_v =
 template <typename T>
 static constexpr bool is_scaled_view_matrix_v =
     is_scaled_view_v<T> && matrix<decltype(std::declval<T>().base())>;
+
+template <typename T>
+struct is_instantiation_of_conjugated_view {
+  static constexpr bool value = false;
+};
+
+template <typename T>
+struct is_instantiation_of_conjugated_view<conjugated_view<T>> {
+  static constexpr bool value = true;
+};
+
+template <typename T>
+static constexpr bool is_conjugated_view_v =
+    is_instantiation_of_conjugated_view<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+static constexpr bool is_conjugated_view_matrix_v =
+    is_conjugated_view_v<T> && matrix<decltype(std::declval<T>().base())>;
 
 template <typename T>
 struct is_instantiation_of_matrix_opt {
