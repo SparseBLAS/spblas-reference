@@ -1,7 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <complex>
-
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
