@@ -129,8 +129,7 @@ private:
   {
     auto unscaled_rows = __backend::rows(matrix.base());
 
-    return unscaled_rows |
-           __ranges::views::transform([](auto&& row_tuple) {
+    return unscaled_rows | __ranges::views::transform([](auto&& row_tuple) {
              auto&& [column_index, row] = row_tuple;
 
              auto conjugated_row =
@@ -181,7 +180,8 @@ private:
     auto unscaled_column =
         __backend::lookup_column(matrix.base(), column_index);
 
-    return unscaled_column | __ranges::views::transform([](auto&& element_tuple) {
+    return unscaled_column |
+           __ranges::views::transform([](auto&& element_tuple) {
              auto&& [row_index, value] = element_tuple;
              return std::pair(row_index, std::conj(value));
            });

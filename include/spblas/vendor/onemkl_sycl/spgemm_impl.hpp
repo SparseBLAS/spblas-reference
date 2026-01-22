@@ -76,10 +76,10 @@ operation_info_t
 
   oneapi::mkl::sparse::set_matmat_data(
       descr, matrix_view_descr::general,
-      __mkl::get_transpose(a, __detail::is_conjugated(a)), // view/op for A
+      __mkl::get_transpose(a), // view/op for A
       matrix_view_descr::general,
-      __mkl::get_transpose(b, __detail::is_conjugated(b)), // view/op for B
-      matrix_view_descr::general);                         // view for C
+      __mkl::get_transpose(b),     // view/op for B
+      matrix_view_descr::general); // view for C
 
   auto ev1 = oneapi::mkl::sparse::matmat(q, a_handle, b_handle, c_handle,
                                          matmat_request::work_estimation, descr,
@@ -132,8 +132,9 @@ void multiply_fill(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
         "oneMKL SYCL backend does not support conjugated output matrices.");
   }
 
-  (void) __mkl::get_transpose(a, __detail::is_conjugated(a));
-  (void) __mkl::get_transpose(b, __detail::is_conjugated(b));
+  // Just for completeness; throws errors if unsupported conjugate type.
+  (void) __mkl::get_transpose(a);
+  (void) __mkl::get_transpose(b);
 
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);

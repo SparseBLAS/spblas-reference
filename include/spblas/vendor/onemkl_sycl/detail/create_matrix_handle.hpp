@@ -59,17 +59,17 @@ oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
 //     CSC_transpose -> CSR + nontrans
 //
 template <matrix M>
-oneapi::mkl::transpose get_transpose(M&& m, bool conjugate = false) {
+oneapi::mkl::transpose get_transpose(M&& m) {
   static_assert(__detail::has_csr_base<M> || __detail::has_csc_base<M>);
-  if constexpr (__detail::has_base<M>) {
-    return get_transpose(m.base(), conjugate);
-  } else if constexpr (__detail::is_csr_view_v<M>) {
+
+  const bool conjugate = __detail::is_conjugated(m);
+  if constexpr (__detail::has_csr_base<M>) {
     if (conjugate) {
       throw std::runtime_error(
           "oneMKL SYCL backend does not support conjugation for CSR views.");
     }
     return oneapi::mkl::transpose::nontrans;
-  } else if constexpr (__detail::is_csc_view_v<M>) {
+  } else if constexpr (__detail::has_csc_base<M>) {
     return conjugate ? oneapi::mkl::transpose::conjtrans
                      : oneapi::mkl::transpose::trans;
   }

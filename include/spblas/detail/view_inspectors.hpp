@@ -76,20 +76,18 @@ auto get_scaling_factor(T&& t, U&& u) {
   }
 }
 
-// Inspect a tensor: does it have a conjugation view? Returns true if any
-// conjugated_view appears in the chain of bases.
+// Inspect a tensor: does it have a conjugation view? Returns true if an odd
+// number of conjugated_view appears in the chain of bases.
 template <tensor T>
 bool is_conjugated(T&& t) {
   if constexpr (has_base<T>) {
     if constexpr (is_conjugated_view_v<T>) {
-      return true;
+      return !is_conjugated(t.base());
+    } else {
+      return is_conjugated(t.base());
     }
-    return is_conjugated(t.base());
   } else {
-    if constexpr (is_conjugated_view_v<T>) {
-      return true;
-    }
-    return false;
+    return is_conjugated_view_v<T>;
   }
 }
 

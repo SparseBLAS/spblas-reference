@@ -53,7 +53,7 @@ void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
   auto&& q = __mkl::get_queue(policy, a_data);
 
   auto a_handle = __mkl::get_matrix_handle(q, a);
-  auto a_transpose = __mkl::get_transpose(a, __detail::is_conjugated(a));
+  auto a_transpose = __mkl::get_transpose(a);
 
   oneapi::mkl::sparse::gemm(q, oneapi::mkl::layout::row_major, a_transpose,
                             oneapi::mkl::transpose::nontrans, alpha, a_handle,
