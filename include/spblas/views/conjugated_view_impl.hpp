@@ -1,6 +1,7 @@
 #pragma once
 
 #include <complex>
+#include <utility>
 
 #include <spblas/backend/concepts.hpp>
 #include <spblas/backend/cpos.hpp>
@@ -66,8 +67,8 @@ public:
 
 private:
   struct transform_fn_ {
-    auto operator()(auto x) {
-      return std::conj(x);
+    auto operator()(auto&& x) const {
+      return std::conj(std::forward<decltype(x)>(x));
     }
   };
 
