@@ -11,6 +11,7 @@
 
 #include <aoclsparse.h>
 #include <cstdint>
+#include <stdexcept>
 
 #include "aocl_wrappers.hpp"
 #include "detail/detail.hpp"
@@ -39,6 +40,12 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
+
+  if (__detail::is_conjugated(a) || __detail::is_conjugated(b) ||
+      __detail::is_conjugated(c)) {
+    throw std::runtime_error(
+        "aoclsparse backend does not support conjugated views.");
+  }
 
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
@@ -110,6 +117,12 @@ void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
   using O = tensor_offset_t<C>;
+
+  if (__detail::is_conjugated(a) || __detail::is_conjugated(b) ||
+      __detail::is_conjugated(c)) {
+    throw std::runtime_error(
+        "aoclsparse backend does not support conjugated views.");
+  }
 
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);

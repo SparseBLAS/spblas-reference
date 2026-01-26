@@ -2,6 +2,8 @@
 
 #include <rocsparse/rocsparse.h>
 
+#include <stdexcept>
+
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
 #include <spblas/detail/view_inspectors.hpp>
@@ -23,6 +25,12 @@ template <matrix A, vector B, vector C>
 void multiply(operation_info_t& info, A&& a, B&& b, C&& c) {
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
+
+  if (__detail::is_conjugated(a) || __detail::is_conjugated(b) ||
+      __detail::is_conjugated(c)) {
+    throw std::runtime_error(
+        "rocsparse backend does not support conjugated views.");
+  }
 
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);

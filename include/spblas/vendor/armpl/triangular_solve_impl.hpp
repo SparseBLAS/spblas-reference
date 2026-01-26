@@ -2,6 +2,8 @@
 
 #include <spblas/vendor/armpl/detail/armpl.hpp>
 
+#include <stdexcept>
+
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
@@ -25,6 +27,12 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
 
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
+
+  if (__detail::is_conjugated(a) || __detail::is_conjugated(b) ||
+      __detail::is_conjugated(x)) {
+    throw std::runtime_error(
+        "armpl backend does not support conjugated views.");
+  }
 
   using T = tensor_scalar_t<A>;
   using I = tensor_index_t<A>;

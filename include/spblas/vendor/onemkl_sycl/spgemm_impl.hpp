@@ -2,6 +2,8 @@
 
 #include <oneapi/mkl.hpp>
 
+#include <stdexcept>
+
 #include <spblas/detail/log.hpp>
 
 #include <spblas/algorithms/transposed.hpp>
@@ -39,6 +41,11 @@ operation_info_t
   using oneapi::mkl::sparse::matmat_request;
   using oneapi::mkl::sparse::matrix_view_descr;
 
+  if (__detail::is_conjugated(c)) {
+    throw std::runtime_error(
+        "oneMKL SYCL backend does not support conjugated output matrices.");
+  }
+
   auto a_data = __detail::get_ultimate_base(a).values().data();
   auto&& q = __mkl::get_queue(policy, a_data);
 
@@ -69,9 +76,10 @@ operation_info_t
 
   oneapi::mkl::sparse::set_matmat_data(
       descr, matrix_view_descr::general,
-      __mkl::get_transpose(a),                             // view/op for A
-      matrix_view_descr::general, __mkl::get_transpose(b), // view/op for B
-      matrix_view_descr::general);                         // view for C
+      __mkl::get_transpose(a), // view/op for A
+      matrix_view_descr::general,
+      __mkl::get_transpose(b),     // view/op for B
+      matrix_view_descr::general); // view for C
 
   auto ev1 = oneapi::mkl::sparse::matmat(q, a_handle, b_handle, c_handle,
                                          matmat_request::work_estimation, descr,
@@ -118,6 +126,15 @@ template <typename ExecutionPolicy, matrix A, matrix B, matrix C>
 void multiply_fill(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
                    B&& b, C&& c) {
   log_trace("");
+
+  if (__detail::is_conjugated(c)) {
+    throw std::runtime_error(
+        "oneMKL SYCL backend does not support conjugated output matrices.");
+  }
+
+  // Just for completeness; throws errors if unsupported conjugate type.
+  (void) __mkl::get_transpose(a);
+  (void) __mkl::get_transpose(b);
 
   auto alpha_optional = __detail::get_scaling_factor(a, b);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);

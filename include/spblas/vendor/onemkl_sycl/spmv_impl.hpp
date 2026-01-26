@@ -2,6 +2,8 @@
 
 #include <oneapi/mkl.hpp>
 
+#include <stdexcept>
+
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/ranges.hpp>
@@ -33,6 +35,11 @@ template <typename ExecutionPolicy, matrix A, vector X, vector Y>
 void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
   log_trace("");
   auto x_base = __detail::get_ultimate_base(x);
+
+  if (__detail::is_conjugated(x) || __detail::is_conjugated(y)) {
+    throw std::runtime_error(
+        "oneMKL SYCL backend does not support conjugated dense vectors.");
+  }
 
   auto alpha_optional = __detail::get_scaling_factor(a, x);
   tensor_scalar_t<A> alpha = alpha_optional.value_or(1);

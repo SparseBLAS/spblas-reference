@@ -14,6 +14,7 @@ namespace spblas {
   - Instantiations of csc_view<...>
   - Instantiations of mdspan<...> with rank 2
   - Instantiations of scaled_view<T> where M is a matrix
+  - Instantiations of conjugated_view<T> where M is a matrix
 */
 
 template <typename M>
