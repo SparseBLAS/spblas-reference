@@ -5,11 +5,45 @@
 #include <numeric>
 #include <random>
 #include <set>
+#include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include <spblas/detail/ranges.hpp>
+#include <spblas/detail/type_traits.hpp>
 
 namespace spblas {
+
+namespace __detail {
+
+template <typename T, typename G>
+T random_uniform(G& g, T lo, T hi) {
+  if constexpr (is_std_complex_v<T>) {
+    using value_type = typename std::remove_cvref_t<T>::value_type;
+    std::uniform_real_distribution<value_type> d(lo.real(), hi.real());
+    return T(d(g), d(g));
+  } else if constexpr (std::is_integral_v<T>) {
+    std::uniform_int_distribution<T> d(lo, hi);
+    return d(g);
+  } else {
+    std::uniform_real_distribution<T> d(lo, hi);
+    return d(g);
+  }
+}
+
+template <typename T, typename G>
+T random_gaussian(G& g, T mean, T stddev) {
+  if constexpr (is_std_complex_v<T>) {
+    using value_type = typename std::remove_cvref_t<T>::value_type;
+    std::normal_distribution<value_type> d(mean.real(), stddev.real());
+    return T(d(g), d(g));
+  } else {
+    std::normal_distribution<T> d(mean, stddev);
+    return d(g);
+  }
+}
+
+} // namespace __detail
 
 template <typename T = float, typename I = index_t>
 auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz,
@@ -25,7 +59,6 @@ auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz,
   std::mt19937 g(seed);
   std::uniform_int_distribution<I> d_row(0, m - 1);
   std::uniform_int_distribution<I> d_col(0, n - 1);
-  std::uniform_real_distribution d_val(0.0, 100.0);
   std::set<std::pair<I, I>> entries;
 
   for (std::size_t i = 0; i < nnz; i++) {
@@ -38,10 +71,19 @@ auto generate_coo(std::size_t m, std::size_t n, std::size_t nnz,
     entries.emplace(row, col);
     rowind.push_back(row);
     colind.push_back(col);
-    values.push_back(d_val(g));
+    values.push_back(__detail::random_uniform<T>(g, T{0}, T{100}));
   }
 
-  __ranges::sort(__ranges::views::zip(rowind, colind, values));
+  __ranges::sort(__ranges::views::zip(rowind, colind, values),
+                 [](const auto& left, const auto& right) {
+                   if (std::get<0>(left) < std::get<0>(right)) {
+                     return true;
+                   }
+                   if (std::get<0>(right) < std::get<0>(left)) {
+                     return false;
+                   }
+                   return std::get<1>(left) < std::get<1>(right);
+                 });
 
   return std::tuple(values, rowind, colind, spblas::index<I>(m, n), I(nnz));
 }
@@ -131,10 +173,9 @@ auto generate_dense(std::size_t m, std::size_t n, std::size_t seed = 0) {
   v.reserve(m * n);
 
   std::mt19937 g(seed);
-  std::uniform_real_distribution d(0.0, 100.0);
 
   for (std::size_t i = 0; i < m * n; i++) {
-    v.push_back(d(g));
+    v.push_back(__detail::random_uniform<T>(g, T{0}, T{100}));
   }
 
   return std::tuple(v, spblas::index(m, n));
@@ -146,10 +187,9 @@ auto generate_gaussian(std::size_t m, std::size_t n, std::size_t seed = 0) {
   v.reserve(m * n);
 
   std::mt19937 g(seed);
-  std::normal_distribution d{0.0, 1.0};
 
   for (std::size_t i = 0; i < m * n; i++) {
-    v.push_back(d(g));
+    v.push_back(__detail::random_gaussian<T>(g, T{0}, T{1}));
   }
 
   return std::tuple(v, spblas::index(m, n));

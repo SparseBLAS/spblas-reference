@@ -11,6 +11,7 @@
 
 #include "aoclsparse.h"
 #include <cstdint>
+#include <stdexcept>
 
 #include "aocl_wrappers.hpp"
 #include <fmt/core.h>
@@ -37,6 +38,12 @@ void multiply(A&& a, X&& x, Y&& y) {
   log_trace("");
   auto a_base = __detail::get_ultimate_base(a);
   auto x_base = __detail::get_ultimate_base(x);
+
+  if (__detail::is_conjugated(a) || __detail::is_conjugated(x) ||
+      __detail::is_conjugated(y)) {
+    throw std::runtime_error(
+        "aoclsparse backend does not support conjugated views.");
+  }
 
   aoclsparse_matrix csrA = __aoclsparse::create_matrix_handle(a_base);
   aoclsparse_operation opA = __aoclsparse::get_transpose(a);

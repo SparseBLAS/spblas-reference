@@ -11,6 +11,7 @@
 
 #include "aoclsparse.h"
 #include <cstdint>
+#include <stdexcept>
 
 #include "aocl_wrappers.hpp"
 #include <fmt/core.h>
@@ -45,6 +46,12 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
 
   auto a_base = __detail::get_ultimate_base(a);
   auto b_base = __detail::get_ultimate_base(b);
+
+  if (__detail::is_conjugated(a) || __detail::is_conjugated(b) ||
+      __detail::is_conjugated(x)) {
+    throw std::runtime_error(
+        "aoclsparse backend does not support conjugated views.");
+  }
 
   using T = tensor_scalar_t<A>;
   using I = tensor_index_t<A>;

@@ -16,5 +16,8 @@
 #include <spblas/algorithms/scaled.hpp>
 #include <spblas/algorithms/scaled_impl.hpp>
 
+#include <spblas/algorithms/conjugated.hpp>
+#include <spblas/algorithms/conjugated_impl.hpp>
+
 #include <spblas/algorithms/transpose.hpp>
 #include <spblas/algorithms/transpose_impl.hpp>

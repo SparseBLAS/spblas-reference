@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spblas/views/conjugated_view.hpp>
+#include <spblas/views/conjugated_view_impl.hpp>
 #include <spblas/views/csc_view.hpp>
 #include <spblas/views/csr_view.hpp>
 #include <spblas/views/inspectors.hpp>

@@ -12,6 +12,10 @@ if (SPBLAS_CPU_BACKEND)
        add_test.cpp
        transpose_test.cpp
        triangular_solve_test.cpp)
+
+  if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND)
+    list(APPEND TEST_SOURCES conjugate_test.cpp)
+  endif()
 endif()
 
 # GPU tests
