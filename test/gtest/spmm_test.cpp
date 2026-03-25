@@ -4,8 +4,6 @@
 #include <spblas/spblas.hpp>
 
 TEST(CsrView, SpMM) {
-  namespace md = spblas::__mdspan;
-
   using T = float;
   using I = spblas::index_t;
 
@@ -20,8 +18,8 @@ TEST(CsrView, SpMM) {
 
       std::vector<T> c_values(m * n, 0);
 
-      md::mdspan b(b_values.data(), k, n);
-      md::mdspan c(c_values.data(), m, n);
+      spblas::mdspan_row_major b(b_values.data(), k, n);
+      spblas::mdspan_row_major c(c_values.data(), m, n);
 
       spblas::multiply(a, b, c);
 
