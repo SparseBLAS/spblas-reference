@@ -3,6 +3,18 @@
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
+// Accessing the data inside mdspan differs between different mdspan
+// implementations. The portable way is quite heavy and the following helper
+// makes the tests themselves easier to read.
+template <class T>
+decltype(auto) md_at(T& m, typename T::index_type i, typename T::index_type j) {
+#if defined(__cpp_multidimensional_subscript)
+  return m[i, j];
+#else
+  return m(i, j);
+#endif
+}
+
 TEST(Mdspan, positive_row_major) {
   using T = float;
   using I = spblas::index_t;
@@ -16,7 +28,7 @@ TEST(Mdspan, positive_row_major) {
       T* tmp = b_values.data();
       for (I i = 0; i < m; ++i) {
         for (I j = 0; j < n; ++j) {
-          EXPECT_EQ((b[i, j]), *(tmp++));
+          EXPECT_EQ(md_at(b, i, j), *(tmp++));
         }
       }
     }
@@ -36,7 +48,7 @@ TEST(Mdspan, postive_col_major) {
       T* tmp = b_values.data();
       for (I j = 0; j < n; ++j) {
         for (I i = 0; i < m; ++i) {
-          EXPECT_EQ((b[i, j]), *(tmp++));
+          EXPECT_EQ(md_at(b, i, j), *(tmp++));
         }
       }
     }
@@ -61,7 +73,7 @@ TEST(Mdspan, negative_row_major) {
           tmp++;
           continue;
         }
-        EXPECT_NE((b[i, j]), *(tmp++));
+        EXPECT_NE(md_at(b, i, j), *(tmp++));
       }
     }
   }
@@ -85,7 +97,7 @@ TEST(Mdspan, negative_col_major) {
           tmp++;
           continue;
         }
-        EXPECT_NE((b[i, j]), *(tmp++));
+        EXPECT_NE(md_at(b, i, j), *(tmp++));
       }
     }
   }

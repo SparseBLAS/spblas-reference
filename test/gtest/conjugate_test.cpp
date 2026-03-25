@@ -133,8 +133,8 @@ TEST(Conjugate, SpMM_DenseConjugated) {
       auto [b_values, b_shape] = spblas::generate_dense<T>(k, n);
 
       std::vector<T> c_values(m * n, T(0.0f, 0.0f));
-      spblas::mdspan_row_major b(b_values.data(), k, n);
-      spblas::mdspan_row_major c(c_values.data(), m, n);
+      spblas::mdspan_row_major<T, I> b(b_values.data(), k, n);
+      spblas::mdspan_row_major<T, I> c(c_values.data(), m, n);
 
       spblas::multiply(a, spblas::conjugated(b), c);
 
@@ -234,8 +234,6 @@ TEST(Conjugate, SpMV_MatrixConjugated) {
 }
 
 TEST(Conjugate, SpMM_MatrixConjugated) {
-  namespace md = spblas::__mdspan;
-
   for (auto&& [m, k, nnz] : util::dims) {
     for (auto n : {1, 8, 32}) {
       auto [values, colptr, rowind, shape, _] =
@@ -245,8 +243,8 @@ TEST(Conjugate, SpMM_MatrixConjugated) {
       auto [b_values, b_shape] = spblas::generate_dense<T>(k, n);
 
       std::vector<T> c_values(m * n, T(0.0f, 0.0f));
-      md::mdspan b(b_values.data(), k, n);
-      md::mdspan c(c_values.data(), m, n);
+      spblas::mdspan_row_major<T, I> b(b_values.data(), k, n);
+      spblas::mdspan_row_major<T, I> c(c_values.data(), m, n);
 
       spblas::multiply(spblas::conjugated(a), b, c);
 
