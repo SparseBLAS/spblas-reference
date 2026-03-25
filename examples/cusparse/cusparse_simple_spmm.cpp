@@ -75,8 +75,8 @@ int main(int argc, char** argv) {
   CUDA_CHECK(
       cudaMemcpy(d_y, y.data(), y.size() * sizeof(value_t), cudaMemcpyDefault));
 
-  md::mdspan x_span(d_x, k, n);
-  md::mdspan y_span(d_y, m, n);
+  md::mdspan x_span(d_x, n, k);
+  md::mdspan y_span(d_y, m, k);
 
   // Y = A * X
   spblas::operation_info_t info;

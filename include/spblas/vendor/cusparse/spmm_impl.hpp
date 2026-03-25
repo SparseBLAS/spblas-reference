@@ -67,20 +67,21 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   auto a_handle = __cusparse::get_matrix_handle(a);
   auto a_transpose = __cusparse::get_transpose(a);
 
-  cusparseDnMatDescr_t x_handle, y_handle;
+  cusparseConstDnMatDescr_t x_handle;
+  cusparseDnMatDescr_t y_handle;
 
-  __cusparse::throw_if_error(cusparseCreateDnMat(&x_handle, x_base.extent(0),
-      x_base.extent(1), x_base.extent(0), x_base.data(),
-      detail::cuda_data_type_v<tensor_scalar_t<X>>, CUSPARSE_ORDER_ROW);
+  __cusparse::throw_if_error(cusparseCreateConstDnMat(&x_handle, x_base.extent(0),
+      x_base.extent(1), x_base.extent(1), x_base.data_handle(),
+      detail::cuda_data_type_v<tensor_scalar_t<X>>, CUSPARSE_ORDER_ROW));
 
   __cusparse::throw_if_error(cusparseCreateDnMat(&y_handle, y_base.extent(0),
-      y_base.extent(1), y_base.extent(0), y_base.data(),
-      detail::cuda_data_type_v<tensor_scalar_t<Y>>, CUSPARSE_ORDER_ROW);
+      y_base.extent(1), y_base.extent(1), y_base.data_handle(),
+      detail::cuda_data_type_v<tensor_scalar_t<Y>>, CUSPARSE_ORDER_ROW));
 
   // Get buffer size
   size_t buffer_size;
   __cusparse::throw_if_error(cusparseSpMM_bufferSize(
-      state->handle(), a_transpose, b_transpose, &alpha, a_handle,
+      state->handle(), a_transpose, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, a_handle,
       x_handle, &beta, y_handle, detail::cuda_data_type_v<tensor_scalar_t<Y>>,
       CUSPARSE_SPMM_ALG_DEFAULT, &buffer_size));
 
@@ -91,11 +92,10 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   }
 
   // Execute SpMM
-  __cusparse::throw_if_error(
-      cusparseSpMV(state->handle(), a_transpose, &alpha, a_handle,
-                   x_handle, &beta, y_handle,
-                   detail::cuda_data_type_v<tensor_scalar_t<Y>>,
-                   CUSPARSE_SPMM_ALG_DEFAULT, buffer));
+  __cusparse::throw_if_error(cusparseSpMM(
+      state->handle(), a_transpose, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, a_handle,
+      x_handle, &beta, y_handle, detail::cuda_data_type_v<tensor_scalar_t<Y>>,
+      CUSPARSE_SPMM_ALG_DEFAULT, buffer));
 
   // Free buffer if allocated
   if (buffer) {

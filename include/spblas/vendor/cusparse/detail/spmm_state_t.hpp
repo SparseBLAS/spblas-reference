@@ -27,7 +27,7 @@ public:
   cusparseSpMatDescr_t a_descriptor() const {
     return a_descr_;
   }
-  cusparseDnMatescr_t x_descriptor() const {
+  cusparseDnMatDescr_t x_descriptor() const {
     return x_descr_;
   }
   cusparseDnMatDescr_t y_descriptor() const {
