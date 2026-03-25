@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
   using namespace spblas;
 
   using T = float;
-  
+
   spblas::index_t m = 100;
   spblas::index_t n = 10;
   spblas::index_t k = 100;
