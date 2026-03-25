@@ -11,7 +11,7 @@ function build_mex_APIs(incl_path, verbose, debug)
 % 		build_mex_APIs("PATH_TO_SparseBLAS_INCLUDE", false, true)
 
 % Set default options
-opts = {['-I' char(incl_path)], "-O", "-R2018a", "CXXFLAGS=$CFLAGS -std=c++20"};
+opts = {['-I' char(incl_path)], "-O", "-R2018a", "CXXFLAGS=$CFLAGS -std=c++23"};
 
 % Parse optional VERBOSE option
 if nargin > 1 && verbose
