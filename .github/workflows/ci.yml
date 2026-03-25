@@ -8,6 +8,28 @@ on:
   pull_request:
 
 jobs:
+  mex_checks:
+    runs-on: 'ubuntu-latest'
+    steps:
+    - uses: actions/checkout@v4
+    - name: CMake
+      run: |
+        module load cmake
+        cmake -B build
+    - name: Build
+      run: |
+        make -C build -j `nproc`
+    - name: Set up MATLAB
+      uses: matlab-actions/setup-matlab@v2.5.0
+      with:
+        release: R2025b
+    - name: Run script
+      uses: matlab-actions/run-command@v2.2.1
+      with:
+        command: |
+          cd("examples/MATLAB_MEX");
+          build_mex_APIs('../../include')
+  
   checks:
     runs-on: 'ubuntu-latest'
     steps:
