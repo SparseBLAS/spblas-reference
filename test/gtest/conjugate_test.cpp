@@ -100,8 +100,8 @@ TEST(Conjugate, SpMM_MatrixConjugated) {
       auto [b_values, b_shape] = spblas::generate_dense<T>(k, n);
 
       std::vector<T> c_values(m * n, T(0.0f, 0.0f));
-      spblas::mdspan_row_major b(b_values.data(), k, n);
-      spblas::mdspan_row_major c(c_values.data(), m, n);
+      spblas::mdspan_row_major<T, I> b(b_values.data(), k, n);
+      spblas::mdspan_row_major<T, I> c(c_values.data(), m, n);
 
       spblas::multiply(spblas::conjugated(a), b, c);
 

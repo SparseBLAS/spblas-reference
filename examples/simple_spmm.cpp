@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
   using namespace spblas;
 
   using T = float;
-
+  
   spblas::index_t m = 100;
   spblas::index_t n = 10;
   spblas::index_t k = 100;
@@ -37,8 +37,8 @@ int main(int argc, char** argv) {
   std::vector<T> x_values(k * n, 1);
   std::vector<T> y_values(m * n, 0);
 
-  mdspan_row_major x(x_values.data(), k, n);
-  mdspan_row_major y(y_values.data(), m, n);
+  mdspan_row_major<T, spblas::index_t> x(x_values.data(), k, n);
+  mdspan_row_major<T, spblas::index_t> y(y_values.data(), m, n);
 
   auto a_view = scaled(2.f, a);
 

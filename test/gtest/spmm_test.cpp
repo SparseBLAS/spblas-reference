@@ -18,8 +18,8 @@ TEST(CsrView, SpMM) {
 
       std::vector<T> c_values(m * n, 0);
 
-      spblas::mdspan_row_major b(b_values.data(), k, n);
-      spblas::mdspan_row_major c(c_values.data(), m, n);
+      spblas::mdspan_row_major<T, I> b(b_values.data(), k, n);
+      spblas::mdspan_row_major<T, I> c(c_values.data(), m, n);
 
       spblas::multiply(a, b, c);
 
