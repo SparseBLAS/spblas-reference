@@ -82,7 +82,7 @@ classdef testSparseBLASMexAPIs < matlab.unittest.TestCase
             end
 
             %% Verify results
-            testCase.verifyEqual(y_act, -y_exp);
+            testCase.verifyEqual(y_act, y_exp);
         end
 
         function simpleSPMM(testCase, sizesToTest, numberOfRHS, datatypes, complexity, shape, alpha)
