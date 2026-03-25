@@ -33,7 +33,7 @@
 
 namespace spblas {
 
-template <typename ExecutionPolicy, matrix A, matrix B, matrix C>
+template <matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
@@ -41,7 +41,6 @@ operation_info_t
     multiply_compute(ExecutionPolicy&& policy, A&& a, B&& b, C&& c) {
   log_trace("");
 
-  // Verify this
   if (__detail::is_conjugated(c)) {
     throw std::runtime_error(
         "cusparse backend does not support conjugated output matrices.");
@@ -135,7 +134,7 @@ operation_info_t
                                c_handle, nullptr, descr, (void*) c_rowptr, q}};
 }
 
-template <typename ExecutionPolicy, matrix A, matrix B, matrix C>
+template <matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
@@ -143,7 +142,6 @@ void multiply_fill(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
                    B&& b, C&& c) {
   log_trace("");
 
-  // Verify this
   if (__detail::is_conjugated(c)) {
     throw std::runtime_error(
         "cusparse backend does not support conjugated output matrices.");
@@ -191,25 +189,6 @@ void multiply_fill(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
     scale(alpha, c);
   }
 }
-
-// -----> what is mkl::par?
-// template <matrix A, matrix B, matrix C>
-//   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
-//           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
-//           __detail::is_csr_view_v<C>
-// operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
-//   return multiply_compute(mkl::par, std::forward<A>(a), std::forward<B>(b),
-//                           std::forward<C>(c));
-// }
-
-// template <matrix A, matrix B, matrix C>
-//   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
-//           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
-//           __detail::is_csr_view_v<C>
-// void multiply_fill(operation_info_t& info, A&& a, B&& b, C&& c) {
-//   multiply_fill(mkl::par, info, std::forward<A>(a), std::forward<B>(b),
-//                 std::forward<C>(c));
-// }
 
 template <matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
