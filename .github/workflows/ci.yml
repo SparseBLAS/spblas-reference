@@ -21,7 +21,7 @@ jobs:
     - name: Install
       run: |
         cmake --install build/.
-     
+
     - name: Set up MATLAB
       uses: matlab-actions/setup-matlab@v2.5.0
       with:
@@ -39,7 +39,7 @@ jobs:
           cd("examples/MATLAB_MEX");
           results = runtests("testSparseBLASMexAPIs");
           assertSuccess(results);
-  
+
   checks:
     runs-on: 'ubuntu-latest'
     steps:

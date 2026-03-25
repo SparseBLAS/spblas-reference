@@ -10,7 +10,7 @@
 
 template <typename T>
 void spmmDriver(mxArray* mxY, const mxArray* mxA, const mxArray* mxX,
-                const mxArray* mxAlpha){
+                const mxArray* mxAlpha) {
   // Gather dimensions
   mwIndex m = mxGetM(mxA);
   mwIndex k = mxGetN(mxA);
@@ -35,7 +35,7 @@ void spmmDriver(mxArray* mxY, const mxArray* mxA, const mxArray* mxX,
   // Store and apply scaling factor alpha, if provided and not empty
   T alpha = T(1);
   if (mxAlpha != nullptr && !mxIsEmpty(mxAlpha)) {
-    // We don't use mxGetScalar as it doesn't work for complex 
+    // We don't use mxGetScalar as it doesn't work for complex
     alpha = *(static_cast<T*>(mxGetData(mxAlpha)));
   }
   auto alpha_A = spblas::scaled(alpha, A);
@@ -47,8 +47,7 @@ void spmmDriver(mxArray* mxY, const mxArray* mxA, const mxArray* mxX,
 // Y = (alpha *) A * X
 // prhs[0] = A, prhs[1] = X (optional: prhs[2] = alpha)
 // plhs[0] = Y
-void mexFunction(int nlhs, mxArray *plhs[],
-                 int nrhs, const mxArray *prhs[]) {
+void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
 
   // General input checking
   if (nrhs < 2 || nrhs > 3) {
@@ -59,9 +58,9 @@ void mexFunction(int nlhs, mxArray *plhs[],
     mexErrMsgIdAndTxt("SparseBLAS_Mex:WrongNumberOfOutputs",
                       "Function returns only 1 output.");
   }
-  if (mxGetClassID(prhs[0]) != mxGetClassID(prhs[1])|| 
+  if (mxGetClassID(prhs[0]) != mxGetClassID(prhs[1]) ||
       ((nrhs == 3) && mxGetClassID(prhs[1]) != mxGetClassID(prhs[2]))) {
-      mexErrMsgIdAndTxt("SparseBLAS_Mex:ClassMismatch",
+    mexErrMsgIdAndTxt("SparseBLAS_Mex:ClassMismatch",
                       "All inputs must have matching type.");
   }
   if (!mxIsDouble(prhs[0]) && !mxIsSingle(prhs[0])) {
@@ -72,18 +71,18 @@ void mexFunction(int nlhs, mxArray *plhs[],
     mexErrMsgIdAndTxt("SparseBLAS_Mex:FirstInputNotSparse",
                       "First input must be sparse.");
   }
-  if(mxIsSparse(prhs[1])) {
+  if (mxIsSparse(prhs[1])) {
     mexErrMsgIdAndTxt("SparseBLAS_Mex:SecondInputNotDense",
                       "Second input must be dense.");
   }
 
   // Reference SparseBLAS can handle inputs with mixed complexity,
   // however, the vendor implementations need all inputs of the same
-  // complexity, hence, this example also insists on having matching 
+  // complexity, hence, this example also insists on having matching
   // complexity.
-  if(mxIsComplex(prhs[0]) != mxIsComplex(prhs[1]) || 
+  if (mxIsComplex(prhs[0]) != mxIsComplex(prhs[1]) ||
       ((nrhs == 3) && mxIsComplex(prhs[1]) != mxIsComplex(prhs[2]))) {
-      mexErrMsgIdAndTxt("SparseBLAS_Mex:ComplexityMismatch",
+    mexErrMsgIdAndTxt("SparseBLAS_Mex:ComplexityMismatch",
                       "All inputs must have matching complexity.");
   }
 
@@ -94,9 +93,9 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
   // Check dimensions of second input
   if (mxGetM(prhs[1]) != k) {
-     mexErrMsgIdAndTxt("SparseBLAS_Mex:InnerDimWrong",
-                       "Second input must be an array with k rows, "
-                       "i.e., number of columns of first input.");
+    mexErrMsgIdAndTxt("SparseBLAS_Mex:InnerDimWrong",
+                      "Second input must be an array with k rows, "
+                      "i.e., number of columns of first input.");
   }
 
   // Calculate in complex (we check for matching complexity above)
@@ -128,6 +127,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 }
 
 // Compile from within MATLAB via:
-// mex simple_spmm_mex.cpp -R2018a -I{PATH_TO_SparseBLAS_INCLUDE} 'CXXFLAGS=$CFLAGS -std=c++20'
+// mex simple_spmm_mex.cpp -R2018a -I{PATH_TO_SparseBLAS_INCLUDE}
+// 'CXXFLAGS=$CFLAGS -std=c++20'
 //
 // Add '-g' to build in Debug mode if needed (activates asserts)
