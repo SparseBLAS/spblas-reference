@@ -14,11 +14,14 @@ jobs:
     - uses: actions/checkout@v4
     - name: CMake
       run: |
-        module load cmake
-        cmake -B build
+        cmake -B build -D CMAKE_INSTALL_PREFIX=install
     - name: Build
       run: |
         make -C build -j `nproc`
+    - name: Install
+      run: |
+        cmake --install build/.
+     
     - name: Set up MATLAB
       uses: matlab-actions/setup-matlab@v2.5.0
       with:
@@ -28,7 +31,7 @@ jobs:
       with:
         command: |
           cd("examples/MATLAB_MEX");
-          build_mex_APIs('../../include')
+          build_mex_APIs("install/include")
   
   checks:
     runs-on: 'ubuntu-latest'
