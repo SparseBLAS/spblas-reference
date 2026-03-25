@@ -37,7 +37,8 @@ jobs:
       with:
         command: |
           cd("examples/MATLAB_MEX");
-          runtests("testSparseBLASMexAPIs");
+          results = runtests("testSparseBLASMexAPIs");
+          assertSuccess(results);
   
   checks:
     runs-on: 'ubuntu-latest'
