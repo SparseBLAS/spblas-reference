@@ -41,7 +41,7 @@ template <matrix A, matrix X, matrix Y>
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
-void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
+void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   log_trace("");
 
   auto x_base = __detail::get_ultimate_base(x);
@@ -104,12 +104,13 @@ void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
 }
 
 template <matrix A, vector X, vector Y>
-  requires(__detail::has_csr_base<A> &&
-           __detail::has_contiguous_range_base<X> &&
-           __ranges::contiguous_range<Y> &&
-           detail::has_valid_cusparse_matrix_types_v<A> &&
-           detail::has_valid_cusparse_vector_types_v<X> &&
-           detail::has_valid_cusparse_vector_types_v<Y>)
+  requires(
+      (__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
+      __detail::has_mdspan_matrix_base<X> && __detail::is_matrix_mdspan_v<Y> &&
+      std::is_same_v<typename __detail::ultimate_base_type_t<X>::layout_type,
+                     __mdspan::layout_right> &&
+      std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
+                     __mdspan::layout_right>)
 void multiply(A&& a, X&& x, Y&& y) {
   operation_info_t info;
   multiply(info, std::forward<A>(a), std::forward<X>(x), std::forward<Y>(y));
