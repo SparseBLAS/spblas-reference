@@ -85,7 +85,35 @@ int main(int argc, char** argv) {
   CUDA_CHECK(
       cudaMemcpy(y.data(), d_y, y.size() * sizeof(value_t), cudaMemcpyDefault));
 
+  // CPU reference
+  std::vector<value_t> y_ref(m * k, 0);
+  for (index_t i = 0; i < m; i++) {
+    for (offset_t j = rowptr[i]; j < rowptr[i + 1]; j++) {
+      index_t col = colind[j];
+      value_t val = values[j];
+      for (index_t l = 0; l < k; l++) {
+        y_ref[i * k + l] += val * x[col * k + l];
+      }
+    }
+  }
+
+  bool failed = false;
+
+  for (size_t i = 0; i < y.size(); ++i) {
+    if (y[i] != y_ref[i]) {
+        fprintf(stderr, "Value mismatch at index %ld: y_ref[%ld] = %f, y[%ld] = %f\n", i, i, y_ref[i], i, y_ref[i]);
+        failed = true;
+    }
+  }
+
+  if (failed) {
+    fmt::print("\tValidation failed!\n");
+  }
+  else {
+    fmt::print("\tValidation succeeded!\n");
+  }
+
   fmt::print("\tExample is completed!\n");
 
-  return 0;
+  return failed;
 }
