@@ -26,12 +26,18 @@ jobs:
       uses: matlab-actions/setup-matlab@v2.5.0
       with:
         release: R2025b
-    - name: Run script
+    - name: Build MEX APIs
       uses: matlab-actions/run-command@v2.2.1
       with:
         command: |
           cd("examples/MATLAB_MEX");
           build_mex_APIs("../../install/include")
+    - name: Run MEX API Tests
+      uses: matlab-actions/run-command@v2.2.1
+      with:
+        command: |
+          cd("examples/MATLAB_MEX");
+          runtests("testSparseBLASMexAPIs");
   
   checks:
     runs-on: 'ubuntu-latest'
