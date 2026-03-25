@@ -31,7 +31,7 @@ jobs:
       with:
         command: |
           cd("examples/MATLAB_MEX");
-          build_mex_APIs("install/include")
+          build_mex_APIs("../../install/include")
   
   checks:
     runs-on: 'ubuntu-latest'
