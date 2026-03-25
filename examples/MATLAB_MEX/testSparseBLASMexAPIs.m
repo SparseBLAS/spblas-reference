@@ -1,6 +1,6 @@
 classdef testSparseBLASMexAPIs < matlab.unittest.TestCase
 % testSparseBLASMexAPIs Tests for SparseBLAS MEX APIs
-    
+
    methods(TestMethodSetup)
         function initializeRNG(~)
             rng(0,'twister');

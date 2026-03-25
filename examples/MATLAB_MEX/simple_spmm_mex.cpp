@@ -67,7 +67,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
     mexErrMsgIdAndTxt("SparseBLAS_Mex:NonFloat",
                       "All inputs must be single or double.");
   }
-  if(!mxIsSparse(prhs[0])) {
+  if (!mxIsSparse(prhs[0])) {
     mexErrMsgIdAndTxt("SparseBLAS_Mex:FirstInputNotSparse",
                       "First input must be sparse.");
   }

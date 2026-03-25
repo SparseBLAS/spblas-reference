@@ -16,4 +16,3 @@
 %    * All inputs must have the same data type and complexity
 %
 %  This is a MEX-file for MATLAB.
-
