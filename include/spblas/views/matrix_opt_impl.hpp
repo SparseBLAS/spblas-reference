@@ -7,6 +7,8 @@
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 #include <oneapi/mkl.hpp>
 #include <sycl/sycl.hpp>
+#elif SPBLAS_ENABLE_CUSPARSE
+#include <cusparse.h>
 #endif
 
 namespace spblas {
@@ -24,6 +26,8 @@ public:
   matrix_opt(M matrix) : matrix_(matrix) {
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
     matrix_handle_ = nullptr;
+#elif SPBLAS_ENABLE_CUSPARSE
+    matrix_handle_ = nullptr;
 #endif
   }
 
@@ -34,6 +38,11 @@ public:
       // idealy from execution policy
       sycl::queue q(sycl::cpu_selector_v);
       oneapi::mkl::sparse::release_matrix_handle(q, &matrix_handle_, {}).wait();
+      matrix_handle_ = nullptr;
+    }
+#elif SPBLAS_ENABLE_CUSPARSE
+    if (matrix_handle_) {
+      cusparseDestroySpMat(matrix_handle_);
       matrix_handle_ = nullptr;
     }
 #endif
@@ -89,6 +98,8 @@ public:
 
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
   oneapi::mkl::sparse::matrix_handle_t matrix_handle_;
+#elif SPBLAS_ENABLE_CUSPARSE
+  cusparseSpMatDescr_t matrix_handle_;
 #endif
 };
 
