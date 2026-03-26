@@ -10,7 +10,7 @@ namespace spblas {
 namespace __rocsparse {
 
 // Throw an exception if the hipError_t is not hipSuccess.
-void throw_if_error(hipError_t error_code, std::string prefix = "") {
+inline void throw_if_error(hipError_t error_code, std::string prefix = "") {
   if (error_code == hipSuccess) {
     return;
   }
@@ -21,7 +21,7 @@ void throw_if_error(hipError_t error_code, std::string prefix = "") {
 }
 
 // Throw an exception if the rocsparse_status is not rocsparse_status_success.
-void throw_if_error(rocsparse_status error_code) {
+inline void throw_if_error(rocsparse_status error_code) {
   if (error_code == rocsparse_status_success) {
     return;
   } else if (error_code == rocsparse_status_invalid_handle) {
