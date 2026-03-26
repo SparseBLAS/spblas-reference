@@ -5,6 +5,7 @@ set(TEST_SOURCES)
 # CPU tests
 if (SPBLAS_CPU_BACKEND)
   list(APPEND TEST_SOURCES
+       tag_test.cpp
        spmv_test.cpp
        spmm_test.cpp
        spgemm_test.cpp
