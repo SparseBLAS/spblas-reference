@@ -11,7 +11,8 @@ if (SPBLAS_CPU_BACKEND)
        spgemm_csr_csc.cpp
        add_test.cpp
        transpose_test.cpp
-       triangular_solve_test.cpp)
+       triangular_solve_test.cpp
+       mdspan_overlays.cpp)
 
   if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND)
     list(APPEND TEST_SOURCES conjugate_test.cpp)
