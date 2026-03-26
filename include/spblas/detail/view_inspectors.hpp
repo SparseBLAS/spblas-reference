@@ -4,6 +4,7 @@
 #include <utility> // std::declval
 
 #include <spblas/detail/concepts.hpp>
+#include <spblas/views/matrix_view.hpp>
 #include <spblas/views/inspectors.hpp>
 
 namespace spblas {
@@ -111,11 +112,44 @@ auto get_ultimate_base(T&& t) {
 }
 
 template <tensor T>
+auto get_ultimate_base_or_matrix_opt(T&& t) {
+  if constexpr (is_matrix_opt_v<T>) {
+    return t;
+  } else if constexpr (has_base<T>) {
+    return get_ultimate_base_or_matrix_opt(t.base());
+  } else {
+    return t;
+  }
+}
+
+template <tensor T>
+auto get_ultimate_base_or_matrix(T&& t) {
+  if constexpr (matrix_view::is_general_v<T>) {
+    return t;
+  } else if constexpr (has_base<T>) {
+    return get_ultimate_base_or_matrix(t.base());
+  } else {
+    return t;
+  }
+}
+
+template <tensor T>
 bool has_matrix_opt(T&& t) {
   if constexpr (is_matrix_opt_v<T>) {
     return true;
   } else if constexpr (has_base<T>) {
     return has_matrix_opt(t.base());
+  } else {
+    return false;
+  }
+}
+
+template <tensor T>
+bool has_general(T&& t) {
+  if constexpr (matrix_view::is_general_v<T>) {
+    return true;
+  } else if constexpr (has_base<T>) {
+    return has_general(t.base());
   } else {
     return false;
   }
@@ -136,6 +170,19 @@ concept has_mdspan_matrix_base = is_matrix_mdspan_v<ultimate_base_type_t<T>>;
 template <typename T>
 concept has_contiguous_range_base =
     spblas::__ranges::contiguous_range<ultimate_base_type_t<T>>;
+
+template <typename T>
+using ultimate_base_or_matrix_type_t =
+    decltype(get_ultimate_base_or_matrix(std::declval<T>()));
+
+template <typename T>
+concept has_general_d = matrix_view::is_general_v<ultimate_base_or_matrix_type_t<T>>;
+
+template <typename T>
+concept has_full =
+    !has_general_d<T> ||
+    std::is_same_v<typename ultimate_base_or_matrix_type_t<T>::uplo,
+                   matrix_view::uplo::full>;
 
 } // namespace __detail
 

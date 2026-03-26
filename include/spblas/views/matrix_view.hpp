@@ -93,6 +93,21 @@ private:
   matrix_opt& obj;
 };
 
+template <typename T>
+struct is_instantiation_of_general {
+  static constexpr bool value = false;
+};
+
+template <typename matrix_opt, typename Conjugate, typename Transpose, diag::diag Diagonal,
+          uplo::uplo UpLo>
+struct is_instantiation_of_general<general<matrix_opt, Conjugate, Transpose, Diagonal, UpLo>> {
+  static constexpr bool value = true;
+};
+
+template <typename T>
+static constexpr bool is_general_v =
+    is_instantiation_of_general<std::remove_cvref_t<T>>::value;
+
 template <typename matrix_opt>
 auto conjugate(matrix_opt&& matrix) {
   return general<matrix_opt, std::true_type>(matrix);

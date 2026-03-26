@@ -54,11 +54,11 @@ void multiply_inspect(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
 
     auto x_base = __detail::get_ultimate_base(x);
 
-    oneapi::mkl::sparse::optimize_gemm(
-        q, oneapi::mkl::layout::row_major, a_transpose,
-        oneapi::mkl::transpose::nontrans, a_handle,
-        static_cast<std::int64_t>(x_base.extent(1)))
-        .wait();
+    // oneapi::mkl::sparse::optimize_gemm(
+    //     q, oneapi::mkl::layout::row_major, a_transpose,
+    //     oneapi::mkl::transpose::nontrans, a_handle,
+    //     static_cast<std::int64_t>(x_base.extent(1)))
+    //     .wait();
   } else {
     // do nothing, since it would be immediately discarded
     log_info(
@@ -92,7 +92,7 @@ template <typename ExecutionPolicy, matrix A, matrix X, matrix Y>
       std::is_same_v<typename __detail::ultimate_base_type_t<X>::layout_type,
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
-                     __mdspan::layout_right>)
+                     __mdspan::layout_right> && __detail::has_full<A>)
 void multiply(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X&& x,
               Y&& y) {
   log_trace("");

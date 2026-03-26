@@ -3,6 +3,7 @@
 #include <concepts>
 #include <spblas/detail/concepts.hpp>
 #include <spblas/detail/ranges.hpp>
+#include <spblas/views/matrix_view.hpp>
 #include <spblas/views/inspectors.hpp>
 #include <spblas/views/view_base.hpp>
 
@@ -18,7 +19,8 @@ namespace spblas {
 */
 
 template <typename M>
-concept matrix = __detail::is_csr_view_v<M> || __detail::is_csc_view_v<M> ||
+concept matrix = matrix_view::is_general_v<M> || __detail::is_csr_view_v<M> ||
+                 __detail::is_csc_view_v<M> ||
                  __detail::is_matrix_mdspan_v<M> || __detail::matrix<M>;
 
 /*
