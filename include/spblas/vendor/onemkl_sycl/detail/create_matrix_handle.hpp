@@ -17,8 +17,13 @@ oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
   oneapi::mkl::sparse::matrix_handle_t handle = nullptr;
   oneapi::mkl::sparse::init_matrix_handle(&handle);
 
+
   oneapi::mkl::sparse::set_csr_data(
-      q, handle, m.shape()[0], m.shape()[1], oneapi::mkl::index_base::zero,
+      q, handle, m.shape()[0], m.shape()[1], 
+#if defined(__INTEL_MKL__) && ( (__INTEL_MKL__ == 2025) && (__INTEL_MKL_MINOR__ == 3) || (__INTEL_MKL__ > 2025 ) )
+      m.size(), // nnz added in 2025.3, and without deprecated
+#endif          
+      oneapi::mkl::index_base::zero,
       m.rowptr().data(), m.colind().data(), m.values().data())
       .wait();
 
@@ -33,7 +38,11 @@ oneapi::mkl::sparse::matrix_handle_t create_matrix_handle(sycl::queue& q,
   oneapi::mkl::sparse::init_matrix_handle(&handle);
 
   oneapi::mkl::sparse::set_csr_data(
-      q, handle, m.shape()[1], m.shape()[0], oneapi::mkl::index_base::zero,
+      q, handle, m.shape()[1], m.shape()[0], 
+#if defined(__INTEL_MKL__) && ( (__INTEL_MKL__ == 2025) && (__INTEL_MKL_MINOR__ == 3) || (__INTEL_MKL__ > 2025 ) )
+      m.size(), // nnz added in 2025.3, and without deprecated
+#endif  
+      oneapi::mkl::index_base::zero,
       m.colptr().data(), m.rowind().data(), m.values().data())
       .wait();
 
