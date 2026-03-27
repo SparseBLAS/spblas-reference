@@ -8,10 +8,41 @@
 
 namespace spblas {
 
+// X = inv(A) B
+// SpTRSV inspect stage
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+  requires(__backend::row_iterable<A> && __backend::lookupable<B> &&
+           __backend::lookupable<X>)
+operation_info_t triangular_solve_inspect(A&& a, Triangle t, DiagonalStorage d,
+                                          B&& b, X&& x) {
+  log_trace("");
+  static_assert(std::is_same_v<Triangle, upper_triangle_t> ||
+                std::is_same_v<Triangle, lower_triangle_t>);
+  assert(__backend::shape(a)[0] == __backend::shape(a)[1]);
+
+  return operation_info_t{};
+}
+
+// X = inv(A) B
+// SpTRSV inspect stage
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+  requires(__backend::row_iterable<A> && __backend::lookupable<B> &&
+           __backend::lookupable<X>)
+void triangular_solve_inspect(operation_info_t& info, A&& a, Triangle t,
+                              DiagonalStorage d, B&& b, X&& x) {
+  log_trace("");
+  static_assert(std::is_same_v<Triangle, upper_triangle_t> ||
+                std::is_same_v<Triangle, lower_triangle_t>);
+  assert(__backend::shape(a)[0] == __backend::shape(a)[1]);
+}
+
+// X = inv(A) B
+// SpTRSV solve stage
 template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
   requires(__backend::row_iterable<A> && __backend::lookupable<B> &&
            __backend::lookupable<X>)
 void triangular_solve(A&& a, Triangle t, DiagonalStorage d, B&& b, X&& x) {
+  log_trace("");
   static_assert(std::is_same_v<Triangle, upper_triangle_t> ||
                 std::is_same_v<Triangle, lower_triangle_t>);
   assert(__backend::shape(a)[0] == __backend::shape(a)[1]);
@@ -60,6 +91,19 @@ void triangular_solve(A&& a, Triangle t, DiagonalStorage d, B&& b, X&& x) {
       }
     }
   }
+}
+
+// X = inv(A) B
+// SpTRSV solve stage with info
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+  requires(__backend::row_iterable<A> && __backend::lookupable<B> &&
+           __backend::lookupable<X>)
+void triangular_solve(operation_info_t& info, A&& a, Triangle t,
+                      DiagonalStorage d, B&& b, X&& x) {
+  log_trace("");
+  triangular_solve(std::forward<A>(a), std::forward<Triangle>(t),
+                   std::forward<DiagonalStorage>(d), std::forward<B>(b),
+                   std::forward<X>(x));
 }
 
 } // namespace spblas
