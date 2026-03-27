@@ -56,11 +56,10 @@ void multiply(A&& a, B&& b, C&& c) {
 // SpMV with info input
 template <matrix A, vector B, vector C>
   requires(__backend::lookupable<B> && __backend::lookupable<C>)
-void multiply(operation_info_t &info, A&& a, B&& b, C&& c) {
+void multiply(operation_info_t& info, A&& a, B&& b, C&& c) {
   log_trace("");
   multiply(std::forward<A>(a), std::forward<B>(b), std::forward<C>(c));
 }
-
 
 // C = AB
 // SpMM
@@ -81,7 +80,7 @@ void multiply(A&& a, B&& b, C&& c) {
     v = 0;
   });
 
-  // traverses elements of a and performs appropriate 
+  // traverses elements of a and performs appropriate
   // multiplication with B rows
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
@@ -96,11 +95,10 @@ void multiply(A&& a, B&& b, C&& c) {
 // SpMM with info
 template <matrix A, matrix B, matrix C>
   requires(__backend::lookupable<B> && __backend::lookupable<C>)
-void multiply(operation_info_t &info, A&& a, B&& b, C&& c) {
+void multiply(operation_info_t& info, A&& a, B&& b, C&& c) {
   log_trace("");
   multiply(std::forward<A>(a), std::forward<B>(b), std::forward<C>(c));
 }
-
 
 // C = AB
 // SpMM or SpGEMM multiply_inspect variants end up here
@@ -113,10 +111,9 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 // C = AB
 // SpMM or SpGEMM multiply_inspect variants end up here
 template <matrix A, matrix B, matrix C>
-void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c){
+void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c) {
   log_trace("");
 };
-
 
 // C = AB
 // SpGEMM compute stage with CSR output

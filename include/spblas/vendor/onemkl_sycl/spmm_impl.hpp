@@ -37,7 +37,8 @@ template <typename ExecutionPolicy, matrix A, matrix X, matrix Y>
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
-void multiply_inspect(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X&& x, Y&& y) {
+void multiply_inspect(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
+                      X&& x, Y&& y) {
   log_trace("");
   if (__detail::is_conjugated(x) || __detail::is_conjugated(y)) {
     throw std::runtime_error(
@@ -53,13 +54,15 @@ void multiply_inspect(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X
 
     auto x_base = __detail::get_ultimate_base(x);
 
-    oneapi::mkl::sparse::optimize_gemm(q, oneapi::mkl::layout::row_major, a_transpose,
-                              oneapi::mkl::transpose::nontrans, a_handle, static_cast<std::int64_t>(x_base.extent(1)))
+    oneapi::mkl::sparse::optimize_gemm(
+        q, oneapi::mkl::layout::row_major, a_transpose,
+        oneapi::mkl::transpose::nontrans, a_handle,
+        static_cast<std::int64_t>(x_base.extent(1)))
         .wait();
-  }
-  else {
+  } else {
     // do nothing, since it would be immediately discarded
-    log_info("No work done, since no matrix_opt to store optimized results into!");
+    log_info(
+        "No work done, since no matrix_opt to store optimized results into!");
   }
 } // multiply_inspect
 
@@ -71,15 +74,16 @@ template <typename ExecutionPolicy, matrix A, matrix X, matrix Y>
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
-operation_info_t multiply_inspect(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
+operation_info_t multiply_inspect(ExecutionPolicy&& policy, A&& a, X&& x,
+                                  Y&& y) {
   log_trace("");
   operation_info_t info{};
 
-  multiply_inspect(std::forward<ExecutionPolicy>(policy), info, std::forward<A>(a), std::forward<X>(x), std::forward<Y>(y));
+  multiply_inspect(std::forward<ExecutionPolicy>(policy), info,
+                   std::forward<A>(a), std::forward<X>(x), std::forward<Y>(y));
 
   return info;
 }
-
 
 template <typename ExecutionPolicy, matrix A, matrix X, matrix Y>
   requires(
@@ -89,7 +93,8 @@ template <typename ExecutionPolicy, matrix A, matrix X, matrix Y>
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
-void multiply(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X&& x, Y&& y) {
+void multiply(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X&& x,
+              Y&& y) {
   log_trace("");
 
   if (__detail::is_conjugated(x) || __detail::is_conjugated(y)) {
@@ -119,9 +124,9 @@ void multiply(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X&& x, Y&
   }
 }
 
-
 //
-// multiply_inspect - CSR/CSC with row major dense matrix rhs without execution policy
+// multiply_inspect - CSR/CSC with row major dense matrix rhs without execution
+// policy
 //
 template <matrix A, matrix X, matrix Y>
   requires(
@@ -132,13 +137,14 @@ template <matrix A, matrix X, matrix Y>
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
 operation_info_t multiply_inspect(A&& a, X&& x, Y&& y) {
-  auto info = multiply_inspect(mkl::par, std::forward<A>(a), 
-       std::forward<X>(x), std::forward<Y>(y));
+  auto info = multiply_inspect(mkl::par, std::forward<A>(a), std::forward<X>(x),
+                               std::forward<Y>(y));
   return info;
 }
 
 //
-// multiply_inspect - CSR/CSC with row major dense matrix rhs without execution policy
+// multiply_inspect - CSR/CSC with row major dense matrix rhs without execution
+// policy
 //
 template <matrix A, matrix X, matrix Y>
   requires(
@@ -150,9 +156,8 @@ template <matrix A, matrix X, matrix Y>
                      __mdspan::layout_right>)
 void multiply_inspect(operation_info_t& info, A&& a, X&& x, Y&& y) {
   multiply_inspect(mkl::par, info, std::forward<A>(a), std::forward<X>(x),
-           std::forward<Y>(y));
+                   std::forward<Y>(y));
 }
-
 
 //
 // multiply - CSR/CSC with row major dense matrix rhs without execution policy
@@ -171,7 +176,8 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
 }
 
 //
-// multiply - CSR/CSC with row major dense matrix rhs without execution policy or state object
+// multiply - CSR/CSC with row major dense matrix rhs without execution policy
+// or state object
 //
 template <matrix A, matrix X, matrix Y>
   requires(
@@ -186,6 +192,5 @@ void multiply(A&& a, X&& x, Y&& y) {
   multiply(mkl::par, info, std::forward<A>(a), std::forward<X>(x),
            std::forward<Y>(y));
 }
-
 
 } // namespace spblas

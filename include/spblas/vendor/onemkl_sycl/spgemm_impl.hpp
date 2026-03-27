@@ -29,7 +29,6 @@
 
 namespace spblas {
 
-
 //
 // multiply_compute -- csr/csc * csr/csc -> csr with ExecutionPolicy
 //
@@ -72,9 +71,11 @@ operation_info_t
 
   oneapi::mkl::sparse::set_csr_data(
       q, c_handle, __backend::shape(c)[0], __backend::shape(c)[1],
-#if defined(__INTEL_MKL__) && ( (__INTEL_MKL__ == 2025) && (__INTEL_MKL_MINOR__ == 3) || (__INTEL_MKL__ > 2025 ) )
+#if defined(__INTEL_MKL__) &&                                                  \
+    ((__INTEL_MKL__ == 2025) && (__INTEL_MKL_MINOR__ == 3) ||                  \
+     (__INTEL_MKL__ > 2025))
       __backend::size(c), // nnz added in 2025.3, and without deprecated
-#endif  
+#endif
       oneapi::mkl::index_base::zero, c_rowptr, (I*) nullptr, (T*) nullptr)
       .wait();
 
@@ -133,23 +134,24 @@ template <typename ExecutionPolicy, matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
-void
-    multiply_compute(ExecutionPolicy&& policy, operation_info_t &info, A&& a, B&& b, C&& c) {
+void multiply_compute(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
+                      B&& b, C&& c) {
   log_trace("");
 
-  auto tmp_info = multiply_compute(std::forward<ExecutionPolicy>(policy), std::forward<A>(a), std::forward<B>(b), std::forward<C>(c));
+  auto tmp_info = multiply_compute(std::forward<ExecutionPolicy>(policy),
+                                   std::forward<A>(a), std::forward<B>(b),
+                                   std::forward<C>(c));
 
   // fill the normal bucket of state stuf based on creating model for now.
   info.update_impl_(tmp_info.result_shape(), tmp_info.result_nnz());
   info.state_.a_handle = tmp_info.state_.a_handle;
   info.state_.b_handle = tmp_info.state_.b_handle;
   info.state_.c_handle = tmp_info.state_.c_handle;
-  info.state_.descr    = tmp_info.state_.descr;
+  info.state_.descr = tmp_info.state_.descr;
   info.state_.c_rowptr = tmp_info.state_.c_rowptr;
-  info.state_.q        = tmp_info.state_.q;
-        
-} // multiply_compute
+  info.state_.q = tmp_info.state_.q;
 
+} // multiply_compute
 
 //
 // multiply_fill -- csr/csc * csr/csc -> csr with ExecutionPolicy
@@ -190,9 +192,11 @@ void multiply_fill(ExecutionPolicy&& policy, operation_info_t& info, A&& a,
 
   auto ev_setC = oneapi::mkl::sparse::set_csr_data(
       q, c_handle, __backend::shape(c)[0], __backend::shape(c)[1],
-#if defined(__INTEL_MKL__) && ( (__INTEL_MKL__ == 2025) && (__INTEL_MKL_MINOR__ == 3) || (__INTEL_MKL__ > 2025 ) )
+#if defined(__INTEL_MKL__) &&                                                  \
+    ((__INTEL_MKL__ == 2025) && (__INTEL_MKL_MINOR__ == 3) ||                  \
+     (__INTEL_MKL__ > 2025))
       __backend::size(c), // nnz added in 2025.3, and without deprecated
-#endif  
+#endif
       oneapi::mkl::index_base::zero, c_rowptr, c.colind().data(),
       c.values().data());
 
@@ -228,8 +232,9 @@ template <matrix A, matrix B, matrix C>
   requires(__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
-void multiply_compute(operation_info_t & info, A&& a, B&& b, C&& c) {
-  return multiply_compute(mkl::par, std::forward<operation_info_t>(info), std::forward<A>(a), std::forward<B>(b),
+void multiply_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  return multiply_compute(mkl::par, std::forward<operation_info_t>(info),
+                          std::forward<A>(a), std::forward<B>(b),
                           std::forward<C>(c));
 }
 
@@ -249,7 +254,6 @@ template <matrix A, matrix B, matrix C>
 operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   return multiply_compute(transposed(b), transposed(a), transposed(c));
 }
-
 
 template <matrix A, matrix B, matrix C>
   requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&

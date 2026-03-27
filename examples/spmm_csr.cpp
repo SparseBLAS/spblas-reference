@@ -42,7 +42,6 @@ int main(int argc, char** argv) {
   md::mdspan x(x_values.data(), k, n);
   md::mdspan y(y_values.data(), m, n);
 
-
   // Y = A * X
   auto state = multiply_inspect(a_opt, x, y);
   multiply(state, a_opt, x, y);

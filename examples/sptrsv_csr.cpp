@@ -57,7 +57,6 @@ int main(int argc, char** argv) {
   triangular_solve(a_opt, spblas::upper_triangle_t{},
                    spblas::implicit_unit_diagonal_t{}, b_scaled, x);
 
-
   fmt::print("\tExample is completed!\n");
 
   return 0;

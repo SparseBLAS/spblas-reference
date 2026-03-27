@@ -28,7 +28,6 @@
 
 namespace spblas {
 
-
 //
 // multiply_inspect with CSR/CSC and single rhs
 //
@@ -52,15 +51,13 @@ void multiply_inspect(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
     auto a_transpose = __mkl::get_transpose(a);
 
     oneapi::mkl::sparse::optimize_gemv(q, a_transpose, a_handle).wait();
-  }
-  else {
+  } else {
     // do nothing, since it would be trashed immediately after
-    log_info("No work done, since no matrix_opt to store optimized results into!");
-
+    log_info(
+        "No work done, since no matrix_opt to store optimized results into!");
   }
 
 } // multiply_inspect
-
 
 //
 // multiply with CSR/CSC and single rhs
@@ -96,9 +93,8 @@ void multiply(ExecutionPolicy&& policy, A&& a, X&& x, Y&& y) {
   }
 }
 
-
 //
-// multiply_inspect -- CSR/CSC + single rhs vector 
+// multiply_inspect -- CSR/CSC + single rhs vector
 //                     with no ExecutionPolicy
 //
 template <matrix A, vector X, vector Y>
@@ -107,11 +103,11 @@ template <matrix A, vector X, vector Y>
            __ranges::contiguous_range<Y>)
 void multiply_inspect(A&& a, X&& x, Y&& y) {
   multiply_inspect(mkl::par, std::forward<A>(a), std::forward<X>(x),
-           std::forward<Y>(y));
+                   std::forward<Y>(y));
 }
 
 //
-// multiply -- CSR/CSC + single rhs vector 
+// multiply -- CSR/CSC + single rhs vector
 //
 template <matrix A, vector X, vector Y>
   requires((__detail::has_csr_base<A> || __detail::has_csc_base<A>) &&

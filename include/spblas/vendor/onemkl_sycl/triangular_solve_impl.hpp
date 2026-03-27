@@ -29,7 +29,8 @@ namespace spblas {
 //
 // CSR triangular solve inspection step
 //
-template <typename ExecutionPolicy, matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+template <typename ExecutionPolicy, matrix A, class Triangle,
+          class DiagonalStorage, vector B, vector X>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<X>
@@ -65,19 +66,19 @@ void triangular_solve_inspect(ExecutionPolicy&& policy, A&& a, Triangle uplo,
                       ? oneapi::mkl::diag::nonunit
                       : oneapi::mkl::diag::unit;
 
-  oneapi::mkl::sparse::optimize_trsv(q, uplo_val, a_op, diag_val, a_handle).wait();
+  oneapi::mkl::sparse::optimize_trsv(q, uplo_val, a_op, diag_val, a_handle)
+      .wait();
 
   if (!__detail::has_matrix_opt(a)) {
     oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
   }
-
 }
-
 
 //
 // CSR triangular solve execution step
 //
-template <typename ExecutionPolicy, matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+template <typename ExecutionPolicy, matrix A, class Triangle,
+          class DiagonalStorage, vector B, vector X>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<X>
@@ -107,10 +108,9 @@ void triangular_solve(ExecutionPolicy&& policy, A&& a, Triangle uplo,
   auto a_handle = __mkl::get_matrix_handle(q, a);
   auto a_op = __mkl::get_transpose(a);
 
-  auto uplo_val =
-      std::is_same_v<Triangle, upper_triangle_t>
-          ? oneapi::mkl::uplo::upper
-          : oneapi::mkl::uplo::lower;
+  auto uplo_val = std::is_same_v<Triangle, upper_triangle_t>
+                      ? oneapi::mkl::uplo::upper
+                      : oneapi::mkl::uplo::lower;
 
   auto diag_val = std::is_same_v<DiagonalStorage, explicit_diagonal_t>
                       ? oneapi::mkl::diag::nonunit
@@ -128,8 +128,6 @@ void triangular_solve(ExecutionPolicy&& policy, A&& a, Triangle uplo,
 
 } // triangular_solve
 
-
-
 //
 // CSR triangular_solve_inspect with no exception policy
 //
@@ -137,16 +135,13 @@ template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<X>
-void triangular_solve_inspect(A&& a, Triangle uplo,
-                              DiagonalStorage diag, B&& b, X&& x) {
-    triangular_solve_inspect(mkl::par,
-                             std::forward<A>(a),
-                             std::forward<Triangle>(uplo),
-                             std::forward<DiagonalStorage>(diag),
-                             std::forward<B>(b),
-                             std::forward<X>(x) );
+void triangular_solve_inspect(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
+                              X&& x) {
+  triangular_solve_inspect(mkl::par, std::forward<A>(a),
+                           std::forward<Triangle>(uplo),
+                           std::forward<DiagonalStorage>(diag),
+                           std::forward<B>(b), std::forward<X>(x));
 } // triangular_solve_inspect
-
 
 //
 // CSR triangular_solve with no exception policy
@@ -155,15 +150,11 @@ template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<X>
-void triangular_solve(A&& a, Triangle uplo,
-                      DiagonalStorage diag, B&& b, X&& x) {
-    triangular_solve(mkl::par,
-                     std::forward<A>(a),
-                     std::forward<Triangle>(uplo),
-                     std::forward<DiagonalStorage>(diag),
-                     std::forward<B>(b),
-                     std::forward<X>(x) );
+void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
+                      X&& x) {
+  triangular_solve(mkl::par, std::forward<A>(a), std::forward<Triangle>(uplo),
+                   std::forward<DiagonalStorage>(diag), std::forward<B>(b),
+                   std::forward<X>(x));
 } // triangular_solve
-
 
 } // namespace spblas
