@@ -233,6 +233,7 @@ template <matrix A, matrix B, matrix C>
           (__detail::has_csr_base<B> || __detail::has_csc_base<B>) &&
           __detail::is_csr_view_v<C>
 void multiply_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  log_trace("");
   return multiply_compute(mkl::par, std::forward<operation_info_t>(info),
                           std::forward<A>(a), std::forward<B>(b),
                           std::forward<C>(c));

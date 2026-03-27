@@ -102,6 +102,7 @@ template <matrix A, vector X, vector Y>
            __detail::has_contiguous_range_base<X> &&
            __ranges::contiguous_range<Y>)
 void multiply_inspect(A&& a, X&& x, Y&& y) {
+  log_trace("");
   multiply_inspect(mkl::par, std::forward<A>(a), std::forward<X>(x),
                    std::forward<Y>(y));
 }

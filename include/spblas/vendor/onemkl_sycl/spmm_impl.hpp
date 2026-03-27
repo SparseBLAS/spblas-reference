@@ -137,6 +137,7 @@ template <matrix A, matrix X, matrix Y>
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
 operation_info_t multiply_inspect(A&& a, X&& x, Y&& y) {
+  log_trace("");
   auto info = multiply_inspect(mkl::par, std::forward<A>(a), std::forward<X>(x),
                                std::forward<Y>(y));
   return info;
@@ -155,6 +156,7 @@ template <matrix A, matrix X, matrix Y>
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
 void multiply_inspect(operation_info_t& info, A&& a, X&& x, Y&& y) {
+  log_trace("");
   multiply_inspect(mkl::par, info, std::forward<A>(a), std::forward<X>(x),
                    std::forward<Y>(y));
 }
@@ -171,6 +173,7 @@ template <matrix A, matrix X, matrix Y>
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
 void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
+  log_trace("");
   multiply(mkl::par, info, std::forward<A>(a), std::forward<X>(x),
            std::forward<Y>(y));
 }
@@ -188,6 +191,7 @@ template <matrix A, matrix X, matrix Y>
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
                      __mdspan::layout_right>)
 void multiply(A&& a, X&& x, Y&& y) {
+  log_trace("");
   operation_info_t info{};
   multiply(mkl::par, info, std::forward<A>(a), std::forward<X>(x),
            std::forward<Y>(y));
