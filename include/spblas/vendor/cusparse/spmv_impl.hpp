@@ -14,6 +14,8 @@
 #include <spblas/vendor/cusparse/operation_state_t.hpp>
 #include <spblas/vendor/cusparse/type_validation.hpp>
 
+#include <spblas/vendor/cusparse/detail/detail.hpp>
+
 namespace spblas {
 
 template <matrix A, vector X, vector Y>
@@ -48,16 +50,11 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   }
 
   // Create or get matrix descriptor
-  if (!state->a_descriptor()) {
-    cusparseSpMatDescr_t a_descr = __cusparse::create_cusparse_handle(a_base);
-    state->set_a_descriptor(a_descr);
-  }
+  auto a_handle = __cusparse::get_matrix_handle(a);
 
   // Create vector descriptors
-  cusparseDnVecDescr_t b_descr = __cusparse::create_cusparse_handle(x_base);
-  cusparseDnVecDescr_t c_descr = __cusparse::create_cusparse_handle(y);
-  state->set_b_descriptor(b_descr);
-  state->set_c_descriptor(c_descr);
+  auto b_handle = __cusparse::create_cusparse_handle(x_base);
+  auto c_handle = __cusparse::create_cusparse_handle(y);
 
   // Get operation type based on matrix format
   auto a_transpose = __cusparse::get_transpose(a);
@@ -65,8 +62,8 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   // Get buffer size
   size_t buffer_size;
   __cusparse::throw_if_error(cusparseSpMV_bufferSize(
-      state->handle(), a_transpose, &alpha, state->a_descriptor(),
-      state->b_descriptor(), &beta, state->c_descriptor(),
+      state->handle(), a_transpose, &alpha, a_handle,
+      b_handle, &beta, c_handle,
       detail::cuda_data_type_v<tensor_scalar_t<Y>>, CUSPARSE_SPMV_ALG_DEFAULT,
       &buffer_size));
 
@@ -78,8 +75,8 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
 
   // Execute SpMV
   __cusparse::throw_if_error(
-      cusparseSpMV(state->handle(), a_transpose, &alpha, state->a_descriptor(),
-                   state->b_descriptor(), &beta, state->c_descriptor(),
+      cusparseSpMV(state->handle(), a_transpose, &alpha, a_handle,
+                   b_handle, &beta, c_handle,
                    detail::cuda_data_type_v<tensor_scalar_t<Y>>,
                    CUSPARSE_SPMV_ALG_DEFAULT, buffer));
 
