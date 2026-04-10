@@ -85,7 +85,7 @@ void multiply(A&& a, B&& b, C&& c) {
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, a_v] = e;
     auto&& [i, k] = idx;
-    for (std::size_t j = 0; j < __backend::shape(b)[1]; j++) { // b_row
+    for (std::size_t j = 0; j < __backend::shape(b)[1]; j++) {
       __backend::lookup(c, i, j) += a_v * __backend::lookup(b, k, j);
     }
   });
