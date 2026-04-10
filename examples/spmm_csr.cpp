@@ -18,7 +18,6 @@ int main(int argc, char** argv) {
              "######################");
   fmt::print("\n\t### Running Advanced SpMM Example:");
   fmt::print("\n\t###");
-  fmt::print("\n\t###   Y = alpha * A * X");
   fmt::print("\n\t###");
   fmt::print("\n\t### with ");
   fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}", m, k,
