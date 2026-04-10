@@ -11,7 +11,7 @@ if (SPBLAS_CPU_BACKEND)
   add_example(simple_sptrsv)
   add_example(spmm_csc)
   add_example(matrix_opt_example)
-  if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND )
+  if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND)
     # needs CPU + matrix_opt + operation_info_t to run
     add_example(sptrsv_csr) # needs triangular_solve{_inspect} to run
     add_example(spmm_csr) # needs multiply{_inspect} to run
