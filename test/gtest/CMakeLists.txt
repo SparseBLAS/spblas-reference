@@ -5,7 +5,6 @@ set(TEST_SOURCES)
 # CPU tests
 if (SPBLAS_CPU_BACKEND)
   list(APPEND TEST_SOURCES
-       tag_test.cpp
        spmv_test.cpp
        spmm_test.cpp
        spgemm_test.cpp
@@ -13,7 +12,8 @@ if (SPBLAS_CPU_BACKEND)
        add_test.cpp
        transpose_test.cpp
        triangular_solve_test.cpp
-       mdspan_overlays.cpp)
+       mdspan_overlays.cpp
+       matrix_view_test.cpp)
 
   if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND)
     list(APPEND TEST_SOURCES conjugate_test.cpp)
