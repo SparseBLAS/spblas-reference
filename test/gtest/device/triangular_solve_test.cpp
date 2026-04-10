@@ -85,7 +85,7 @@ void triangular_solve_test(Triangle t, DiagonalStorage d) {
     std::span<T> b_span(d_b.data().get(), m);
     std::span<T> x_span(d_x.data().get(), n);
 
-    spblas::triangular_solve_state_t state;
+    spblas::operation_info_t state;
     spblas::triangular_solve(state, d_a, Triangle{}, DiagonalStorage{}, b_span,
                              x_span);
     thrust::copy(d_x.begin(), d_x.end(), x.begin());

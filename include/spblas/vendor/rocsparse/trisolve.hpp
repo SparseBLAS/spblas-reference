@@ -12,35 +12,21 @@
 #include <spblas/detail/triangular_types.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+#include "detail/abstract_operation_state.hpp"
+#include "detail/rocsparse_tensors.hpp"
 #include "exception.hpp"
 #include "hip_allocator.hpp"
 #include "types.hpp"
 
 namespace spblas {
-class triangular_solve_state_t {
+class triangular_solve_state_t
+    : public __rocsparse::abstract_operation_state_t {
 public:
   triangular_solve_state_t()
       : triangular_solve_state_t(rocsparse::hip_allocator<char>{}) {}
 
   triangular_solve_state_t(rocsparse::hip_allocator<char> alloc)
-      : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
-    rocsparse_handle handle;
-    __rocsparse::throw_if_error(rocsparse_create_handle(&handle));
-    if (auto stream = alloc.stream()) {
-      rocsparse_set_stream(handle, stream);
-    }
-    handle_ = handle_manager(handle, [](rocsparse_handle handle) {
-      __rocsparse::throw_if_error(rocsparse_destroy_handle(handle));
-    });
-  }
-
-  triangular_solve_state_t(rocsparse::hip_allocator<char> alloc,
-                           rocsparse_handle handle)
-      : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {
-    handle_ = handle_manager(handle, [](rocsparse_handle handle) {
-      // it is provided by user, we do not delete it at all.
-    });
-  }
+      : alloc_(alloc), buffer_size_(0), workspace_(nullptr) {}
 
   ~triangular_solve_state_t() {
     alloc_.deallocate(workspace_);
@@ -73,7 +59,7 @@ public:
         a_descr, rocsparse_spmat_diag_type, &diag_type, sizeof(diag_type)));
     value_type alpha = 1.0;
     size_t buffer_size = 0;
-    auto handle = this->handle_.get();
+    auto handle = this->handle();
     __rocsparse::throw_if_error(rocsparse_spsv(
         handle, rocsparse_operation_none, &alpha, a_descr, b_descr, c_descr,
         detail::rocsparse_data_type_v<value_type>, rocsparse_spsv_alg_default,
@@ -97,10 +83,6 @@ public:
   }
 
 private:
-  using handle_manager =
-      std::unique_ptr<std::pointer_traits<rocsparse_handle>::element_type,
-                      std::function<void(rocsparse_handle)>>;
-  handle_manager handle_;
   rocsparse::hip_allocator<char> alloc_;
   std::uint64_t buffer_size_;
   char* workspace_;
@@ -113,6 +95,22 @@ template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
 void triangular_solve(triangular_solve_state_t& trisolve_handle, A&& a,
                       Triangle uplo, DiagonalStorage diag, B&& b, C&& c) {
   trisolve_handle.triangular_solve(a, uplo, diag, b, c);
+}
+
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector C>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<C>
+void triangular_solve(operation_info_t& info, A&& a, Triangle uplo,
+                      DiagonalStorage diag, B&& b, C&& c) {
+  // Get or create state
+  auto state = info.state_.get_state<triangular_solve_state_t>();
+  if (!state) {
+    info.state_ = __rocsparse::operation_state_t(
+        std::make_unique<triangular_solve_state_t>());
+    state = info.state_.get_state<triangular_solve_state_t>();
+  }
+  state->triangular_solve(a, uplo, diag, b, c);
 }
 
 } // namespace spblas
