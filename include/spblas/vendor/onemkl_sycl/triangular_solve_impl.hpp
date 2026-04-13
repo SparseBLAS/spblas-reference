@@ -26,40 +26,36 @@ namespace spblas {
 //  lower + conjtrans (D+U)^H   ->   conjtrans + upper (D+U)^H
 //
 
-template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+//
+// CSR triangular solve inspection step
+//
+template <typename ExecutionPolicy, matrix A, class Triangle,
+          class DiagonalStorage, vector B, vector X>
   requires __detail::has_csr_base<A> &&
            __detail::has_contiguous_range_base<B> &&
            __ranges::contiguous_range<X>
-void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
-                      X&& x) {
+void triangular_solve_inspect(ExecutionPolicy&& policy, A&& a, Triangle uplo,
+                              DiagonalStorage diag, B&& b, X&& x) {
   log_trace("");
   static_assert(std::is_same_v<Triangle, upper_triangle_t> ||
                 std::is_same_v<Triangle, lower_triangle_t>);
   static_assert(std::is_same_v<DiagonalStorage, explicit_diagonal_t> ||
                 std::is_same_v<DiagonalStorage, implicit_unit_diagonal_t>);
 
-  auto a_base = __detail::get_ultimate_base(a);
-  auto b_base = __detail::get_ultimate_base(b);
+  if (__detail::is_conjugated(b) || __detail::is_conjugated(x)) {
+    throw std::runtime_error(
+        "oneMKL SYCL backend does not support conjugated dense vectors.");
+  }
 
   using T = tensor_scalar_t<A>;
   using I = tensor_index_t<A>;
   using O = tensor_offset_t<A>;
 
-  auto alpha_optional = __detail::get_scaling_factor(a, b);
-  T alpha = alpha_optional.value_or(1);
+  auto a_data = __detail::get_ultimate_base(a).values().data();
+  auto&& q = __mkl::get_queue(policy, a_data);
 
-  sycl::queue q(sycl::cpu_selector_v);
-
-  oneapi::mkl::sparse::matrix_handle_t a_handle = nullptr;
-  oneapi::mkl::sparse::init_matrix_handle(&a_handle);
-
-  oneapi::mkl::sparse::set_csr_data(
-      q, a_handle, __backend::shape(a_base)[0], __backend::shape(a_base)[1],
-      oneapi::mkl::index_base::zero, a_base.rowptr().data(),
-      a_base.colind().data(), a_base.values().data())
-      .wait();
-
-  auto op = oneapi::mkl::transpose::nontrans;
+  auto a_handle = __mkl::get_matrix_handle(q, a);
+  auto a_op = __mkl::get_transpose(a);
 
   auto uplo_val =
       std::is_same_v<Triangle, upper_triangle_t>
@@ -70,12 +66,95 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
                       ? oneapi::mkl::diag::nonunit
                       : oneapi::mkl::diag::unit;
 
-  oneapi::mkl::sparse::trsv(q, uplo_val, op, diag_val, alpha, a_handle,
+  oneapi::mkl::sparse::optimize_trsv(q, uplo_val, a_op, diag_val, a_handle)
+      .wait();
+
+  if (!__detail::has_matrix_opt(a)) {
+    oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  }
+}
+
+//
+// CSR triangular solve execution step
+//
+template <typename ExecutionPolicy, matrix A, class Triangle,
+          class DiagonalStorage, vector B, vector X>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<X>
+void triangular_solve(ExecutionPolicy&& policy, A&& a, Triangle uplo,
+                      DiagonalStorage diag, B&& b, X&& x) {
+  log_trace("");
+  static_assert(std::is_same_v<Triangle, upper_triangle_t> ||
+                std::is_same_v<Triangle, lower_triangle_t>);
+  static_assert(std::is_same_v<DiagonalStorage, explicit_diagonal_t> ||
+                std::is_same_v<DiagonalStorage, implicit_unit_diagonal_t>);
+
+  if (__detail::is_conjugated(b) || __detail::is_conjugated(x)) {
+    throw std::runtime_error(
+        "oneMKL SYCL backend does not support conjugated dense vectors.");
+  }
+
+  using T = tensor_scalar_t<A>;
+  using I = tensor_index_t<A>;
+  using O = tensor_offset_t<A>;
+
+  auto alpha_optional = __detail::get_scaling_factor(a, b);
+  tensor_scalar_t<A> alpha = alpha_optional.value_or(1);
+
+  auto a_data = __detail::get_ultimate_base(a).values().data();
+  auto&& q = __mkl::get_queue(policy, a_data);
+
+  auto a_handle = __mkl::get_matrix_handle(q, a);
+  auto a_op = __mkl::get_transpose(a);
+
+  auto uplo_val = std::is_same_v<Triangle, upper_triangle_t>
+                      ? oneapi::mkl::uplo::upper
+                      : oneapi::mkl::uplo::lower;
+
+  auto diag_val = std::is_same_v<DiagonalStorage, explicit_diagonal_t>
+                      ? oneapi::mkl::diag::nonunit
+                      : oneapi::mkl::diag::unit;
+
+  auto b_base = __detail::get_ultimate_base(b);
+
+  oneapi::mkl::sparse::trsv(q, uplo_val, a_op, diag_val, alpha, a_handle,
                             __ranges::data(b_base), __ranges::data(x))
       .wait();
 
-  oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  if (!__detail::has_matrix_opt(a)) {
+    oneapi::mkl::sparse::release_matrix_handle(q, &a_handle).wait();
+  }
 
+} // triangular_solve
+
+//
+// CSR triangular_solve_inspect with no exception policy
+//
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<X>
+void triangular_solve_inspect(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
+                              X&& x) {
+  triangular_solve_inspect(mkl::par, std::forward<A>(a),
+                           std::forward<Triangle>(uplo),
+                           std::forward<DiagonalStorage>(diag),
+                           std::forward<B>(b), std::forward<X>(x));
+} // triangular_solve_inspect
+
+//
+// CSR triangular_solve with no exception policy
+//
+template <matrix A, class Triangle, class DiagonalStorage, vector B, vector X>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<X>
+void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
+                      X&& x) {
+  triangular_solve(mkl::par, std::forward<A>(a), std::forward<Triangle>(uplo),
+                   std::forward<DiagonalStorage>(diag), std::forward<B>(b),
+                   std::forward<X>(x));
 } // triangular_solve
 
 } // namespace spblas
