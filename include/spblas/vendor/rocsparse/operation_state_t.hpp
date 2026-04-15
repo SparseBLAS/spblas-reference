@@ -9,6 +9,7 @@ namespace __rocsparse {
 class operation_state_t {
 public:
   operation_state_t() = default;
+
   operation_state_t(std::unique_ptr<abstract_operation_state_t>&& state)
       : state_(std::move(state)) {}
 
