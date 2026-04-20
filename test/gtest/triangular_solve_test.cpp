@@ -35,7 +35,7 @@ void reference_triangular_solve(spblas::csr_view<T, I> a, Triangle t,
         x[row] = tmp; // ( b- U*x) / 1
       }
     }
-  } else if constexpr (std::is_same_v<Triangle, spblas::upper_triangle_t>) {
+  } else if constexpr (std::is_same_v<Triangle, spblas::lower_triangle_t>) {
     // Forward Solve
     for (I row = 0; row < shape[0]; row++) {
       T tmp = b[row];
@@ -69,7 +69,7 @@ void triangular_solve_test(Triangle t, DiagonalStorage d) {
     spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
 
     std::vector<T> x(n, 1);
-    std::vector<T> b(m, 0);
+    std::vector<T> b(m, 1);
 
     T scale_factor = 1e-3f;
     std::transform(values.begin(), values.end(), values.begin(),
@@ -99,6 +99,6 @@ TEST(CsrView, TriangularSolveUpperImplicit) {
   using T = float;
   using I = spblas::index_t;
 
-  triangular_solve_test<T, I>(spblas::lower_triangle_t{},
+  triangular_solve_test<T, I>(spblas::upper_triangle_t{},
                               spblas::implicit_unit_diagonal_t{});
 }
