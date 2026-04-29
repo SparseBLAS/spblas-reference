@@ -93,6 +93,22 @@ private:
   matrix_opt& obj;
 };
 
+template <typename T>
+struct is_instantiation_of_legacy_pattern {
+  static constexpr bool value = false;
+};
+
+template <typename matrix_opt, typename Conjugate, typename Transpose,
+          diag::diag Diagonal, uplo::uplo UpLo>
+struct is_instantiation_of_legacy_pattern<
+    legacy_pattern<matrix_opt, Conjugate, Transpose, Diagonal, UpLo>> {
+  static constexpr bool value = true;
+};
+
+template <typename T>
+static constexpr bool is_legacy_pattern_v =
+    is_instantiation_of_legacy_pattern<std::remove_cvref_t<T>>::value;
+
 template <typename matrix_opt>
 auto conjugate(matrix_opt&& matrix) {
   return legacy_pattern<matrix_opt, std::true_type>(matrix);

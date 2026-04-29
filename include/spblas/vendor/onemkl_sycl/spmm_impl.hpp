@@ -92,7 +92,8 @@ template <typename ExecutionPolicy, matrix A, matrix X, matrix Y>
       std::is_same_v<typename __detail::ultimate_base_type_t<X>::layout_type,
                      __mdspan::layout_right> &&
       std::is_same_v<typename std::remove_cvref_t<Y>::layout_type,
-                     __mdspan::layout_right>)
+                     __mdspan::layout_right> &&
+      __detail::has_full<A>)
 void multiply(ExecutionPolicy&& policy, operation_info_t& info, A&& a, X&& x,
               Y&& y) {
   log_trace("");
