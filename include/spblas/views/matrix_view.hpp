@@ -77,9 +77,9 @@ template <typename matrix_opt, typename Conjugate = std::false_type,
           typename Transpose = std::false_type,
           diag::diag Diagonal = diag::explicit_diag,
           uplo::uplo UpLo = uplo::full>
-class general : public spblas::view_base {
+class legacy_pattern : public spblas::view_base {
 public:
-  general(matrix_opt&& t) : obj(t) {}
+  legacy_pattern(matrix_opt&& t) : obj(t) {}
 
   auto& base() {
     return obj;
@@ -95,243 +95,261 @@ private:
 
 template <typename matrix_opt>
 auto conjugate(matrix_opt&& matrix) {
-  return general<matrix_opt, std::true_type>(matrix);
+  return legacy_pattern<matrix_opt, std::true_type>(matrix);
 }
 
 template <typename matrix_opt, typename Transpose, typename Diagonal,
           typename UpLo>
-auto conjugate(
-    general<matrix_opt, std::true_type, Transpose, Diagonal, UpLo>&& matrix) {
-  return general<matrix_opt, std::false_type, Transpose, Diagonal, UpLo>(
+auto conjugate(legacy_pattern<matrix_opt, std::true_type, Transpose, Diagonal,
+                              UpLo>&& matrix) {
+  return legacy_pattern<matrix_opt, std::false_type, Transpose, Diagonal, UpLo>(
       matrix.base());
 }
 
 template <typename Transpose, typename Diagonal, typename UpLo,
           typename matrix_opt>
-auto conjugate(
-    general<matrix_opt, std::false_type, Transpose, Diagonal, UpLo>&& matrix) {
-  return general<matrix_opt, std::true_type, Transpose, Diagonal, UpLo>(
+auto conjugate(legacy_pattern<matrix_opt, std::false_type, Transpose, Diagonal,
+                              UpLo>&& matrix) {
+  return legacy_pattern<matrix_opt, std::true_type, Transpose, Diagonal, UpLo>(
       matrix.base());
 }
 
 template <typename matrix_opt>
 auto transpose(matrix_opt&& matrix) {
-  return general<matrix_opt, std::false_type, std::true_type>(matrix);
+  return legacy_pattern<matrix_opt, std::false_type, std::true_type>(matrix);
 }
 
 template <typename Conjugate, typename Diagonal, typename UpLo,
           typename matrix_opt>
   requires(!std::is_same_v<UpLo, uplo::diag>)
-auto transpose(
-    general<matrix_opt, Conjugate, std::false_type, Diagonal, UpLo>&& matrix) {
-  return general<matrix_opt, Conjugate, std::true_type, Diagonal, UpLo>(
+auto transpose(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                              UpLo>&& matrix) {
+  return legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal, UpLo>(
       matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename UpLo,
           typename matrix_opt>
   requires(!std::is_same_v<UpLo, uplo::diag>)
-auto transpose(
-    general<matrix_opt, Conjugate, std::true_type, Diagonal, UpLo>&& matrix) {
-  return general<matrix_opt, Conjugate, std::false_type, Diagonal, UpLo>(
+auto transpose(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                              UpLo>&& matrix) {
+  return legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal, UpLo>(
       matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename Transpose,
           typename matrix_opt>
-auto transpose(
-    general<matrix_opt, Conjugate, Transpose, Diagonal, uplo::diag>&& matrix) {
-  return general<matrix_opt, Conjugate, std::false_type, Diagonal, uplo::diag>(
-      matrix.base());
+auto transpose(legacy_pattern<matrix_opt, Conjugate, Transpose, Diagonal,
+                              uplo::diag>&& matrix) {
+  return legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                        uplo::diag>(matrix.base());
 }
 
 template <typename matrix_opt, typename TreatDiag = diag::explicit_diag>
 auto diagonal(matrix_opt&& matrix, TreatDiag = {}) {
-  return general<matrix_opt, std::false_type, std::false_type, TreatDiag,
-                 uplo::diag>(matrix);
+  return legacy_pattern<matrix_opt, std::false_type, std::false_type, TreatDiag,
+                        uplo::diag>(matrix);
 }
 
 template <typename Conjugate, typename Transpose, typename Diagonal,
           typename UpLo, typename matrix_opt, typename TreatDiag>
-auto diagonal(general<matrix_opt, Conjugate, Transpose,
-                      typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                      UpLo>&& matrix,
-              TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+auto diagonal(
+    legacy_pattern<matrix_opt, Conjugate, Transpose,
+                   typename __detail::decide_diag<Diagonal, TreatDiag>::type,
+                   UpLo>&& matrix,
+    TreatDiag = {}) {
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename matrix_opt, typename TreatDiag = diag::explicit_diag>
 auto triangle(matrix_opt&& matrix, uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, std::false_type, std::false_type, TreatDiag,
-                 uplo::lower>(matrix);
+  return legacy_pattern<matrix_opt, std::false_type, std::false_type, TreatDiag,
+                        uplo::lower>(matrix);
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::full>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::full>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::lower>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::lower>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::lower>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::lower>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::lower>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::lower>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::upper>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::upper>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::diag>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::diag>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::full>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::full>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::true_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::upper>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::true_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::upper>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::lower>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::lower>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::upper>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::upper>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::true_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::upper>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::true_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::upper>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::diag>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::diag>&& matrix,
               uplo::lower, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename matrix_opt, typename TreatDiag = diag::explicit_diag>
 auto triangle(matrix_opt&& matrix, uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, std::false_type, std::false_type, TreatDiag,
-                 uplo::upper>(matrix);
+  return legacy_pattern<matrix_opt, std::false_type, std::false_type, TreatDiag,
+                        uplo::upper>(matrix);
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::full>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::full>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::upper>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::upper>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::lower>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::lower>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::upper>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::upper>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::upper>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::upper>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::false_type, Diagonal,
-                      uplo::diag>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::false_type, Diagonal,
+                             uplo::diag>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::full>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::full>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::true_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::lower>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::true_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::lower>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::lower>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::lower>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::true_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::lower>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::true_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::lower>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::upper>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::upper>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 template <typename Conjugate, typename Diagonal, typename matrix_opt,
           typename TreatDiag = diag::explicit_diag>
-auto triangle(general<matrix_opt, Conjugate, std::true_type, Diagonal,
-                      uplo::diag>&& matrix,
+auto triangle(legacy_pattern<matrix_opt, Conjugate, std::true_type, Diagonal,
+                             uplo::diag>&& matrix,
               uplo::upper, TreatDiag = {}) {
-  return general<matrix_opt, Conjugate, std::false_type,
-                 typename __detail::decide_diag<Diagonal, TreatDiag>::type,
-                 uplo::diag>(matrix.base());
+  return legacy_pattern<
+      matrix_opt, Conjugate, std::false_type,
+      typename __detail::decide_diag<Diagonal, TreatDiag>::type, uplo::diag>(
+      matrix.base());
 }
 
 } // namespace matrix_view
