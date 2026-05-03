@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <cusparse.h>
 #include <stdexcept>
@@ -54,6 +55,39 @@ void throw_if_error(cusparseStatus_t error_code) {
   } else {
     throw std::runtime_error(
         "cuSPARSE encountered an error: \"unknown error\"");
+  }
+}
+
+// Throw an exception if the cublasStatus_t is not CUBLAS_STATUS_SUCCESS.
+void throw_if_error(cublasStatus_t error_code) {
+  if (error_code == CUBLAS_STATUS_SUCCESS) {
+    return;
+  } else if (error_code == CUBLAS_STATUS_NOT_INITIALIZED) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_NOT_INITIALIZED\"");
+  } else if (error_code == CUBLAS_STATUS_ALLOC_FAILED) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_ALLOC_FAILED\"");
+  } else if (error_code == CUBLAS_STATUS_INVALID_VALUE) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_INVALID_VALUE\"");
+  } else if (error_code == CUBLAS_STATUS_ARCH_MISMATCH) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_ARCH_MISMATCH\"");
+  } else if (error_code == CUBLAS_STATUS_MAPPING_ERROR) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_MAPPING_ERROR\"");
+  } else if (error_code == CUBLAS_STATUS_EXECUTION_FAILED) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_EXECUTION_FAILED\"");
+  } else if (error_code == CUBLAS_STATUS_INTERNAL_ERROR) {
+    throw std::runtime_error("cuBLAS encountered an error: "
+                             "\"CUBLAS_STATUS_INTERNAL_ERROR\"");
+  } else if (error_code == CUBLAS_STATUS_NOT_SUPPORTED) {
+    throw std::runtime_error(
+        "cuBLAS encountered an error: \"CUBLAS_STATUS_NOT_SUPPORTED\"");
+  } else {
+    throw std::runtime_error("cuBLAS encountered an error: \"unknown error\"");
   }
 }
 
