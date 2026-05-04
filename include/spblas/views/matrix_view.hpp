@@ -79,6 +79,11 @@ template <typename matrix_opt, typename Conjugate = std::false_type,
           uplo::uplo UpLo = uplo::full>
 class legacy_pattern : public spblas::view_base {
 public:
+  using uplo = UpLo;
+  using diag = Diagonal;
+  using conjugate = Conjugate;
+  using transpose = Transpose;
+
   legacy_pattern(matrix_opt&& t) : obj(t) {}
 
   auto& base() {
