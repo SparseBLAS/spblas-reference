@@ -16,18 +16,18 @@ namespace __cusparse {
 
 template <matrix M>
 cusparseSpMatDescr_t
-get_matrix_handle(M&& m,
-                  cusparseSpMatDescr_t handle = nullptr) {
+get_matrix_descriptor(M&& m,
+                      cusparseSpMatDescr_t handle = nullptr) {
   if constexpr (__detail::is_matrix_opt_v<decltype(m)>) {
     log_trace("using A as matrix_opt");
 
-    if (m.matrix_handle_ == nullptr) {
-      m.matrix_handle_ = create_matrix_handle(m.base());
+    if (m.matrix_descriptor_ == nullptr) {
+      m.matrix_descriptor_ = create_matrix_descriptor(m.base());
     }
 
-    return m.matrix_handle_;
+    return m.matrix_descriptor_;
   } else if constexpr (__detail::has_base<M>) {
-    return get_matrix_handle(m.base(), handle);
+    return get_matrix_descriptor(m.base(), handle);
   } else if (handle != nullptr) {
     log_trace("using A from operation_info_t");
 
@@ -35,7 +35,7 @@ get_matrix_handle(M&& m,
   } else {
     log_trace("using A as csr_base");
 
-    return create_matrix_handle(m);
+    return create_matrix_descriptor(m);
   }
 }
 

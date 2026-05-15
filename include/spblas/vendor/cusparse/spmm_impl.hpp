@@ -64,7 +64,7 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
     state = info.state_.get_state<__cusparse::spmm_state_t>();
   }
 
-  auto a_handle = __cusparse::get_matrix_handle(a);
+  auto a_handle = __cusparse::get_matrix_descriptor(a);
   auto a_transpose = __cusparse::get_transpose(a);
 
   cusparseConstDnMatDescr_t x_handle;

@@ -25,25 +25,25 @@ public:
 
   matrix_opt(M matrix) : matrix_(matrix) {
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-    matrix_handle_ = nullptr;
+    matrix_descriptor_ = nullptr;
 #elif SPBLAS_ENABLE_CUSPARSE
-    matrix_handle_ = nullptr;
+    matrix_descriptor_ = nullptr;
 #endif
   }
 
   ~matrix_opt() {
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-    if (matrix_handle_) {
+    if (matrix_descriptor_) {
       // q here needs to be on same context as queue in operations,
       // idealy from execution policy
       sycl::queue q(sycl::cpu_selector_v);
-      oneapi::mkl::sparse::release_matrix_handle(q, &matrix_handle_, {}).wait();
-      matrix_handle_ = nullptr;
+      oneapi::mkl::sparse::release_matrix_handle(q, &matrix_descriptor_, {}).wait();
+      matrix_descriptor_ = nullptr;
     }
 #elif SPBLAS_ENABLE_CUSPARSE
-    if (matrix_handle_) {
-      cusparseDestroySpMat(matrix_handle_);
-      matrix_handle_ = nullptr;
+    if (matrix_descriptor_) {
+      cusparseDestroySpMat(matrix_descriptor_);
+      matrix_descriptor_ = nullptr;
     }
 #endif
   }
@@ -97,9 +97,9 @@ public:
   M matrix_;
 
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-  oneapi::mkl::sparse::matrix_handle_t matrix_handle_;
+  oneapi::mkl::sparse::matrix_descriptor_t matrix_descriptor_;
 #elif SPBLAS_ENABLE_CUSPARSE
-  cusparseSpMatDescr_t matrix_handle_;
+  cusparseSpMatDescr_t matrix_descriptor_;
 #endif
 };
 

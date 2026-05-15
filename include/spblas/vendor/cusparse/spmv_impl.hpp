@@ -50,7 +50,7 @@ void multiply(operation_info_t& info, A&& a, X&& x, Y&& y) {
   }
 
   // Create or get matrix descriptor
-  auto a_handle = __cusparse::get_matrix_handle(a);
+  auto a_handle = __cusparse::get_matrix_descriptor(a);
 
   // Create vector descriptors
   auto b_handle = __cusparse::create_cusparse_handle(x_base);
