@@ -4,3 +4,4 @@ function(add_cuda_example example_name)
 endfunction()
 
 add_cuda_example(cusparse_simple_spmv)
+add_cuda_example(cusparse_simple_spmm)
