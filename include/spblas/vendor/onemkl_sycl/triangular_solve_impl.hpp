@@ -8,6 +8,7 @@
 #include <spblas/detail/view_inspectors.hpp>
 
 #include <spblas/detail/triangular_types.hpp>
+#include <spblas/views/matrix_view.hpp>
 
 namespace spblas {
 
@@ -74,6 +75,24 @@ void triangular_solve_inspect(ExecutionPolicy&& policy, A&& a, Triangle uplo,
   }
 }
 
+template <typename ExecutionPolicy, matrix A, vector B, vector X>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<X>
+void triangular_solve_inspect(ExecutionPolicy&& policy, A&& a, B&& b, X&& x) {
+  log_trace("");
+  using type = decltype(matrix_view::legacy_pattern(a));
+  triangular_solve_inspect(
+      policy, __detail::get_ultimate_base_or_matrix_opt(a),
+      std::conditional_t<
+          std::is_same_v<typename type::uplo, matrix_view::uplo::upper>,
+          upper_triangle_t, lower_triangle_t>{},
+      std::conditional_t<
+          std::is_same_v<typename type::diag, matrix_view::diag::explicit_diag>,
+          explicit_diagonal_t, implicit_unit_diagonal_t>{},
+      b, x);
+}
+
 //
 // CSR triangular solve execution step
 //
@@ -128,6 +147,30 @@ void triangular_solve(ExecutionPolicy&& policy, A&& a, Triangle uplo,
 
 } // triangular_solve
 
+template <typename ExecutionPolicy, matrix A, vector B, vector X>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<X> && __detail::has_legacy_pattern_d<A> &&
+           (!std::is_same_v<
+               typename __detail::ultimate_base_or_matrix_type_t<A>::diag,
+               matrix_view::diag::implicit_zero>) &&
+           (!std::is_same_v<
+               typename __detail::ultimate_base_or_matrix_type_t<A>::uplo,
+               matrix_view::uplo::full>)
+void triangular_solve(ExecutionPolicy&& policy, A&& a, B&& b, X&& x) {
+  log_trace("");
+  using type = decltype(matrix_view::legacy_pattern(a));
+  triangular_solve(
+      policy, __detail::get_ultimate_base_or_matrix_opt(a),
+      std::conditional_t<
+          std::is_same_v<typename type::uplo, matrix_view::uplo::upper>,
+          upper_triangle_t, lower_triangle_t>{},
+      std::conditional_t<
+          std::is_same_v<typename type::diag, matrix_view::diag::explicit_diag>,
+          explicit_diagonal_t, implicit_unit_diagonal_t>{},
+      b, x);
+}
+
 //
 // CSR triangular_solve_inspect with no exception policy
 //
@@ -156,5 +199,20 @@ void triangular_solve(A&& a, Triangle uplo, DiagonalStorage diag, B&& b,
                    std::forward<DiagonalStorage>(diag), std::forward<B>(b),
                    std::forward<X>(x));
 } // triangular_solve
+
+template <matrix A, vector B, vector X>
+  requires __detail::has_csr_base<A> &&
+           __detail::has_contiguous_range_base<B> &&
+           __ranges::contiguous_range<X> && __detail::has_legacy_pattern_d<A> &&
+           (!std::is_same_v<
+               typename __detail::ultimate_base_or_matrix_type_t<A>::diag,
+               matrix_view::diag::implicit_zero>) &&
+           (!std::is_same_v<
+               typename __detail::ultimate_base_or_matrix_type_t<A>::uplo,
+               matrix_view::uplo::full>)
+void triangular_solve(A&& a, B&& b, X&& x) {
+  triangular_solve(mkl::par, std::forward<A>(a), std::forward<B>(b),
+                   std::forward<X>(x));
+}
 
 } // namespace spblas

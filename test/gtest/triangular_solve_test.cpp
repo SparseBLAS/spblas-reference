@@ -75,7 +75,20 @@ void triangular_solve_test(Triangle t, DiagonalStorage d) {
     std::transform(values.begin(), values.end(), values.begin(),
                    [scale_factor](T val) { return scale_factor * val; });
 
-    spblas::triangular_solve(a, Triangle{}, DiagonalStorage{}, b, x);
+    // we only have upper/lower for Triangle and implicit_one, explicit for
+    // DiagonalStorage originally.
+    using uplo =
+        std::conditional_t<std::is_same_v<Triangle, spblas::lower_triangle_t>,
+                           spblas::matrix_view::uplo::lower,
+                           spblas::matrix_view::uplo::upper>;
+    using diag = std::conditional_t<
+        std::is_same_v<DiagonalStorage, spblas::implicit_unit_diagonal_t>,
+        spblas::matrix_view::diag::implicit_unit,
+        spblas::matrix_view::diag::explicit_diag>;
+    spblas::triangular_solve(spblas::matrix_view::triangle(a, uplo{}, diag{}),
+                             b, x);
+
+    // spblas::triangular_solve(a, Triangle{}, DiagonalStorage{}, b, x);
 
     std::vector<T> x_ref(m, 0);
 
