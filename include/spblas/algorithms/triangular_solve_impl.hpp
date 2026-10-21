@@ -54,11 +54,10 @@ void triangular_solve(A&& a, Triangle t, DiagonalStorage d, B&& b, X&& x) {
   using V = decltype(std::declval<tensor_scalar_t<A>>() *
                      std::declval<tensor_scalar_t<X>>());
 
-  T diagonal_value = 0;
-
   if constexpr (std::is_same_v<Triangle, upper_triangle_t>) {
     for (auto&& [i, a_row] : __ranges::views::reverse(__backend::rows(a))) {
       V dot_product = 0;
+      T diagonal_value = 0;
       for (auto&& [k, a_v] : a_row) {
         if (k > i) {
           dot_product += a_v * __backend::lookup(x, k);
@@ -76,6 +75,7 @@ void triangular_solve(A&& a, Triangle t, DiagonalStorage d, B&& b, X&& x) {
   } else if constexpr (std::is_same_v<Triangle, lower_triangle_t>) {
     for (auto&& [i, a_row] : __backend::rows(a)) {
       V dot_product = 0;
+      T diagonal_value = 0;
       for (auto&& [k, a_v] : a_row) {
         if (k < i) {
           dot_product += a_v * __backend::lookup(x, k);

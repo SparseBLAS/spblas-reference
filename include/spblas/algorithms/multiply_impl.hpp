@@ -24,7 +24,7 @@ operation_info_t multiply_inspect(A&& a, B&& b, C&& c) {
 
 // SpMV inspect
 template <matrix A, vector B, vector C>
-operation_info_t multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c) {
+void multiply_inspect(operation_info_t& info, A&& a, B&& b, C&& c) {
   log_trace("");
 }
 
