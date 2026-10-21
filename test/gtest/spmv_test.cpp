@@ -134,6 +134,14 @@ TEST(Multiply, SpMV_Csc) {
     for (std::size_t i = 0; i < m; i++) {
       EXPECT_EQ_(y_ref[i], y[i]);
     }
+
+    // The same through a matrix_opt of the CSC matrix.
+    std::vector<T> y_opt(m);
+    spblas::matrix_opt a_opt(a);
+    spblas::multiply(state, alpha, a_opt, x, y_opt);
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i], y_opt[i]);
+    }
   }
 }
 

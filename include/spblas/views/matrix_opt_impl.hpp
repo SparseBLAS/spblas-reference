@@ -84,6 +84,19 @@ private:
     return __backend::lookup_row(matrix.base(), row_index);
   }
 
+  friend auto tag_invoke(__backend::columns_fn_, matrix_opt matrix)
+    requires(__backend::column_iterable<M>)
+  {
+    return __backend::columns(matrix.base());
+  }
+
+  friend auto tag_invoke(__backend::lookup_column_fn_, matrix_opt matrix,
+                         index_type column_index)
+    requires(__backend::column_lookupable<M>)
+  {
+    return __backend::lookup_column(matrix.base(), column_index);
+  }
+
 public:
   M matrix_;
 

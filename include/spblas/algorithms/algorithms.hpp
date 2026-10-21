@@ -3,8 +3,6 @@
 #include <spblas/algorithms/scale.hpp>
 #include <spblas/algorithms/scale_impl.hpp>
 
-// #include <spblas/algorithms/multiply.hpp>
-
 #ifndef SPBLAS_VENDOR_BACKEND
 #include <spblas/algorithms/multiply_impl.hpp>
 #include <spblas/algorithms/triangular_solve_impl.hpp>
