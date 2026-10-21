@@ -37,25 +37,24 @@ int main(int argc, char** argv) {
   std::transform(values.begin(), values.end(), values.begin(),
                  [scale_factor](T val) { return scale_factor * val; });
 
-  csr_view<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
+  csr_wrapper<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
 
   matrix_opt a_opt(a);
 
+  operation_state state;
+
   // Scale every value of `a` by 5 in place.
-  // scale(5.f, a);
+  // scale(state, 5.f, a);
 
   std::vector<T> x(m, 0);
   std::vector<T> b(m, 1);
 
   T alpha = 1.2f;
-  auto b_scaled = scaled(alpha, b);
-
-  // solve for x:  lower(A) * x = alpha * b
-  triangular_solve_inspect(a_opt, spblas::upper_triangle_t{},
-                           spblas::implicit_unit_diagonal_t{}, b_scaled, x);
-
-  triangular_solve(a_opt, spblas::upper_triangle_t{},
-                   spblas::implicit_unit_diagonal_t{}, b_scaled, x);
+  // solve for x:  upper(A) * x = alpha * b
+  auto upper_a =
+      view::triangle(a_opt, view::uplo::upper, view::diag::implicit_unit);
+  triangular_solve_inspect(state, upper_a, alpha, b, x);
+  triangular_solve(state, upper_a, alpha, b, x);
 
   fmt::print("\tExample is completed!\n");
 

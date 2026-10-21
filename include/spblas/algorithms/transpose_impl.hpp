@@ -1,7 +1,9 @@
 #pragma once
 
 #include <spblas/concepts.hpp>
+#include <spblas/detail/api_concepts.hpp>
 #include <spblas/detail/operation_info_t.hpp>
+#include <spblas/detail/operation_state.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
 namespace spblas {
@@ -56,6 +58,53 @@ template <matrix A, matrix B>
   requires(__detail::is_csr_view_v<A> && __detail::is_csr_view_v<B>)
 void transpose(operation_info_t& info, A&& a, B&& b) {
   transpose(std::forward<A>(a), std::forward<B>(b));
+}
+
+//
+// operation_state API (SparseBLAS paper)
+//
+//   transpose_inspect([policy,] state, A, B)
+//   transpose([policy,] state, A, B)          B = A^T
+//
+// Single stage: B has the same number of stored entries as A, so the user
+// allocates B's arrays up front.
+//
+
+namespace __detail {
+
+template <typename A>
+concept transpose_input =
+    is_csr_wrapper_v<A> ||
+    (is_matrix_opt_v<A> &&
+     is_csr_wrapper_v<decltype(std::declval<A>().base())>);
+
+} // namespace __detail
+
+// The reference implementation has nothing to prepare.
+template <matrix A, matrix B>
+  requires(__detail::transpose_input<A> && __detail::is_csr_wrapper_v<B>)
+void transpose_inspect(operation_state& state, A&& a, B&& b) {}
+
+template <matrix A, matrix B>
+  requires(__detail::transpose_input<A> && __detail::is_csr_wrapper_v<B>)
+void transpose(operation_state& state, A&& a, B&& b) {
+  if constexpr (__detail::is_matrix_opt_v<A>) {
+    transpose(a.base(), std::forward<B>(b));
+  } else {
+    transpose(std::forward<A>(a), std::forward<B>(b));
+  }
+}
+
+// Optional leading execution policy. The reference implementation runs
+// sequentially and ignores it.
+template <__detail::execution_policy P, typename... Args>
+void transpose_inspect(P&& policy, operation_state& state, Args&&... args) {
+  transpose_inspect(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+void transpose(P&& policy, operation_state& state, Args&&... args) {
+  transpose(state, std::forward<Args>(args)...);
 }
 
 } // namespace spblas

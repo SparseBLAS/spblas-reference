@@ -1,208 +1,238 @@
 #include <gtest/gtest.h>
 
+#include <complex>
+#include <cstdint>
+#include <limits>
+
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
-TEST(CsrView, SpMV) {
+namespace {
+
+// y = beta * z (or 0), then y += alpha * (A * x), row by row in CSR order;
+// the same operation order as the reference implementation.
+template <typename T, typename I, typename S>
+std::vector<T>
+spmv_ref(const std::vector<T>& values, const std::vector<I>& rowptr,
+         const std::vector<I>& colind, std::size_t m, const std::vector<T>& x,
+         S alpha, S beta, const std::vector<T>& z) {
+  std::vector<T> y(m);
+  for (std::size_t i = 0; i < m; i++) {
+    y[i] = beta == S(0) ? T(0) : T(beta) * z[i];
+    for (auto p = rowptr[i]; p < rowptr[i + 1]; p++) {
+      y[i] += T(alpha) * (values[p] * x[colind[p]]);
+    }
+  }
+  return y;
+}
+
+} // namespace
+
+TEST(Multiply, SpMV_Csr) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    for (T alpha : {T(1), T(-2.5)}) {
+      auto [values, rowptr, colind, shape, _] =
+          spblas::generate_csr<T, I>(m, n, nnz);
+      spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+      auto x = util::make_values<T>(n);
+      std::vector<T> y(m, T(7));
+
+      spblas::operation_state state;
+      spblas::multiply_inspect(state, alpha, a, x, y);
+      spblas::multiply(state, alpha, a, x, y);
+
+      auto y_ref = spmv_ref(values, rowptr, colind, m, x, alpha, T(0), y);
+      for (std::size_t i = 0; i < m; i++) {
+        EXPECT_EQ_(y_ref[i], y[i]);
+      }
+    }
+  }
+}
+
+TEST(Multiply, SpMV_BetaZ) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    for (T beta : {T(0), T(1), T(-3)}) {
+      auto [values, rowptr, colind, shape, _] =
+          spblas::generate_csr<T, I>(m, n, nnz);
+      spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+      T alpha = 2;
+      auto x = util::make_values<T>(n);
+      auto z = util::make_values<T>(m, 3);
+      auto y_ref = spmv_ref(values, rowptr, colind, m, x, alpha, beta, z);
+
+      spblas::operation_state state;
+
+      // z distinct from y
+      std::vector<T> y(m, T(99));
+      spblas::multiply(state, alpha, a, x, beta, z, y);
+      for (std::size_t i = 0; i < m; i++) {
+        EXPECT_EQ_(y_ref[i], y[i]);
+      }
+
+      // z aliasing y: y = alpha * A * x + beta * y
+      std::vector<T> y_alias = z;
+      spblas::multiply(state, alpha, a, x, beta, y_alias, y_alias);
+      for (std::size_t i = 0; i < m; i++) {
+        EXPECT_EQ_(y_ref[i], y_alias[i]);
+      }
+    }
+  }
+}
+
+TEST(Multiply, SpMV_BetaZeroDoesNotReadZ) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[0];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+  auto x = util::make_values<T>(n);
+  std::vector<T> z(m, std::numeric_limits<T>::quiet_NaN());
+  std::vector<T> y(m);
+
+  spblas::operation_state state;
+  spblas::multiply(state, T(1), a, x, T(0), z, y);
+
+  for (auto&& v : y) {
+    EXPECT_FALSE(std::isnan(v));
+  }
+}
+
+TEST(Multiply, SpMV_Csc) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    // CSR arrays of the n x m matrix A^T are the CSC arrays of the m x n A.
+    auto [values, colptr, rowind, shape_t, _] =
+        spblas::generate_csr<T, I>(n, m, nnz);
+    spblas::csc_wrapper<T, I> a(values, colptr, rowind, {I(m), I(n)}, nnz);
+
+    T alpha = -1.5;
+    auto x = util::make_values<T>(n);
+    std::vector<T> y(m);
+
+    spblas::operation_state state;
+    spblas::multiply(state, alpha, a, x, y);
+
+    std::vector<T> y_ref(m, T(0));
+    for (std::size_t j = 0; j < n; j++) {
+      for (auto p = colptr[j]; p < colptr[j + 1]; p++) {
+        y_ref[rowind[p]] += alpha * (values[p] * x[j]);
+      }
+    }
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i], y[i]);
+    }
+  }
+}
+
+TEST(Multiply, SpMV_MatrixOptAndPolicy) {
   using T = float;
   using I = spblas::index_t;
 
   for (auto&& [m, n, nnz] : util::dims) {
     auto [values, rowptr, colind, shape, _] =
         spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    spblas::matrix_opt a_opt(a);
 
-    spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
+    T alpha = 3, beta = 0.5;
+    auto x = util::make_values<T>(n);
+    auto z = util::make_values<T>(m, 1);
+    auto y_ref = spmv_ref(values, rowptr, colind, m, x, alpha, beta, z);
 
-    std::vector<T> b(n, 1);
-    std::vector<T> c(m, 0);
+    spblas::operation_state state;
+    std::vector<T> y(m);
 
-    spblas::multiply(a, b, c);
-
-    std::vector<T> c_ref(m, 0);
-
-    for (I i = 0; i < m; i++) {
-      for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
-        I j = colind[j_ptr];
-        T v = values[j_ptr];
-
-        c_ref[i] += v * b[j];
-      }
+    spblas::multiply_inspect(util::test_policy{}, state, alpha, a_opt, x, beta,
+                             z, y);
+    spblas::multiply(util::test_policy{}, state, alpha, a_opt, x, beta, z, y);
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i], y[i]);
     }
 
-    for (I i = 0; i < c_ref.size(); i++) {
-      EXPECT_EQ_(c_ref[i], c[i]);
-    }
-  }
-}
-
-TEST(CsrView, SpMV_Ascaled) {
-  using T = float;
-  using I = spblas::index_t;
-
-  for (auto&& [m, n, nnz] :
-       {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
-        std::tuple(40, 40, 1000)}) {
-    for (auto&& alpha : {-10, 1, 5}) {
-      auto [values, rowptr, colind, shape, _] =
-          spblas::generate_csr<T, I>(m, n, nnz);
-
-      spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
-
-      std::vector<T> b(n, 1);
-      std::vector<T> c(m, 0);
-
-      spblas::multiply(spblas::scaled(alpha, a), b, c);
-
-      std::vector<T> c_ref(m, 0);
-
-      for (I i = 0; i < m; i++) {
-        for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
-          I j = colind[j_ptr];
-          T v = values[j_ptr];
-
-          c_ref[i] += alpha * v * b[j];
-        }
-      }
-
-      for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ_(c_ref[i], c[i]);
-      }
+    // Repeated execution with the same state.
+    std::fill(y.begin(), y.end(), T(0));
+    spblas::multiply(state, alpha, a_opt, x, beta, z, y);
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i], y[i]);
     }
   }
 }
 
-TEST(CsrView, SpMV_BScaled) {
-  using T = float;
-  using I = spblas::index_t;
+TEST(Multiply, SpMV_Int32Index) {
+  using T = double;
+  using I = std::int32_t;
 
-  for (auto&& [m, n, nnz] :
-       {std::tuple(1000, 100, 100), std::tuple(100, 1000, 10000),
-        std::tuple(40, 40, 1000)}) {
-    for (auto&& alpha : {-10, 1, 5}) {
-      auto [values, rowptr, colind, shape, _] =
-          spblas::generate_csr<T, I>(m, n, nnz);
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
 
-      spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
+    auto x = util::make_values<T>(n);
+    std::vector<T> y(m);
 
-      std::vector<T> b(n, 1);
-      std::vector<T> c(m, 0);
+    spblas::operation_state state;
+    spblas::multiply(state, T(2), a, x, y);
 
-      spblas::multiply(a, spblas::scaled(alpha, b), c);
-
-      std::vector<T> c_ref(m, 0);
-
-      for (I i = 0; i < m; i++) {
-        for (I j_ptr = rowptr[i]; j_ptr < rowptr[i + 1]; j_ptr++) {
-          I j = colind[j_ptr];
-          T v = values[j_ptr];
-
-          c_ref[i] += v * alpha * b[j];
-        }
-      }
-
-      for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ_(c_ref[i], c[i]);
-      }
+    auto y_ref = spmv_ref(values, rowptr, colind, m, x, T(2), T(0), y);
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i], y[i]);
     }
   }
 }
 
-TEST(CscView, SpMV) {
-  using T = float;
+TEST(Multiply, SpMV_Conjugated) {
+  using T = std::complex<float>;
   using I = spblas::index_t;
 
   for (auto&& [m, n, nnz] : util::dims) {
-    auto [values, colptr, rowind, shape, _] =
-        spblas::generate_csc<T, I>(m, n, nnz);
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
 
-    spblas::csc_view<T, I> a(values, colptr, rowind, shape, nnz);
+    T alpha(1, -2);
+    std::vector<T> x(n, T(1, 1));
+    std::vector<T> y(m);
 
-    std::vector<T> b(n, 1);
-    std::vector<T> c(m, 0);
+    spblas::operation_state state;
+    spblas::multiply(state, alpha, spblas::view::conjugate(a), x, y);
 
-    spblas::multiply(a, b, c);
-
-    std::vector<T> c_ref(m, 0);
-
-    for (I j = 0; j < n; j++) {
-      for (I i_ptr = colptr[j]; i_ptr < colptr[j + 1]; i_ptr++) {
-        I i = rowind[i_ptr];
-        T v = values[i_ptr];
-
-        c_ref[i] += v * b[j];
-      }
-    }
-
-    for (I i = 0; i < c_ref.size(); i++) {
-      EXPECT_EQ_(c_ref[i], c[i]);
+    std::vector<T> conj_values(values.size());
+    std::transform(values.begin(), values.end(), conj_values.begin(),
+                   [](T v) { return std::conj(v); });
+    auto y_ref = spmv_ref(conj_values, rowptr, colind, m, x, alpha, T(0), y);
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i].real(), y[i].real());
+      EXPECT_EQ_(y_ref[i].imag(), y[i].imag());
     }
   }
 }
 
-TEST(CscView, SpMV_Ascaled) {
+TEST(Multiply, SpMV_DimensionMismatchThrows) {
   using T = float;
   using I = spblas::index_t;
 
-  for (auto&& [m, n, nnz] : util::dims) {
-    for (auto&& alpha : {-10, 1, 5}) {
-      auto [values, colptr, rowind, shape, _] =
-          spblas::generate_csc<T, I>(m, n, nnz);
+  auto [values, rowptr, colind, shape, nnz] =
+      spblas::generate_csr<T, I>(10, 20, 30);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
 
-      spblas::csc_view<T, I> a(values, colptr, rowind, shape, nnz);
+  std::vector<T> x(20), y(10), z(11), x_bad(19);
+  spblas::operation_state state;
 
-      std::vector<T> b(n, 1);
-      std::vector<T> c(m, 0);
-
-      spblas::multiply(spblas::scaled(alpha, a), b, c);
-
-      std::vector<T> c_ref(m, 0);
-
-      for (I j = 0; j < n; j++) {
-        for (I i_ptr = colptr[j]; i_ptr < colptr[j + 1]; i_ptr++) {
-          I i = rowind[i_ptr];
-          T v = values[i_ptr];
-
-          c_ref[i] += alpha * v * b[j];
-        }
-      }
-
-      for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ_(c_ref[i], c[i]);
-      }
-    }
-  }
-}
-
-TEST(CscView, SpMV_Bscaled) {
-  using T = float;
-  using I = spblas::index_t;
-
-  for (auto&& [m, n, nnz] : util::dims) {
-    for (auto&& alpha : {-10, 1, 5}) {
-      auto [values, colptr, rowind, shape, _] =
-          spblas::generate_csc<T, I>(m, n, nnz);
-
-      spblas::csc_view<T, I> a(values, colptr, rowind, shape, nnz);
-
-      std::vector<T> b(n, 1);
-      std::vector<T> c(m, 0);
-
-      spblas::multiply(a, spblas::scaled(alpha, b), c);
-
-      std::vector<T> c_ref(m, 0);
-
-      for (I j = 0; j < n; j++) {
-        for (I i_ptr = colptr[j]; i_ptr < colptr[j + 1]; i_ptr++) {
-          I i = rowind[i_ptr];
-          T v = values[i_ptr];
-
-          c_ref[i] += v * alpha * b[j];
-        }
-      }
-
-      for (I i = 0; i < c_ref.size(); i++) {
-        EXPECT_EQ_(c_ref[i], c[i]);
-      }
-    }
-  }
+  EXPECT_THROW(spblas::multiply(state, T(1), a, x_bad, y),
+               std::invalid_argument);
+  EXPECT_THROW(spblas::multiply(state, T(1), a, x, T(1), z, y),
+               std::invalid_argument);
 }

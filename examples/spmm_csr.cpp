@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 
   auto&& [values, rowptr, colind, shape, nnz] = generate_csr<T>(m, k, nnz_in);
 
-  csr_view<T> a(values, rowptr, colind, shape, nnz);
+  csr_wrapper<T> a(values, rowptr, colind, shape, nnz);
   matrix_opt a_opt(a);
 
   std::vector<T> x_values(k * n, 1);
@@ -42,8 +42,9 @@ int main(int argc, char** argv) {
   md::mdspan y(y_values.data(), m, n);
 
   // Y = A * X
-  auto state = multiply_inspect(a_opt, x, y);
-  multiply(state, a_opt, x, y);
+  operation_state state;
+  multiply_inspect(state, 1.f, a_opt, x, y);
+  multiply(state, 1.f, a_opt, x, y);
 
   fmt::print("{}\n", spblas::__backend::values(y));
 

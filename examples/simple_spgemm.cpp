@@ -42,22 +42,24 @@ int main(int argc, char** argv) {
   auto&& [b_values, b_rowptr, b_colind, b_shape, bs] =
       generate_csr<T>(k, n, nnz);
 
-  csr_view<T> a(a_values, a_rowptr, a_colind, a_shape, nnz);
-  csr_view<T> b(b_values, b_rowptr, b_colind, b_shape, nnz);
+  csr_wrapper<T> a(a_values, a_rowptr, a_colind, a_shape, nnz);
+  csr_wrapper<T> b(b_values, b_rowptr, b_colind, b_shape, nnz);
 
+  // Output with unknown sparsity: only the shape is known up front.
+  csr_wrapper<T> c(m, n);
+
+  operation_state state;
+  multiply_compute(state, 1.f, a, b, c);
+
+  fmt::print("\t\t C_nnz = {}", state.get_result_nnz());
+
+  // The user allocates C's arrays.
+  std::vector<T> c_values(state.get_result_nnz());
   std::vector<spblas::index_t> c_rowptr(m + 1);
-
-  csr_view<T> c(nullptr, c_rowptr.data(), nullptr, {m, n}, 0);
-
-  auto info = multiply_compute(scaled(1.f, a), b, c);
-
-  fmt::print("\t\t C_nnz = {}", info.result_nnz());
-
-  std::vector<T> c_values(info.result_nnz());
-  std::vector<spblas::index_t> c_colind(info.result_nnz());
+  std::vector<spblas::index_t> c_colind(state.get_result_nnz());
   c.update(c_values, c_rowptr, c_colind);
 
-  multiply_fill(info, scaled(1.f, a), b, c);
+  multiply_fill(state, 1.f, a, b, c);
 
   for (auto&& [i, row] : spblas::__backend::rows(c)) {
     fmt::print("{}: {}\n", i, row);

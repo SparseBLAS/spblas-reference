@@ -104,6 +104,13 @@ if (NOT ENABLE_ONEMKL_SYCL AND
   set(SPBLAS_REFERENCE_BACKEND ON)
 endif()
 
+# Backends that implement the operation_state API from the SparseBLAS paper
+# build the tests and examples for it; the others build the legacy ones under
+# test/gtest/legacy and examples/legacy until they are migrated.
+if (SPBLAS_REFERENCE_BACKEND)
+  set(SPBLAS_PAPER_API ON)
+endif()
+
 # turn on/off debug logging
 if (LOG_LEVEL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLOG_LEVEL=${LOG_LEVEL}") # SPBLAS_DEBUG | SPBLAS_WARNING | SPBLAS_TRACE | SPBLAS_INFO

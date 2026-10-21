@@ -2,9 +2,12 @@
 
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/api_concepts.hpp>
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
+#include <spblas/detail/operation_state.hpp>
 #include <spblas/detail/triangular_types.hpp>
+#include <spblas/views/triangle_view.hpp>
 
 namespace spblas {
 
@@ -104,6 +107,109 @@ void triangular_solve(operation_info_t& info, A&& a, Triangle t,
   triangular_solve(std::forward<A>(a), std::forward<Triangle>(t),
                    std::forward<DiagonalStorage>(d), std::forward<B>(b),
                    std::forward<X>(x));
+}
+
+//
+// operation_state API (SparseBLAS paper)
+//
+//   triangular_solve_inspect([policy,] state, view::triangle(A, uplo, diag),
+//                            [alpha,] b, x)
+//   triangular_solve([policy,] state, view::triangle(A, uplo, diag),
+//                    [alpha,] b, x)
+//     Solves T x = alpha * b for x, where T is the selected triangle of A.
+//     x may alias b. view::diag::implicit_zero is rejected (T is singular).
+//
+
+namespace __detail {
+
+template <typename T>
+using triangle_matrix_t = decltype(std::declval<T>().matrix());
+
+} // namespace __detail
+
+template <typename T, __detail::scalar Alpha, vector B, vector X>
+  requires(__detail::is_triangle_view_v<T> &&
+           __backend::row_iterable<__detail::triangle_matrix_t<T>> &&
+           __backend::lookupable<B> && __backend::lookupable<X>)
+void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
+                      X&& x) {
+  log_trace("");
+  if (t.diag() == view::diag::implicit_zero) {
+    throw std::invalid_argument(
+        "triangular_solve: view::diag::implicit_zero is not supported (the "
+        "triangle would be singular).");
+  }
+
+  auto a = t.matrix();
+  if (__backend::shape(a)[0] != __backend::shape(a)[1] ||
+      __backend::shape(a)[0] != __backend::shape(b) ||
+      __backend::shape(a)[1] != __backend::shape(x)) {
+    throw std::invalid_argument(
+        "triangular_solve: matrix and vector dimensions are incompatible.");
+  }
+
+  using V = tensor_scalar_t<X>;
+  const V alpha_v = static_cast<V>(alpha);
+  const bool upper = t.uplo() == view::uplo::upper;
+  const bool explicit_diagonal = t.diag() == view::diag::explicit_diagonal;
+
+  auto solve_row = [&](auto i, auto&& a_row) {
+    V dot_product = 0;
+    tensor_scalar_t<__detail::triangle_matrix_t<T>> diagonal_value = 0;
+    for (auto&& [k, a_v] : a_row) {
+      if (upper ? k > i : k < i) {
+        dot_product += a_v * __backend::lookup(x, k);
+      } else if (k == i) {
+        diagonal_value = a_v;
+      }
+    }
+    V rhs = alpha_v * __backend::lookup(b, i) - dot_product;
+    __backend::lookup(x, i) = explicit_diagonal ? rhs / diagonal_value : rhs;
+  };
+
+  if (upper) {
+    for (auto&& [i, a_row] : __ranges::views::reverse(__backend::rows(a))) {
+      solve_row(i, a_row);
+    }
+  } else {
+    for (auto&& [i, a_row] : __backend::rows(a)) {
+      solve_row(i, a_row);
+    }
+  }
+}
+
+template <typename T, vector B, vector X>
+  requires(__detail::is_triangle_view_v<T>)
+void triangular_solve(operation_state& state, T&& t, B&& b, X&& x) {
+  triangular_solve(state, std::forward<T>(t), tensor_scalar_t<X>(1),
+                   std::forward<B>(b), std::forward<X>(x));
+}
+
+// The reference implementation has nothing to prepare.
+template <typename T, __detail::scalar Alpha, vector B, vector X>
+  requires(__detail::is_triangle_view_v<T>)
+void triangular_solve_inspect(operation_state& state, T&& t, Alpha alpha, B&& b,
+                              X&& x) {
+  log_trace("");
+}
+
+template <typename T, vector B, vector X>
+  requires(__detail::is_triangle_view_v<T>)
+void triangular_solve_inspect(operation_state& state, T&& t, B&& b, X&& x) {
+  log_trace("");
+}
+
+// Optional leading execution policy. The reference implementation runs
+// sequentially and ignores it.
+template <__detail::execution_policy P, typename... Args>
+void triangular_solve(P&& policy, operation_state& state, Args&&... args) {
+  triangular_solve(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+void triangular_solve_inspect(P&& policy, operation_state& state,
+                              Args&&... args) {
+  triangular_solve_inspect(state, std::forward<Args>(args)...);
 }
 
 } // namespace spblas

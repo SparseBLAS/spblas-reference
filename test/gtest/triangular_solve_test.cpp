@@ -1,104 +1,171 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
-template <typename T, typename I, class Triangle, class DiagonalStorage,
-          spblas::__ranges::random_access_range B,
-          spblas::__ranges::random_access_range X>
-void reference_triangular_solve(spblas::csr_view<T, I> a, Triangle t,
-                                DiagonalStorage d, B&& b, X&& x) {
-  auto&& values = a.values();
-  auto&& colind = a.colind();
-  auto&& rowptr = a.rowptr();
-  auto shape = a.shape();
+namespace {
 
-  if constexpr (std::is_same_v<Triangle, spblas::upper_triangle_t>) {
-    // backward solve
-    for (I row = shape[0]; row-- > 0;) {
-      T tmp = b[row];
-      T diag_val = 0.0;
-      for (I j = rowptr[row]; j < rowptr[row + 1]; j++) {
-        I col = colind[j];
-        if (col > row) {
-          T a_val = values[j];
-          T x_val = x[col];
-          tmp -= a_val * x_val; // b - U*x
-        } else if (col == row) {
-          diag_val = values[j];
+// Random n x n CSR matrix with a dominant stored diagonal, so every triangle
+// is well conditioned.
+template <typename T, typename I>
+struct triangular_test_matrix {
+  std::vector<T> values;
+  std::vector<I> rowptr;
+  std::vector<I> colind;
+  std::size_t n;
+
+  triangular_test_matrix(std::size_t n_, std::size_t nnz) : n(n_) {
+    auto [v, r, c, s, z] = spblas::generate_csr<T, I>(n, n, nnz);
+    rowptr.push_back(0);
+    for (std::size_t i = 0; i < n; i++) {
+      for (auto p = r[i]; p < r[i + 1]; p++) {
+        if (c[p] != i) {
+          colind.push_back(c[p]);
+          values.push_back(v[p] / T(100 * n));
         }
       }
-      if constexpr (std::is_same_v<DiagonalStorage,
-                                   spblas::explicit_diagonal_t>) {
-        x[row] = tmp / diag_val; // ( b - U*x) / d
-      } else {
-        x[row] = tmp; // ( b- U*x) / 1
-      }
+      colind.push_back(i);
+      values.push_back(T(2) + T(i % 3));
+      rowptr.push_back(colind.size());
     }
-  } else if constexpr (std::is_same_v<Triangle, spblas::upper_triangle_t>) {
-    // Forward Solve
-    for (I row = 0; row < shape[0]; row++) {
-      T tmp = b[row];
-      T diag_val = 0.0;
-      for (I j = rowptr[row]; j < rowptr[row + 1]; ++j) {
-        I col = colind[j];
-        if (col < row) {
-          T a_val = values[j];
-          T x_val = x[col];
-          tmp -= a_val * x_val; // b - L*x
-        } else if (col == row) {
-          diag_val = values[j];
+  }
+
+  spblas::csr_wrapper<T, I> csr() {
+    return spblas::csr_wrapper<T, I>(values, rowptr, colind, {I(n), I(n)},
+                                     I(values.size()));
+  }
+
+  // r = T * x, with T the selected triangle of the matrix.
+  std::vector<T> apply(const std::vector<T>& x, spblas::view::uplo uplo,
+                       spblas::view::diag diag) const {
+    std::vector<T> r(n, T(0));
+    for (std::size_t i = 0; i < n; i++) {
+      for (auto p = rowptr[i]; p < rowptr[i + 1]; p++) {
+        std::size_t j = colind[p];
+        bool in_triangle = uplo == spblas::view::uplo::lower ? j < i : j > i;
+        if (in_triangle ||
+            (j == i && diag == spblas::view::diag::explicit_diagonal)) {
+          r[i] += values[p] * x[j];
         }
       }
-      if constexpr (std::is_same_v<DiagonalStorage,
-                                   spblas::explicit_diagonal_t>) {
-        x[row] = tmp / diag_val; // ( b - L*x) / d
-      } else {
-        x[row] = tmp; // ( b- L*x) / 1
+      if (diag == spblas::view::diag::implicit_unit) {
+        r[i] += x[i];
       }
     }
+    return r;
+  }
+};
+
+template <typename T>
+void expect_close(const std::vector<T>& expected,
+                  const std::vector<T>& actual) {
+  ASSERT_EQ(expected.size(), actual.size());
+  for (std::size_t i = 0; i < expected.size(); i++) {
+    EXPECT_NEAR(expected[i], actual[i], 1e-10 * (1 + std::abs(expected[i])));
   }
 }
 
-template <typename T, typename I, typename Triangle, typename DiagonalStorage>
-void triangular_solve_test(Triangle t, DiagonalStorage d) {
+void triangular_solve_test(spblas::view::uplo uplo, spblas::view::diag diag) {
+  using T = double;
+  using I = spblas::index_t;
+
   for (auto&& [m, n, nnz] : util::square_dims) {
-    auto [values, rowptr, colind, shape, _] =
-        spblas::generate_csr<T, I>(m, n, nnz);
+    for (T alpha : {T(1), T(-0.5)}) {
+      triangular_test_matrix<T, I> a(n, nnz);
+      auto b = util::make_values<T>(n);
+      std::vector<T> x(n, T(0));
 
-    spblas::csr_view<T, I> a(values, rowptr, colind, shape, nnz);
+      spblas::operation_state state;
+      auto t = spblas::view::triangle(a.csr(), uplo, diag);
+      spblas::triangular_solve_inspect(state, t, alpha, b, x);
+      spblas::triangular_solve(state, t, alpha, b, x);
 
-    std::vector<T> x(n, 1);
-    std::vector<T> b(m, 0);
-
-    T scale_factor = 1e-3f;
-    std::transform(values.begin(), values.end(), values.begin(),
-                   [scale_factor](T val) { return scale_factor * val; });
-
-    spblas::triangular_solve(a, Triangle{}, DiagonalStorage{}, b, x);
-
-    std::vector<T> x_ref(m, 0);
-
-    reference_triangular_solve(a, Triangle{}, DiagonalStorage{}, b, x_ref);
-
-    for (std::size_t i = 0; i < x.size(); i++) {
-      EXPECT_EQ_(x[i], x_ref[i]);
+      // Residual check: T * x == alpha * b.
+      std::vector<T> alpha_b(n);
+      for (std::size_t i = 0; i < n; i++) {
+        alpha_b[i] = alpha * b[i];
+      }
+      expect_close(alpha_b, a.apply(x, uplo, diag));
     }
   }
 }
 
-TEST(CsrView, TriangularSolveLowerImplicit) {
-  using T = float;
-  using I = spblas::index_t;
+} // namespace
 
-  triangular_solve_test<T, I>(spblas::lower_triangle_t{},
-                              spblas::implicit_unit_diagonal_t{});
+TEST(TriangularSolve, LowerExplicit) {
+  triangular_solve_test(spblas::view::uplo::lower,
+                        spblas::view::diag::explicit_diagonal);
 }
 
-TEST(CsrView, TriangularSolveUpperImplicit) {
-  using T = float;
+TEST(TriangularSolve, UpperExplicit) {
+  triangular_solve_test(spblas::view::uplo::upper,
+                        spblas::view::diag::explicit_diagonal);
+}
+
+TEST(TriangularSolve, LowerImplicitUnit) {
+  triangular_solve_test(spblas::view::uplo::lower,
+                        spblas::view::diag::implicit_unit);
+}
+
+TEST(TriangularSolve, UpperImplicitUnit) {
+  triangular_solve_test(spblas::view::uplo::upper,
+                        spblas::view::diag::implicit_unit);
+}
+
+TEST(TriangularSolve, DefaultAlphaMatrixOptPolicyInPlace) {
+  using T = double;
   using I = spblas::index_t;
 
-  triangular_solve_test<T, I>(spblas::lower_triangle_t{},
-                              spblas::implicit_unit_diagonal_t{});
+  auto [m, n, nnz] = util::square_dims[1];
+  triangular_test_matrix<T, I> a(n, nnz);
+  spblas::matrix_opt a_opt(a.csr());
+  auto b = util::make_values<T>(n);
+
+  // Without alpha (alpha = 1), through a matrix_opt and a policy, solving in
+  // place (x aliases b).
+  std::vector<T> x = b;
+  spblas::operation_state state;
+  auto t = spblas::view::triangle(a_opt, spblas::view::uplo::lower);
+  spblas::triangular_solve_inspect(util::test_policy{}, state, t, x, x);
+  spblas::triangular_solve(util::test_policy{}, state, t, x, x);
+
+  expect_close(b, a.apply(x, spblas::view::uplo::lower,
+                          spblas::view::diag::explicit_diagonal));
+}
+
+TEST(TriangularSolve, ImplicitZeroThrows) {
+  using T = double;
+  using I = spblas::index_t;
+
+  triangular_test_matrix<T, I> a(10, 20);
+  std::vector<T> b(10, T(1)), x(10);
+  spblas::operation_state state;
+
+  auto t = spblas::view::triangle(a.csr(), spblas::view::uplo::lower,
+                                  spblas::view::diag::implicit_zero);
+  EXPECT_THROW(spblas::triangular_solve(state, t, b, x), std::invalid_argument);
+}
+
+TEST(TriangularSolve, DimensionMismatchThrows) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [values, rowptr, colind, shape, nnz] =
+      spblas::generate_csr<T, I>(10, 12, 20);
+  spblas::csr_wrapper<T, I> rect(values, rowptr, colind, shape, nnz);
+  triangular_test_matrix<T, I> a(10, 20);
+  std::vector<T> b(10), x(10), x_bad(9);
+  spblas::operation_state state;
+
+  EXPECT_THROW(
+      spblas::triangular_solve(
+          state, spblas::view::triangle(rect, spblas::view::uplo::lower), b, x),
+      std::invalid_argument);
+  EXPECT_THROW(spblas::triangular_solve(
+                   state,
+                   spblas::view::triangle(a.csr(), spblas::view::uplo::upper),
+                   b, x_bad),
+               std::invalid_argument);
 }

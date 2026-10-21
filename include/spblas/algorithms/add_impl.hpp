@@ -4,6 +4,9 @@
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/api_concepts.hpp>
+#include <spblas/detail/operation_info_t.hpp>
+#include <spblas/detail/operation_state.hpp>
 
 namespace spblas {
 
@@ -110,6 +113,53 @@ operation_info_t add_inspect(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
 void add_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
   add(a, b, c);
+}
+
+//
+// operation_state API (SparseBLAS paper)
+//
+//   add_inspect([policy,] state, A, B, C)
+//   add_compute([policy,] state, A, B, C)   sets state.get_result_nnz()
+//   add_fill([policy,] state, A, B, C)      C = A + B
+//
+// Note the stage names differ from the legacy API above, where add_inspect
+// counts and add_compute fills.
+//
+
+// The reference implementation has nothing to prepare.
+template <matrix A, matrix B, matrix C>
+void add_inspect(operation_state& state, A&& a, B&& b, C&& c) {}
+
+template <matrix A, matrix B, matrix C>
+  requires(__backend::row_lookupable<A> && __backend::row_lookupable<B> &&
+           __detail::is_csr_wrapper_v<C>)
+void add_compute(operation_state& state, A&& a, B&& b, C&& c) {
+  auto info = add_inspect(a, b, c);
+  state.update_impl_(info.result_nnz());
+}
+
+template <matrix A, matrix B, matrix C>
+  requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
+           __detail::is_csr_wrapper_v<C>)
+void add_fill(operation_state& state, A&& a, B&& b, C&& c) {
+  add(a, b, c);
+}
+
+// Optional leading execution policy. The reference implementation runs
+// sequentially and ignores it.
+template <__detail::execution_policy P, typename... Args>
+void add_inspect(P&& policy, operation_state& state, Args&&... args) {
+  add_inspect(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+void add_compute(P&& policy, operation_state& state, Args&&... args) {
+  add_compute(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+void add_fill(P&& policy, operation_state& state, Args&&... args) {
+  add_fill(state, std::forward<Args>(args)...);
 }
 
 } // namespace spblas

@@ -3,18 +3,34 @@ function(add_example example_name)
   target_link_libraries(${example_name} spblas fmt)
 endfunction()
 
+function(add_legacy_example example_name)
+  add_executable(${example_name} legacy/${example_name}.cpp)
+  target_link_libraries(${example_name} spblas fmt)
+endfunction()
+
 # CPU examples
 if (SPBLAS_CPU_BACKEND)
-  add_example(simple_spmv)
-  add_example(simple_spmm)
-  add_example(simple_spgemm)
-  add_example(simple_sptrsv)
-  add_example(spmm_csc)
-  add_example(matrix_opt_example)
-  if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND)
-    # needs CPU + matrix_opt + operation_info_t to run
-    add_example(sptrsv_csr) # needs triangular_solve{_inspect} to run
-    add_example(spmm_csr) # needs multiply{_inspect} to run
+  if (SPBLAS_PAPER_API)
+    add_example(simple_spmv)
+    add_example(simple_spmm)
+    add_example(simple_spgemm)
+    add_example(simple_sptrsv)
+    add_example(spmm_csc)
+    add_example(spmm_csr)
+    add_example(sptrsv_csr)
+    add_example(matrix_opt_example)
+  else()
+    add_legacy_example(simple_spmv)
+    add_legacy_example(simple_spmm)
+    add_legacy_example(simple_spgemm)
+    add_legacy_example(simple_sptrsv)
+    add_legacy_example(spmm_csc)
+    add_legacy_example(matrix_opt_example)
+    if (ENABLE_ONEMKL_SYCL)
+      # needs CPU + matrix_opt + operation_info_t to run
+      add_legacy_example(sptrsv_csr) # needs triangular_solve{_inspect} to run
+      add_legacy_example(spmm_csr) # needs multiply{_inspect} to run
+    endif()
   endif()
 endif()
 

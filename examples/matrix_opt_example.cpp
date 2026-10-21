@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 
   auto&& [values, rowptr, colind, shape, nnz] = generate_csr<T>(m, k, nnz_in);
 
-  csr_view<T> a(values, rowptr, colind, shape, nnz);
+  csr_wrapper<T> a(values, rowptr, colind, shape, nnz);
 
   matrix_opt a_opt(a);
 
@@ -42,10 +42,11 @@ int main(int argc, char** argv) {
   mdspan_row_major<T, spblas::index_t> x(x_values.data(), k, n);
   mdspan_row_major<T, spblas::index_t> y(y_values.data(), m, n);
 
-  auto a_view = scaled(2.f, a);
-
-  // y = A * (alpha * x)
-  multiply(a_opt, scaled(2.f, x), y);
+  // y = alpha * A * x; the inspect phase may store optimization data in
+  // a_opt for repeated multiplies.
+  operation_state state;
+  multiply_inspect(state, 2.f, a_opt, x, y);
+  multiply(state, 2.f, a_opt, x, y);
 
   fmt::print("{}\n", spblas::__backend::values(y));
 

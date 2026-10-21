@@ -4,6 +4,8 @@
 #include <tuple>
 #include <vector>
 
+#include <spblas/spblas.hpp>
+
 #define EXPECT_EQ_(t, u)                                                       \
   if constexpr (std::floating_point<std::remove_cvref_t<decltype((t))>> ||     \
                 std::floating_point<std::remove_cvref_t<decltype((u))>>) {     \
@@ -31,5 +33,51 @@ inline auto dims =
 inline auto square_dims =
     std::vector({std::tuple(1000, 1000, 100), std::tuple(100, 100, 100),
                  std::tuple(40, 40, 1000)});
+
+// Execution policy used to exercise the `policy`-first overloads.
+struct test_policy {};
+
+// Dense row-major copy of a sparse (or dense) matrix; duplicates are summed.
+template <typename M>
+auto to_dense(M&& m) {
+  using T = std::remove_cvref_t<spblas::tensor_scalar_t<M>>;
+  auto shape = spblas::__backend::shape(m);
+  std::size_t ncols = shape[1];
+  std::vector<T> d(shape[0] * ncols, T(0));
+  spblas::__backend::for_each(m, [&](auto&& e) {
+    auto&& [idx, v] = e;
+    auto&& [i, j] = idx;
+    d[i * ncols + j] += v;
+  });
+  return d;
+}
+
+// Number of distinct (i, j) positions stored in a sparse matrix.
+template <typename M>
+std::size_t count_positions(M&& m) {
+  auto shape = spblas::__backend::shape(m);
+  std::size_t ncols = shape[1];
+  std::vector<bool> seen(shape[0] * ncols, false);
+  std::size_t count = 0;
+  spblas::__backend::for_each(m, [&](auto&& e) {
+    auto&& [idx, v] = e;
+    auto&& [i, j] = idx;
+    if (!seen[i * ncols + j]) {
+      seen[i * ncols + j] = true;
+      count++;
+    }
+  });
+  return count;
+}
+
+// Values with some variety, so wrong index mappings change the result.
+template <typename T>
+std::vector<T> make_values(std::size_t n, int offset = 0) {
+  std::vector<T> v(n);
+  for (std::size_t i = 0; i < n; i++) {
+    v[i] = T((i + offset) % 7 + 1) / T(4);
+  }
+  return v;
+}
 
 } // namespace util
