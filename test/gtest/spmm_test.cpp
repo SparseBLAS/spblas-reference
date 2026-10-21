@@ -220,3 +220,36 @@ TEST(Multiply, SpMM_DimensionMismatchThrows) {
   EXPECT_THROW(spblas::multiply(state, T(1), a, x, T(1), z, y),
                std::invalid_argument);
 }
+
+TEST(Multiply, SpMM_TransposedDense) {
+  using T = double;
+  using I = spblas::index_t;
+
+  for (auto&& [m, k, nnz] : util::dims) {
+    std::size_t n = 5;
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, k, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+    // Y = A * X^T with X stored as n x k.
+    auto x_values = util::make_values<T>(n * k);
+    std::vector<T> y_values(m * n);
+    spblas::mdspan_row_major<T, I> x(x_values.data(), n, k);
+    spblas::mdspan_row_major<T, I> y(y_values.data(), m, n);
+
+    spblas::operation_state state;
+    spblas::multiply(state, T(1), a, spblas::view::transpose(x), y);
+
+    std::vector<T> y_ref(m * n, T(0));
+    for (std::size_t i = 0; i < m; i++) {
+      for (auto p = rowptr[i]; p < rowptr[i + 1]; p++) {
+        for (std::size_t j = 0; j < n; j++) {
+          y_ref[i * n + j] += values[p] * x_values[j * k + colind[p]];
+        }
+      }
+    }
+    for (std::size_t i = 0; i < y_ref.size(); i++) {
+      EXPECT_EQ_(y_ref[i], y_values[i]);
+    }
+  }
+}

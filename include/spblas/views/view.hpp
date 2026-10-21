@@ -6,6 +6,8 @@
 #include <spblas/algorithms/conjugated_impl.hpp>
 #include <spblas/algorithms/transposed.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/views/inspectors.hpp>
+#include <spblas/views/transposed_view.hpp>
 #include <spblas/views/triangle_view.hpp>
 
 // View functions from the SparseBLAS paper (`spblas::view::...`). Views are
@@ -18,10 +20,21 @@ namespace spblas {
 
 namespace view {
 
-// Transposed view of `m`. A CSR matrix is exposed as CSC and vice versa.
+// Transposed view of `m`:
+//   - CSR / CSC wrapper: the same arrays reinterpreted as CSC / CSR;
+//   - transposed_view: the original matrix;
+//   - anything else (matrix_opt, conjugated views, dense matrices): a
+//     transposed_view, which keeps e.g. a matrix_opt's optimization data.
 template <matrix M>
 auto transpose(M&& m) {
-  return transposed(std::forward<M>(m));
+  if constexpr (__detail::is_csr_wrapper_v<M> ||
+                __detail::is_csc_wrapper_v<M>) {
+    return transposed(std::forward<M>(m));
+  } else if constexpr (__detail::is_transposed_view_v<M>) {
+    return m.matrix();
+  } else {
+    return transposed_view<std::remove_cvref_t<M>>(std::forward<M>(m));
+  }
 }
 
 // Conjugated view of `t`; `t` itself for non-complex value types.

@@ -237,3 +237,32 @@ TEST(TriangularSolve, CscMatrixOptPolicyInPlace) {
   expect_close(two_b, a.apply(x, spblas::view::uplo::upper,
                               spblas::view::diag::explicit_diagonal));
 }
+
+TEST(TriangularSolve, TransposedMatrixOpt) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::square_dims[1];
+  triangular_test_matrix<T, I> a(n, nnz);
+  spblas::matrix_opt a_opt(a.csr());
+  auto b = util::make_values<T>(n);
+  std::vector<T> x(n);
+
+  // upper(A^T) x = b, with A's matrix_opt attached.
+  spblas::operation_state state;
+  spblas::triangular_solve(
+      state,
+      spblas::view::triangle(spblas::view::transpose(a_opt),
+                             spblas::view::uplo::upper),
+      b, x);
+
+  // r = upper(A^T) * x, i.e. r_i = sum_{j >= i} A_ji x_j.
+  auto dense = util::to_dense(a.csr());
+  std::vector<T> r(n, T(0));
+  for (std::size_t i = 0; i < n; i++) {
+    for (std::size_t j = i; j < n; j++) {
+      r[i] += dense[j * n + i] * x[j];
+    }
+  }
+  expect_close(b, r);
+}

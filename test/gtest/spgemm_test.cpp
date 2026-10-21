@@ -449,3 +449,29 @@ TEST(SpGEMM, ThreeStageErrors) {
   EXPECT_THROW(spblas::multiply_numeric(state, T(1), a.csr(), other_b.csr(), c),
                std::invalid_argument);
 }
+
+TEST(SpGEMM, TransposedMatrixOpt) {
+  using T = double;
+  using I = spblas::index_t;
+
+  for (auto&& [k, m, nnz] : util::dims) {
+    // C = A^T * B with A (k x m) in a matrix_opt and B (k x m).
+    csr_matrix<T, I> a_m(k, m, nnz, 0);
+    csr_matrix<T, I> b_m(k, m, nnz, 1);
+    spblas::matrix_opt a_opt(a_m.csr());
+
+    // Reference through an explicit transpose of A.
+    csc_matrix<T, I> a_t_storage(a_m); // CSR arrays of A^T
+    csr_matrix<T, I> a_t = a_m;
+    a_t.values = a_t_storage.values;
+    a_t.rowptr = a_t_storage.colptr;
+    a_t.colind = a_t_storage.rowind;
+    a_t.shape = {I(m), I(k)};
+    auto ref = spgemm_ref(a_t, b_m, T(1));
+
+    auto [c, c_dense] = run_spgemm<T, I>(T(1), spblas::view::transpose(a_opt),
+                                         b_m.csr(), m, m, std::false_type{});
+    EXPECT_EQ(c.nnz, ref.positions);
+    ref.expect_matches(c_dense);
+  }
+}

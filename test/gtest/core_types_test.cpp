@@ -5,6 +5,7 @@
 #include <memory_resource>
 #include <vector>
 
+#include "util.hpp"
 #include <spblas/spblas.hpp>
 
 namespace {
@@ -228,4 +229,48 @@ TEST(View, TransposeAndConjugate) {
       values, m.rowptr, m.colind, {3, 3}, 7);
   auto c_conj = spblas::view::conjugate(c);
   EXPECT_TRUE(spblas::__detail::is_conjugated(c_conj));
+}
+
+TEST(View, TransposeOfMatrixOpt) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [values, rowptr, colind, shape, nnz] =
+      spblas::generate_csr<T, I>(4, 6, 10);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::matrix_opt a_opt(a);
+
+  auto t = spblas::view::transpose(a_opt);
+  static_assert(spblas::__detail::is_transposed_view_v<decltype(t)>);
+  static_assert(spblas::matrix<decltype(t)>);
+  // Must not be unwrapped transparently by backends that match CSR bases.
+  static_assert(!spblas::__detail::has_csr_base<decltype(t)>);
+  static_assert(!spblas::__detail::has_csc_base<decltype(t)>);
+
+  // The optimization data stays attached.
+  EXPECT_EQ(t.matrix().state_.get(), a_opt.state_.get());
+  EXPECT_EQ(spblas::__backend::shape(t), (spblas::index<I>(6, 4)));
+  EXPECT_EQ(spblas::__backend::size(t), nnz);
+  EXPECT_EQ(util::to_dense(t), util::to_dense(spblas::view::transpose(a)));
+
+  // Transposing twice gives back the matrix_opt itself.
+  auto tt = spblas::view::transpose(t);
+  static_assert(std::is_same_v<decltype(tt), decltype(a_opt)>);
+  EXPECT_EQ(tt.state_.get(), a_opt.state_.get());
+}
+
+TEST(View, TransposeOfDense) {
+  using T = double;
+  using I = spblas::index_t;
+
+  std::vector<T> x_values{1, 2, 3, 4, 5, 6};
+  spblas::mdspan_row_major<T, I> x(x_values.data(), 2, 3);
+  auto x_t = spblas::view::transpose(x);
+
+  EXPECT_EQ(spblas::__backend::shape(x_t), (spblas::index<I>(3, 2)));
+  for (I i = 0; i < 2; i++) {
+    for (I j = 0; j < 3; j++) {
+      EXPECT_EQ(spblas::__backend::lookup(x_t, j, i), x_values[i * 3 + j]);
+    }
+  }
 }

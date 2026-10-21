@@ -155,3 +155,23 @@ TEST(Transpose, Errors) {
                                       {I(20), I(10)}, nnz);
   EXPECT_THROW(spblas::transpose(state, a, too_small), std::runtime_error);
 }
+
+TEST(Transpose, OfTransposedMatrixOpt) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::matrix_opt a_opt(a);
+
+  // B = (A^T)^T = A
+  std::vector<T> b_values(nnz);
+  std::vector<I> b_rowptr(m + 1), b_colind(nnz);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {I(m), I(n)}, nnz);
+  spblas::operation_state state;
+  spblas::transpose(state, spblas::view::transpose(a_opt), b);
+
+  EXPECT_EQ(util::to_dense(a), util::to_dense(b));
+}

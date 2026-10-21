@@ -151,3 +151,24 @@ TEST(Norm, EmptyMatrix) {
   EXPECT_EQ(spblas::matrix_inf_norm(state, a), 0.0f);
   EXPECT_EQ(spblas::matrix_frob_norm(state, a), 0.0f);
 }
+
+TEST(Norm, TransposedMatrixOpt) {
+  using T = double;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    spblas::matrix_opt a_opt(a);
+
+    spblas::operation_state state;
+    // inf-norm of A^T is the 1-norm of A, for a matrix_opt as for a wrapper.
+    expect_norm_near(
+        spblas::matrix_inf_norm(state, spblas::view::transpose(a)),
+        spblas::matrix_inf_norm(state, spblas::view::transpose(a_opt)));
+    expect_norm_near(
+        spblas::matrix_frob_norm(state, a),
+        spblas::matrix_frob_norm(state, spblas::view::transpose(a_opt)));
+  }
+}

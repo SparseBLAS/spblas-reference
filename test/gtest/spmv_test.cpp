@@ -244,3 +244,32 @@ TEST(Multiply, SpMV_DimensionMismatchThrows) {
   EXPECT_THROW(spblas::multiply(state, T(1), a, x, T(1), z, y),
                std::invalid_argument);
 }
+
+TEST(Multiply, SpMV_TransposedMatrixOpt) {
+  using T = double;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    spblas::matrix_opt a_opt(a);
+
+    // y = alpha * A^T * x
+    T alpha = -2;
+    auto x = util::make_values<T>(m);
+    std::vector<T> y(n);
+    spblas::operation_state state;
+    spblas::multiply(state, alpha, spblas::view::transpose(a_opt), x, y);
+
+    std::vector<T> y_ref(n, T(0));
+    for (std::size_t i = 0; i < m; i++) {
+      for (auto p = rowptr[i]; p < rowptr[i + 1]; p++) {
+        y_ref[colind[p]] += alpha * (values[p] * x[i]);
+      }
+    }
+    for (std::size_t j = 0; j < n; j++) {
+      EXPECT_EQ_(y_ref[j], y[j]);
+    }
+  }
+}
