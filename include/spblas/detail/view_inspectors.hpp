@@ -12,7 +12,7 @@ namespace __detail {
 
 // Does this tensor view have a base?
 template <typename T>
-concept has_base = view<T> && requires(T& t) {
+concept has_base = __detail::view<T> && requires(T& t) {
   { t.base() } -> tensor;
 };
 
