@@ -37,6 +37,25 @@ struct triangular_test_matrix {
                                      I(values.size()));
   }
 
+  // The same matrix in CSC: the CSR arrays of its transpose.
+  std::vector<T> csc_values;
+  std::vector<I> colptr;
+  std::vector<I> rowind;
+
+  spblas::csc_wrapper<T, I> csc() {
+    if (colptr.empty()) {
+      csc_values.resize(values.size());
+      rowind.resize(values.size());
+      colptr.resize(n + 1);
+      spblas::csr_wrapper<T, I> a_t(csc_values, colptr, rowind, {I(n), I(n)},
+                                    I(values.size()));
+      spblas::operation_state state;
+      spblas::transpose(state, csr(), a_t);
+    }
+    return spblas::csc_wrapper<T, I>(csc_values, colptr, rowind, {I(n), I(n)},
+                                     I(values.size()));
+  }
+
   // r = T * x, with T the selected triangle of the matrix.
   std::vector<T> apply(const std::vector<T>& x, spblas::view::uplo uplo,
                        spblas::view::diag diag) const {
@@ -67,6 +86,7 @@ void expect_close(const std::vector<T>& expected,
   }
 }
 
+template <bool Csc>
 void triangular_solve_test(spblas::view::uplo uplo, spblas::view::diag diag) {
   using T = double;
   using I = spblas::index_t;
@@ -78,7 +98,13 @@ void triangular_solve_test(spblas::view::uplo uplo, spblas::view::diag diag) {
       std::vector<T> x(n, T(0));
 
       spblas::operation_state state;
-      auto t = spblas::view::triangle(a.csr(), uplo, diag);
+      auto t = [&] {
+        if constexpr (Csc) {
+          return spblas::view::triangle(a.csc(), uplo, diag);
+        } else {
+          return spblas::view::triangle(a.csr(), uplo, diag);
+        }
+      }();
       spblas::triangular_solve_inspect(state, t, alpha, b, x);
       spblas::triangular_solve(state, t, alpha, b, x);
 
@@ -95,23 +121,43 @@ void triangular_solve_test(spblas::view::uplo uplo, spblas::view::diag diag) {
 } // namespace
 
 TEST(TriangularSolve, LowerExplicit) {
-  triangular_solve_test(spblas::view::uplo::lower,
-                        spblas::view::diag::explicit_diagonal);
+  triangular_solve_test<false>(spblas::view::uplo::lower,
+                               spblas::view::diag::explicit_diagonal);
+}
+
+TEST(TriangularSolve, CscLowerExplicit) {
+  triangular_solve_test<true>(spblas::view::uplo::lower,
+                              spblas::view::diag::explicit_diagonal);
 }
 
 TEST(TriangularSolve, UpperExplicit) {
-  triangular_solve_test(spblas::view::uplo::upper,
-                        spblas::view::diag::explicit_diagonal);
+  triangular_solve_test<false>(spblas::view::uplo::upper,
+                               spblas::view::diag::explicit_diagonal);
+}
+
+TEST(TriangularSolve, CscUpperExplicit) {
+  triangular_solve_test<true>(spblas::view::uplo::upper,
+                              spblas::view::diag::explicit_diagonal);
 }
 
 TEST(TriangularSolve, LowerImplicitUnit) {
-  triangular_solve_test(spblas::view::uplo::lower,
-                        spblas::view::diag::implicit_unit);
+  triangular_solve_test<false>(spblas::view::uplo::lower,
+                               spblas::view::diag::implicit_unit);
+}
+
+TEST(TriangularSolve, CscLowerImplicitUnit) {
+  triangular_solve_test<true>(spblas::view::uplo::lower,
+                              spblas::view::diag::implicit_unit);
 }
 
 TEST(TriangularSolve, UpperImplicitUnit) {
-  triangular_solve_test(spblas::view::uplo::upper,
-                        spblas::view::diag::implicit_unit);
+  triangular_solve_test<false>(spblas::view::uplo::upper,
+                               spblas::view::diag::implicit_unit);
+}
+
+TEST(TriangularSolve, CscUpperImplicitUnit) {
+  triangular_solve_test<true>(spblas::view::uplo::upper,
+                              spblas::view::diag::implicit_unit);
 }
 
 TEST(TriangularSolve, DefaultAlphaMatrixOptPolicyInPlace) {
@@ -168,4 +214,26 @@ TEST(TriangularSolve, DimensionMismatchThrows) {
                    spblas::view::triangle(a.csr(), spblas::view::uplo::upper),
                    b, x_bad),
                std::invalid_argument);
+}
+
+TEST(TriangularSolve, CscMatrixOptPolicyInPlace) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::square_dims[1];
+  triangular_test_matrix<T, I> a(n, nnz);
+  spblas::matrix_opt a_opt(a.csc());
+  auto b = util::make_values<T>(n);
+
+  std::vector<T> x = b;
+  spblas::operation_state state;
+  auto t = spblas::view::triangle(a_opt, spblas::view::uplo::upper);
+  spblas::triangular_solve(util::test_policy{}, state, t, T(2), x, x);
+
+  std::vector<T> two_b(n);
+  for (std::size_t i = 0; i < n; i++) {
+    two_b[i] = 2 * b[i];
+  }
+  expect_close(two_b, a.apply(x, spblas::view::uplo::upper,
+                              spblas::view::diag::explicit_diagonal));
 }

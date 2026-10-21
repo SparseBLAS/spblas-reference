@@ -11,6 +11,8 @@
 #include <spblas/algorithms/add.hpp>
 #include <spblas/algorithms/add_impl.hpp>
 
+#include <spblas/algorithms/norm_impl.hpp>
+
 #include <spblas/algorithms/scaled.hpp>
 #include <spblas/algorithms/scaled_impl.hpp>
 

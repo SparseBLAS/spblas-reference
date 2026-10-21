@@ -160,3 +160,64 @@ TEST(Add, ThreeStageMatrixOptAndPolicy) {
     EXPECT_EQ_(a_dense[i] + b_dense[i], c_dense[i]);
   }
 }
+
+TEST(Add, CscCscCsc) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [a_values, a_colptr, a_rowind, a_shape, a_nnz] =
+        spblas::generate_csc<T, I>(m, n, nnz, 0);
+    auto [b_values, b_colptr, b_rowind, b_shape, b_nnz] =
+        spblas::generate_csc<T, I>(m, n, nnz, 1);
+
+    spblas::csc_wrapper<T, I> a(a_values, a_colptr, a_rowind, a_shape, a_nnz);
+    spblas::csc_wrapper<T, I> b(b_values, b_colptr, b_rowind, b_shape, b_nnz);
+    auto a_dense = util::to_dense(a);
+    auto b_dense = util::to_dense(b);
+
+    // 2-stage, with matrix_opt inputs.
+    {
+      spblas::matrix_opt a_opt(a);
+      spblas::csc_wrapper<T, I> c(m, n);
+      spblas::operation_state state;
+      spblas::add_inspect(state, a_opt, b, c);
+      spblas::add_compute(state, a_opt, b, c);
+
+      std::vector<T> c_values(state.get_result_nnz());
+      std::vector<I> c_rowind(state.get_result_nnz());
+      std::vector<I> c_colptr(n + 1);
+      c.update(c_values, c_colptr, c_rowind);
+      spblas::add_fill(state, a_opt, b, c);
+
+      EXPECT_EQ(c_colptr.back(), state.get_result_nnz());
+      EXPECT_EQ(util::count_positions(c), state.get_result_nnz());
+      auto c_dense = util::to_dense(c);
+      for (std::size_t i = 0; i < c_dense.size(); i++) {
+        EXPECT_EQ_(a_dense[i] + b_dense[i], c_dense[i]);
+      }
+    }
+
+    // 3-stage, with a policy.
+    {
+      spblas::csc_wrapper<T, I> c(m, n);
+      spblas::operation_state state;
+      spblas::add_compute_symbolic(util::test_policy{}, state, a, b, c);
+
+      std::vector<I> c_colptr(n + 1);
+      std::vector<I> c_rowind(state.get_result_nnz());
+      std::vector<T> c_values;
+      c.update(c_values, c_colptr, c_rowind);
+      spblas::add_fill_symbolic(util::test_policy{}, state, a, b, c);
+
+      c_values.assign(state.get_result_nnz(), T(-1));
+      c.update(c_values, c_colptr, c_rowind);
+      spblas::add_numeric(util::test_policy{}, state, a, b, c);
+
+      auto c_dense = util::to_dense(c);
+      for (std::size_t i = 0; i < c_dense.size(); i++) {
+        EXPECT_EQ_(a_dense[i] + b_dense[i], c_dense[i]);
+      }
+    }
+  }
+}

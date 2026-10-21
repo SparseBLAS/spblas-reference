@@ -1,5 +1,6 @@
 #pragma once
 
+#include <spblas/algorithms/detail/spadd.hpp>
 #include <spblas/algorithms/detail/sparse_output.hpp>
 #include <spblas/backend/backend.hpp>
 #include <spblas/backend/csr_builder.hpp>
@@ -45,70 +46,15 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
 void add(A&& a, B&& b, C&& c) {
-  if (__backend::shape(a) != __backend::shape(b) ||
-      __backend::shape(b) != __backend::shape(c)) {
-    throw std::invalid_argument("add: matrix dimensions are incompatible.");
-  }
-
-  using T = tensor_scalar_t<C>;
-  using I = tensor_index_t<C>;
-
-  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
-  __backend::csr_builder c_builder(c);
-
-  for (I i = 0; i < __backend::shape(c)[0]; i++) {
-    c_row.clear();
-
-    for (auto&& [j, v] : __backend::lookup_row(a, i)) {
-      c_row[j] += v;
-    }
-
-    for (auto&& [j, v] : __backend::lookup_row(b, i)) {
-      c_row[j] += v;
-    }
-
-    c_row.sort();
-
-    try {
-      c_builder.insert_row(i, c_row.get());
-    } catch (...) {
-      throw std::runtime_error("add: ran out of memory.  CSR output view "
-                               "has insufficient memory.");
-    }
-  }
-  c.update(c.values(), c.rowptr(), c.colind(), c.shape(),
-           c.rowptr()[c.shape()[0]]);
+  __detail::spadd_fill(a, b, c);
 }
 
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_lookupable<A> && __backend::row_lookupable<B> &&
            __backend::row_lookupable<C>)
 operation_info_t add_inspect(A&& a, B&& b, C&& c) {
-  if (__backend::shape(a) != __backend::shape(b) ||
-      __backend::shape(b) != __backend::shape(c)) {
-    throw std::invalid_argument("add: matrix dimensions are incompatible.");
-  }
-
-  using I = tensor_index_t<C>;
-
-  std::size_t nnz = 0;
-  __backend::spa_set<I> c_row(__backend::shape(c)[1]);
-
-  for (I i = 0; i < __backend::shape(c)[0]; i++) {
-    c_row.clear();
-
-    for (auto&& [j, _] : __backend::lookup_row(a, i)) {
-      c_row.insert(j);
-    }
-
-    for (auto&& [j, _] : __backend::lookup_row(b, i)) {
-      c_row.insert(j);
-    }
-
-    nnz += c_row.size();
-  }
-
-  return operation_info_t{__backend::shape(c), index_t(nnz)};
+  return operation_info_t{__backend::shape(c),
+                          index_t(__detail::spadd_nnz(a, b, c))};
 }
 
 template <matrix A, matrix B, matrix C>
@@ -130,9 +76,9 @@ void add_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
 //   add_numeric([policy,] state, A, B, C)           C's values, into the
 //                                                   existing pattern
 //
-//   A, B: row-lookupable (CSR, matrix_opt of CSR); C: CSR. The reference
-//   implementation runs the full kernel in each fill stage (into
-//   temporaries from the state's allocator).
+//   A, B, C all CSR or all CSC (matrix_opt inputs work too); kernels in
+//   detail/spadd.hpp. The reference implementation runs the full kernel in
+//   each 3-stage fill stage (into temporaries from the state's allocator).
 //
 // Note the stage names differ from the legacy API above, where add_inspect
 // counts and add_compute fills.
@@ -143,45 +89,41 @@ template <matrix A, matrix B, matrix C>
 void add_inspect(operation_state& state, A&& a, B&& b, C&& c) {}
 
 template <matrix A, matrix B, matrix C>
-  requires(__backend::row_lookupable<A> && __backend::row_lookupable<B> &&
-           __detail::is_csr_wrapper_v<C>)
+  requires(__detail::spadd_by_rows<A, B, C> ||
+           __detail::spadd_by_columns<A, B, C>)
 void add_compute(operation_state& state, A&& a, B&& b, C&& c) {
-  auto info = add_inspect(a, b, c);
-  state.update_impl_(info.result_nnz());
+  state.update_impl_(__detail::spadd_nnz(a, b, c));
 }
 
 template <matrix A, matrix B, matrix C>
-  requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
-           __detail::is_csr_wrapper_v<C>)
+  requires(__detail::spadd_by_rows<A, B, C> ||
+           __detail::spadd_by_columns<A, B, C>)
 void add_fill(operation_state& state, A&& a, B&& b, C&& c) {
-  add(a, b, c);
+  __detail::spadd_fill(a, b, c);
 }
 
-// Optional leading execution policy. The reference implementation runs
-// sequentially and ignores it.
 template <matrix A, matrix B, matrix C>
-  requires(__backend::row_lookupable<A> && __backend::row_lookupable<B> &&
-           __detail::is_csr_wrapper_v<C>)
+  requires(__detail::spadd_by_rows<A, B, C> ||
+           __detail::spadd_by_columns<A, B, C>)
 void add_compute_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
-  add_compute(state, std::forward<A>(a), std::forward<B>(b),
-              std::forward<C>(c));
+  state.update_impl_(__detail::spadd_nnz(a, b, c));
 }
 
 template <matrix A, matrix B, matrix C>
-  requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
-           __detail::is_csr_wrapper_v<C>)
+  requires(__detail::spadd_by_rows<A, B, C> ||
+           __detail::spadd_by_columns<A, B, C>)
 void add_fill_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
   __detail::fill_pattern_only(state, c, "add_fill_symbolic",
-                              [&](auto&& t) { add(a, b, t); });
+                              [&](auto&& t) { __detail::spadd_fill(a, b, t); });
 }
 
 template <matrix A, matrix B, matrix C>
-  requires(__backend::row_lookupable<A> && __backend::row_lookupable<B> &&
-           __backend::row_iterable<A> && __backend::row_iterable<B> &&
-           __detail::is_csr_wrapper_v<C>)
+  requires(__detail::spadd_by_rows<A, B, C> ||
+           __detail::spadd_by_columns<A, B, C>)
 void add_numeric(operation_state& state, A&& a, B&& b, C&& c) {
-  __detail::fill_values_only(state, c, add_inspect(a, b, c).result_nnz(),
-                             "add_numeric", [&](auto&& t) { add(a, b, t); });
+  __detail::fill_values_only(state, c, __detail::spadd_nnz(a, b, c),
+                             "add_numeric",
+                             [&](auto&& t) { __detail::spadd_fill(a, b, t); });
 }
 
 template <__detail::execution_policy P, typename... Args>

@@ -66,7 +66,7 @@ public:
   }
 
 private:
-  csr_builder<T, I> builder_;
+  csr_builder<T, I, O> builder_;
 };
 
 } // namespace __backend
