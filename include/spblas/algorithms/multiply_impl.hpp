@@ -45,4 +45,21 @@ void multiply_fill(P&& policy, operation_state& state, Args&&... args) {
   multiply_fill(state, std::forward<Args>(args)...);
 }
 
+template <__detail::execution_policy P, typename... Args>
+void multiply_compute_symbolic(P&& policy, operation_state& state,
+                               Args&&... args) {
+  multiply_compute_symbolic(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+void multiply_fill_symbolic(P&& policy, operation_state& state,
+                            Args&&... args) {
+  multiply_fill_symbolic(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+void multiply_numeric(P&& policy, operation_state& state, Args&&... args) {
+  multiply_numeric(state, std::forward<Args>(args)...);
+}
+
 } // namespace spblas
