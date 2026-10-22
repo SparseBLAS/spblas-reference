@@ -201,8 +201,8 @@ TEST(TriangularSolve, ImplicitZeroRejected) {
   using Unit = decltype(spblas::view::triangle(
       std::declval<A>(), spblas::view::uplo::lower,
       spblas::view::diag::implicit_unit));
-  static_assert(!spblas::__detail::solvable_structure<Zero>);
-  static_assert(spblas::__detail::solvable_structure<Unit>);
+  static_assert(!spblas::__detail::triangular_structure<Zero>);
+  static_assert(spblas::__detail::triangular_structure<Unit>);
 }
 
 TEST(TriangularSolve, DimensionMismatchThrows) {

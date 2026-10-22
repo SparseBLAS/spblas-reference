@@ -384,6 +384,35 @@ using view_analysis_t = decltype(analyze_view(std::declval<M>()));
 template <typename M>
 concept structured_view = analyzable_view<M> && describe_view<M>().structured;
 
+// A view stack representing a triangular or diagonal matrix that is
+// nonsingular by construction (any backend's triangular solve): a general
+// structure with a lower / upper / diagonal region and no implied zero
+// diagonal.
+template <typename M>
+constexpr bool is_triangular_structure_() {
+  if constexpr (structured_view<M>) {
+    constexpr view_desc d = describe_view<M>();
+    return d.structure == view_structure::general &&
+           d.region != view_region::full && d.diag != diag_kind::implicit_zero;
+  } else {
+    return false;
+  }
+}
+
+template <typename M>
+concept triangular_structure = is_triangular_structure_<M>();
+
+// A view stack with an implied zero diagonal (rejected by triangular
+// solves: singular).
+template <typename M>
+constexpr bool is_implicit_zero_structure_() {
+  if constexpr (structured_view<M>) {
+    return describe_view<M>().diag == diag_kind::implicit_zero;
+  } else {
+    return false;
+  }
+}
+
 // Whether stored entry (i, j) of base is read by the analysis: inside
 // `region`, and for a diagonal entry, read from storage.
 template <view_desc D, typename Index>
