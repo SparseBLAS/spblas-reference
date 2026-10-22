@@ -459,6 +459,18 @@ TEST(SpGEMM, ThreeStageCscCsrCsc) {
   spgemm_three_stage_test<true, false, true>();
 }
 
+TEST(SpGEMM, ThreeStageCsrCsrCsc) {
+  spgemm_three_stage_test<false, false, true>();
+}
+
+TEST(SpGEMM, ThreeStageCsrCscCsc) {
+  spgemm_three_stage_test<false, true, true>();
+}
+
+TEST(SpGEMM, ThreeStageCscCsrCsr) {
+  spgemm_three_stage_test<true, false, false>();
+}
+
 template <typename Ops>
 void spgemm_three_stage_all_combinations_test() {
   spgemm_three_stage_test<false, false, false, Ops>();
