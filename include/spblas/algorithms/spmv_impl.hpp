@@ -21,7 +21,7 @@
 //
 //   Not yet supported: view::triangle / symmetric / hermitian of A.
 //
-// The policy-first overloads are in multiply_impl.hpp.
+// The policy-first overloads are in policy_forwarding.hpp.
 //
 
 namespace spblas {

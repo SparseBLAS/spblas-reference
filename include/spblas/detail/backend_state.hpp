@@ -7,7 +7,8 @@
 //   backend_operation_state_t   data shared between the stages of one
 //                               operation, held by operation_state
 //   backend_matrix_opt_state_t  optimization data for one matrix, held by
-//                               matrix_opt
+//                               matrix_opt; invalidate() is called when the
+//                               library changes the matrix's data
 //   default_memory_resource()   used when the user provides no allocator
 //
 // Backends that have not provided a hook get the reference default.
@@ -21,7 +22,10 @@ namespace spblas {
 namespace __detail {
 
 struct empty_operation_state_t {};
-struct empty_matrix_opt_state_t {};
+
+struct empty_matrix_opt_state_t {
+  void invalidate() noexcept {}
+};
 
 #if defined(SPBLAS_ENABLE_ONEMKL_SYCL)
 using backend_operation_state_t = empty_operation_state_t;

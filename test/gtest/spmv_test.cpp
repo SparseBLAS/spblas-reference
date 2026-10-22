@@ -273,3 +273,55 @@ TEST(Multiply, SpMV_TransposedMatrixOpt) {
     }
   }
 }
+
+TEST(Multiply, SpMV_Int64Index) {
+  // std::int64_t is `long`, not MKL_INT64 (`long long`): exercises index
+  // dispatch by size in vendor backends.
+  using T = double;
+  using I = std::int64_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    spblas::matrix_opt a_opt(a);
+
+    auto x = util::make_values<T>(n);
+    std::vector<T> y(m), y_opt(m);
+    spblas::operation_state state;
+    spblas::multiply(state, T(2), a, x, y);
+    spblas::multiply_inspect(state, T(2), a_opt, x, y_opt);
+    spblas::multiply(state, T(2), a_opt, x, y_opt);
+
+    auto y_ref = spmv_ref(values, rowptr, colind, m, x, T(2), T(0), y);
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_EQ_(y_ref[i], y[i]);
+      EXPECT_EQ_(y_ref[i], y_opt[i]);
+    }
+  }
+}
+
+TEST(Multiply, SpMV_ScaleInvalidatesMatrixOpt) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::matrix_opt a_opt(a);
+
+  auto x = util::make_values<T>(n);
+  std::vector<T> y(m), y_scaled(m);
+  spblas::operation_state state;
+  spblas::multiply_inspect(state, T(1), a_opt, x, y);
+  spblas::multiply(state, T(1), a_opt, x, y);
+
+  // Changing the values through the library keeps the matrix_opt
+  // consistent (optimized data derived from the old values is dropped).
+  spblas::scale(state, T(3), a_opt);
+  spblas::multiply(state, T(1), a_opt, x, y_scaled);
+  for (std::size_t i = 0; i < m; i++) {
+    EXPECT_EQ_(T(3) * y[i], y_scaled[i]);
+  }
+}

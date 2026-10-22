@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <complex>
+#include <cstdint>
 #include <limits>
 
 #include "util.hpp"
@@ -473,5 +474,34 @@ TEST(SpGEMM, TransposedMatrixOpt) {
                                          b_m.csr(), m, m, std::false_type{});
     EXPECT_EQ(c.nnz, ref.positions);
     ref.expect_matches(c_dense);
+  }
+}
+
+TEST(SpGEMM, Int64Index) {
+  using T = double;
+  using I = std::int64_t;
+
+  for (auto&& [m, k, nnz] : util::dims) {
+    csr_matrix<T, I> a(m, k, nnz, 0);
+    csr_matrix<T, I> b(k, m, nnz, 1);
+    auto ref = spgemm_ref(a, b, T(2));
+
+    // 2-stage
+    auto [c, c_dense] =
+        run_spgemm<T, I>(T(2), a.csr(), b.csr(), m, m, std::false_type{});
+    EXPECT_EQ(c.nnz, ref.positions);
+    ref.expect_matches(c_dense);
+
+    // 3-stage
+    spblas::operation_state state;
+    spblas::csr_wrapper<T, I> c3(m, m);
+    spblas::multiply_compute_symbolic(state, T(2), a.csr(), b.csr(), c3);
+    std::vector<I> rowptr(m + 1), colind(state.get_result_nnz());
+    std::vector<T> values(state.get_result_nnz());
+    c3.update(values, rowptr, colind);
+    spblas::multiply_fill_symbolic(state, T(2), a.csr(), b.csr(), c3);
+    spblas::multiply_numeric(state, T(2), a.csr(), b.csr(), c3);
+    EXPECT_EQ(dense_pattern(rowptr, colind, m, m, false), ref.pattern);
+    ref.expect_matches(util::to_dense(c3));
   }
 }

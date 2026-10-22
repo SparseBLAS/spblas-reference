@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
 
 #include "util.hpp"
 #include <spblas/spblas.hpp>
@@ -265,4 +266,29 @@ TEST(TriangularSolve, TransposedMatrixOpt) {
     }
   }
   expect_close(b, r);
+}
+
+TEST(TriangularSolve, Int64Index) {
+  using T = double;
+  using I = std::int64_t;
+
+  auto [m, n, nnz] = util::square_dims[1];
+  triangular_test_matrix<T, I> a(n, nnz);
+  auto b = util::make_values<T>(n);
+
+  for (int csc = 0; csc < 2; csc++) {
+    std::vector<T> x(n);
+    spblas::operation_state state;
+    if (csc) {
+      spblas::triangular_solve(
+          state, spblas::view::triangle(a.csc(), spblas::view::uplo::lower), b,
+          x);
+    } else {
+      spblas::triangular_solve(
+          state, spblas::view::triangle(a.csr(), spblas::view::uplo::lower), b,
+          x);
+    }
+    expect_close(b, a.apply(x, spblas::view::uplo::lower,
+                            spblas::view::diag::explicit_diagonal));
+  }
 }

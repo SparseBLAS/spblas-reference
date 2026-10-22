@@ -43,7 +43,7 @@
 //
 //   Not supported: the [beta, D] term.
 //
-// The policy-first overloads are in multiply_impl.hpp.
+// The policy-first overloads are in policy_forwarding.hpp.
 //
 
 namespace spblas {

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <complex>
+#include <cstdint>
 
 #include "util.hpp"
 #include <spblas/spblas.hpp>
@@ -248,6 +249,34 @@ TEST(Multiply, SpMM_TransposedDense) {
         }
       }
     }
+    for (std::size_t i = 0; i < y_ref.size(); i++) {
+      EXPECT_EQ_(y_ref[i], y_values[i]);
+    }
+  }
+}
+
+TEST(Multiply, SpMM_Int64IndexMatrixOptInspect) {
+  using T = float;
+  using I = std::int64_t;
+
+  for (auto&& [m, k, nnz] : util::dims) {
+    std::size_t n = 6;
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, k, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    spblas::matrix_opt a_opt(a);
+
+    auto x_values = util::make_values<T>(k * n);
+    std::vector<T> y_values(m * n);
+    spblas::mdspan_row_major<T, I> x(x_values.data(), k, n);
+    spblas::mdspan_row_major<T, I> y(y_values.data(), m, n);
+
+    spblas::operation_state state;
+    spblas::multiply_inspect(state, T(1.5), a_opt, x, y);
+    spblas::multiply(state, T(1.5), a_opt, x, y);
+
+    auto y_ref = spmm_ref(values, rowptr, colind, m, n, x_values, T(1.5), T(0),
+                          y_values);
     for (std::size_t i = 0; i < y_ref.size(); i++) {
       EXPECT_EQ_(y_ref[i], y_values[i]);
     }

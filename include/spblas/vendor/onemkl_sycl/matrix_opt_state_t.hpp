@@ -16,6 +16,11 @@ struct matrix_opt_state_t {
   matrix_opt_state_t& operator=(const matrix_opt_state_t&) = delete;
 
   ~matrix_opt_state_t() {
+    invalidate();
+  }
+
+  // Called when the library changes the matrix's data.
+  void invalidate() {
     if (matrix_handle) {
       // q here needs to be on same context as queue in operations,
       // idealy from execution policy

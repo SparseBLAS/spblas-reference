@@ -259,17 +259,7 @@ void triangular_solve_inspect(operation_state& state, T&& t, B&& b, X&& x) {
   log_trace("");
 }
 
-// Optional leading execution policy. The reference implementation runs
-// sequentially and ignores it.
-template <__detail::execution_policy P, typename... Args>
-void triangular_solve(P&& policy, operation_state& state, Args&&... args) {
-  triangular_solve(state, std::forward<Args>(args)...);
-}
-
-template <__detail::execution_policy P, typename... Args>
-void triangular_solve_inspect(P&& policy, operation_state& state,
-                              Args&&... args) {
-  triangular_solve_inspect(state, std::forward<Args>(args)...);
-}
-
 } // namespace spblas
+
+// The policy-first overloads (reference: the policy is ignored).
+#include <spblas/algorithms/policy_forwarding.hpp>

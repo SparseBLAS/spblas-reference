@@ -43,6 +43,8 @@ template <__detail::scalar Alpha, matrix M>
 void scale(operation_state& state, Alpha alpha, M&& m) {
   if constexpr (__detail::is_matrix_opt_v<M>) {
     scale_impl_(alpha, m.base());
+    // The values changed: drop optimization data derived from them.
+    m.state_->invalidate();
   } else {
     scale_impl_(alpha, std::forward<M>(m));
   }
