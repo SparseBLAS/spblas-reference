@@ -5,9 +5,19 @@
 #include <spblas/backend/concepts.hpp>
 #include <spblas/backend/cpos.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/cached_size.hpp>
 #include <spblas/views/view_base.hpp>
 
 namespace spblas {
+
+namespace __detail {
+
+// Number of stored entries inside a triangle / diagonal view, whatever views
+// it is composed of; defined in detail/view_analysis.hpp.
+template <typename V>
+tensor_offset_t<V> structured_view_size(const V& v);
+
+} // namespace __detail
 
 namespace view {
 
@@ -55,34 +65,9 @@ public:
   }
 
   // Number of stored entries of `matrix()` inside the triangle; implied
-  // diagonal entries are not counted. O(nnz).
+  // diagonal entries are not counted. O(nnz) on the first call, then cached.
   offset_type size() const {
-    offset_type count = 0;
-    auto in_triangle = [&](auto i, auto j) {
-      if (i == j) {
-        return diag_ == view::diag::explicit_diagonal;
-      }
-      return uplo_ == view::uplo::lower ? j < i : j > i;
-    };
-
-    if constexpr (__backend::row_iterable<M>) {
-      for (auto&& [i, row] : __backend::rows(matrix_)) {
-        for (auto&& [j, _] : row) {
-          count += in_triangle(i, j) ? 1 : 0;
-        }
-      }
-    } else if constexpr (__backend::column_iterable<M>) {
-      for (auto&& [j, column] : __backend::columns(matrix_)) {
-        for (auto&& [i, _] : column) {
-          count += in_triangle(i, j) ? 1 : 0;
-        }
-      }
-    } else {
-      static_assert(__backend::row_iterable<M> || __backend::column_iterable<M>,
-                    "triangle_view::size() needs a row- or column-iterable "
-                    "matrix");
-    }
-    return count;
+    return size_.get([&] { return __detail::structured_view_size(*this); });
   }
 
 private:
@@ -97,6 +82,7 @@ private:
   M matrix_;
   view::uplo uplo_;
   view::diag diag_;
+  __detail::cached_size<offset_type> size_;
 };
 
 namespace __detail {
