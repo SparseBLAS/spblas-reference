@@ -28,8 +28,8 @@ Views such as `view::transpose(a)`, `view::conjugate(a)` and
 `view::triangle(a, view::uplo::lower)` can be passed wherever a matrix is expected, and a
 `matrix_opt(a)` lets the library keep optimization data for a matrix across calls.
 
-The reference backend implements this API, which follows the SparseBLAS
-position paper. The other backends still provide the earlier API
+The reference and oneMKL Inspector-Executor backends implement this API, which follows
+the SparseBLAS position paper. The other backends still provide the earlier API
 (`csr_view`, `scaled()`, `operation_info_t`) and are being migrated.
 
 ## Multi-Phase Operations
@@ -119,8 +119,8 @@ brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build
 
 ### Compiling with a Vendor Backend
 A vendor backend can be enabled by passing in an `-DENABLE_{BACKEND}=ON` switch
-to `cmake`.  Currently, oneMKL (SYCL API), ArmPL, AOCL-Sparse, rocSPARSE and cuSPARSE are
-the supported vendor backends.
+to `cmake`.  Currently, oneMKL (SYCL and Inspector-Executor C APIs), ArmPL, AOCL-Sparse,
+rocSPARSE and cuSPARSE are the supported vendor backends.
 
 ### Compiling with oneMKL
 The most straightforward way to build with oneMKL is by installing the [oneAPI
@@ -132,6 +132,21 @@ You can then use the built-in `icpx` compiler to build with the oneMKL backend.
 brock@slothius:~/src/spblas-reference$ source /opt/intel/oneapi/setvars.sh
 # Compile with icpx and oneMKL backend.
 brock@slothius:~/src/spblas-reference$ CXX=icpx cmake -B build -DENABLE_ONEMKL_SYCL=ON
+```
+
+### Compiling with oneMKL Inspector-Executor Sparse BLAS
+The `ENABLE_ONEMKL_IESPBLAS` backend uses oneMKL's Inspector-Executor Sparse BLAS C API on the
+CPU and works with `icpx` or GCC. It uses oneMKL's LP64 interface (`MKL_INT` is a 32-bit `int`);
+matrices with 64-bit indices are supported through oneMKL's `_64` routines, which need oneMKL
+2024.3 or newer. The oneMKL
+threading layer is chosen to match the compiler (`intel_thread` for `icpx`, `gnu_thread` for
+GCC) unless `MKL_THREADING` is set.
+
+```bash
+# Import oneAPI toolkit into Bash environment.
+brock@slothius:~/src/spblas-reference$ source /opt/intel/oneapi/setvars.sh
+# Compile with the oneMKL Inspector-Executor backend.
+brock@slothius:~/src/spblas-reference$ CXX=icpx cmake -B build -DENABLE_ONEMKL_IESPBLAS=ON
 ```
 
 ### Compiling with ArmPL

@@ -7,8 +7,8 @@
 #include <spblas/detail/operation_state.hpp>
 
 // Optional leading execution policy for the multiply and triangular-solve
-// families, for backends that do not interpret policies (e.g. the reference
-// backend): the policy is dropped and the call forwarded.
+// families, for backends that do not interpret policies (the reference and
+// onemkl_iespblas backends): the policy is dropped and the call forwarded.
 // A backend that does interpret policies provides its own, more specific
 // overloads instead of including this header.
 

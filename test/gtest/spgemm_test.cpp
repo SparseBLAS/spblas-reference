@@ -648,6 +648,32 @@ TEST(SpGEMM, ThreeStageConjugatedValuesChange) {
   }
 }
 
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+// oneMKL-specific: multiply_numeric directly after the symbolic compute
+// stage (FINALIZE_MULT after NNZ_COUNT) writes pattern and values.
+TEST(SpGEMM, OneMKLNumericWithoutFillSymbolic) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [m, k, nnz] = util::dims[1];
+  csr_matrix<T, I> a(m, k, nnz, 0);
+  csr_matrix<T, I> b(k, m, nnz, 1);
+  auto ref = spgemm_ref(a, b, T(2));
+
+  spblas::operation_state state;
+  spblas::csr_wrapper<T, I> c(m, m);
+  spblas::multiply_compute_symbolic(state, T(2), a.csr(), b.csr(), c);
+  std::vector<I> rowptr(m + 1), colind(state.get_result_nnz());
+  std::vector<T> values(state.get_result_nnz());
+  c.update(values, rowptr, colind);
+  spblas::multiply_numeric(state, T(2), a.csr(), b.csr(), c);
+  util::sort_output(c);
+
+  EXPECT_EQ(dense_pattern(rowptr, colind, m, m, false), ref.pattern);
+  ref.expect_matches(util::to_dense(c));
+}
+#endif
+
 // Values of matrix_opt operands changed between numeric stages, both through
 // update_matrix and through scale(): the stages must not depend on optimization
 // data the matrix_opt drops.
