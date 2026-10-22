@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
 #include <type_traits>
 #include <utility>
 
@@ -171,8 +173,9 @@ auto analyze_view(M&& m) {
 template <typename M>
 using view_analysis_t = decltype(analyze_view(std::declval<M>()));
 
-// Whether entry (i, j) of base lies in `region` (implied diagonal entries
-// are not stored entries).
+// Whether stored entry (i, j) of base is an entry of the view: inside
+// `region`, and for a diagonal entry, read from storage (an implied diagonal
+// replaces the stored one).
 template <typename Index>
 constexpr bool in_region(view_region region, spblas::view::diag diag, Index i,
                          Index j) noexcept {
@@ -213,6 +216,13 @@ tensor_offset_t<V> structured_view_size(const V& v) {
     static_assert(__backend::row_iterable<B> || __backend::column_iterable<B>,
                   "the size of a triangle / diagonal view needs a row- or "
                   "column-iterable matrix");
+  }
+  // An implied unit diagonal is part of the represented matrix, so it
+  // counts, one entry per diagonal position (structured regions always
+  // contain the diagonal); an implied zero diagonal adds nothing.
+  if (a.diag == spblas::view::diag::implicit_unit) {
+    const auto shape = __backend::shape(a.base);
+    count += tensor_offset_t<V>(std::min<std::size_t>(shape[0], shape[1]));
   }
   return count;
 }

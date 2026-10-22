@@ -40,8 +40,10 @@ public:
     return __backend::shape(matrix_);
   }
 
-  // Number of stored diagonal entries of `matrix()`; implied diagonal
-  // entries are not counted. O(nnz) on the first call, then cached.
+  // Number of entries of the represented diagonal: the stored diagonal
+  // entries of `matrix()` (explicit_diagonal), one per diagonal position
+  // (implicit_unit), or none (implicit_zero). O(nnz) on the first call, then
+  // cached.
   offset_type size() const {
     return size_.get([&] { return __detail::structured_view_size(*this); });
   }

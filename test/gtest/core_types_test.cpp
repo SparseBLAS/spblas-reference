@@ -195,10 +195,12 @@ TEST(View, Triangle) {
   auto upper = spblas::view::triangle(a, spblas::view::uplo::upper);
   EXPECT_EQ(upper.size(), 5);
 
-  auto strict_lower = spblas::view::triangle(a, spblas::view::uplo::lower,
-                                             spblas::view::diag::implicit_unit);
-  EXPECT_EQ(strict_lower.diag(), spblas::view::diag::implicit_unit);
-  EXPECT_EQ(strict_lower.size(), 2);
+  // An implied unit diagonal counts (2 strictly lower entries + 3 diagonal
+  // positions); an implied zero diagonal does not (below).
+  auto unit_lower = spblas::view::triangle(a, spblas::view::uplo::lower,
+                                           spblas::view::diag::implicit_unit);
+  EXPECT_EQ(unit_lower.diag(), spblas::view::diag::implicit_unit);
+  EXPECT_EQ(unit_lower.size(), 5);
 
   // Through a matrix_opt and through a CSC (column-iterable) matrix.
   spblas::matrix_opt a_opt(a);
