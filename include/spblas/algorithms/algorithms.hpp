@@ -13,6 +13,8 @@
 
 #include <spblas/algorithms/norm_impl.hpp>
 
+#include <spblas/algorithms/sort_impl.hpp>
+
 #include <spblas/algorithms/scaled.hpp>
 #include <spblas/algorithms/scaled_impl.hpp>
 

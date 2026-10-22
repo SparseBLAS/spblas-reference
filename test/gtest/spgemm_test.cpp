@@ -129,6 +129,7 @@ auto run_spgemm(S alpha, A&& a, B&& b, std::size_t m, std::size_t n,
     c.update(r.values, r.ptr, r.ind);
 
     spblas::multiply_fill(state, alpha, a, b, c);
+    util::sort_output(c);
     return util::to_dense(c);
   };
 
@@ -256,6 +257,7 @@ TEST(SpGEMM, MatrixOptPolicyAndReuse) {
       c.update(c_values, c_rowptr, c_colind);
 
       spblas::multiply_fill(util::test_policy{}, state, T(3), a, b, c);
+      util::sort_output(c);
 
       auto c_dense = util::to_dense(c);
       ref.expect_matches(c_dense);
@@ -354,6 +356,7 @@ void spgemm_three_stage_test() {
       values.assign(state.get_result_nnz(), T(-1));
       c.update(values, pointers, indices);
       spblas::multiply_numeric(state, alpha, a, b, c);
+      util::sort_output(c);
       ref.expect_matches(util::to_dense(c));
 
       // New values for A, same pattern: only the numeric stage reruns.
@@ -364,6 +367,7 @@ void spgemm_three_stage_test() {
         v *= T(3);
       }
       spblas::multiply_numeric(state, alpha, a, b, c);
+      util::sort_output(c);
       spgemm_ref(a_csr, b_csr, alpha).expect_matches(util::to_dense(c));
     }
   }
@@ -410,6 +414,7 @@ TEST(SpGEMM, ThreeStageMatrixOptAndPolicy) {
   EXPECT_TRUE(
       std::all_of(values.begin(), values.end(), [](T v) { return v == T(0); }));
   spblas::multiply_numeric(util::test_policy{}, state, T(0.5), a, b, c);
+  util::sort_output(c);
 
   EXPECT_EQ(dense_pattern(rowptr, colind, m, m, false), ref.pattern);
   ref.expect_matches(util::to_dense(c));
@@ -501,6 +506,7 @@ TEST(SpGEMM, Int64Index) {
     c3.update(values, rowptr, colind);
     spblas::multiply_fill_symbolic(state, T(2), a.csr(), b.csr(), c3);
     spblas::multiply_numeric(state, T(2), a.csr(), b.csr(), c3);
+    util::sort_output(c3);
     EXPECT_EQ(dense_pattern(rowptr, colind, m, m, false), ref.pattern);
     ref.expect_matches(util::to_dense(c3));
   }
@@ -532,6 +538,7 @@ TEST(SpGEMM, ThreeStageConjugatedValuesChange) {
         }
       }
       spblas::multiply_numeric(state, T(1), a_conj, b.csr(), c);
+      util::sort_output(c);
 
       csr_matrix<T, I> a_c = a;
       for (auto&& v : a_c.values) {
@@ -563,6 +570,7 @@ TEST(SpGEMM, ThreeStageMatrixOptValuesChange) {
     c.update(values, rowptr, colind);
     spblas::multiply_fill_symbolic(state, T(1), a, b, c);
     spblas::multiply_numeric(state, T(1), a, b, c);
+    util::sort_output(c);
     spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
 
     // In-place change + update_matrix.
@@ -571,12 +579,14 @@ TEST(SpGEMM, ThreeStageMatrixOptValuesChange) {
     }
     spblas::update_matrix(a);
     spblas::multiply_numeric(state, T(1), a, b, c);
+    util::sort_output(c);
     spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
 
     // Change through the library.
     spblas::operation_state scale_state;
     spblas::scale(scale_state, T(0.5), b);
     spblas::multiply_numeric(state, T(1), a, b, c);
+    util::sort_output(c);
     spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
   }
 }

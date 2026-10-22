@@ -1,6 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <gtest/gtest.h>
+#include <numeric>
+#include <random>
 #include <tuple>
 #include <vector>
 
@@ -68,6 +71,53 @@ std::size_t count_positions(M&& m) {
     }
   });
   return count;
+}
+
+// Whether the indices within every compressed slice (CSR row, CSC column)
+// are strictly increasing, i.e. sorted without duplicates.
+template <typename P, typename N>
+bool sorted_slices(const P& pointers, const N& indices) {
+  for (std::size_t o = 0; o + 1 < pointers.size(); o++) {
+    for (auto p = pointers[o] + 1; p < pointers[o + 1]; p++) {
+      if (!(indices[p - 1] < indices[p])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// Sorts a sparse output (whose order within rows / columns is
+// backend-defined) with sort_matrix, and checks it is sorted. Call before
+// validating the output.
+template <typename C>
+void sort_output(C&& c) {
+  spblas::operation_state state;
+  spblas::sort_matrix(state, c);
+  EXPECT_TRUE(sorted_slices(spblas::__detail::outer_pointers(c),
+                            spblas::__detail::inner_indices(c)));
+}
+
+// Shuffles the indices (and values) within every compressed slice.
+template <typename P, typename N, typename V>
+void shuffle_slices(const P& pointers, N& indices, V& values,
+                    unsigned seed = 7) {
+  std::mt19937 g(seed);
+  std::vector<std::size_t> order;
+  for (std::size_t o = 0; o + 1 < pointers.size(); o++) {
+    std::size_t first = pointers[o], last = pointers[o + 1];
+    order.resize(last - first);
+    std::iota(order.begin(), order.end(), first);
+    std::shuffle(order.begin(), order.end(), g);
+    std::vector<typename N::value_type> i(order.size());
+    std::vector<typename V::value_type> v(order.size());
+    for (std::size_t q = 0; q < order.size(); q++) {
+      i[q] = indices[order[q]];
+      v[q] = values[order[q]];
+    }
+    std::copy(i.begin(), i.end(), indices.begin() + first);
+    std::copy(v.begin(), v.end(), values.begin() + first);
+  }
 }
 
 // Values with some variety, so wrong index mappings change the result.

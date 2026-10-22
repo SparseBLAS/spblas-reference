@@ -27,6 +27,7 @@ TEST(Add, CsrCsrCsr) {
     c.update(c_values, c_rowptr, c_colind);
 
     spblas::add_fill(state, a, b, c);
+    util::sort_output(c);
 
     // Pattern is the union of both patterns; values are A + B.
     auto a_dense = util::to_dense(a);
@@ -73,6 +74,7 @@ TEST(Add, MatrixOptAndPolicy) {
   c.update(c_values, c_rowptr, c_colind);
 
   spblas::add_fill(util::test_policy{}, state, a, b, c);
+  util::sort_output(c);
 
   auto a_dense = util::to_dense(a.base());
   auto b_dense = util::to_dense(b.base());
@@ -119,6 +121,7 @@ TEST(Add, ThreeStage) {
         }
       }
       spblas::add_numeric(state, a, b, c);
+      util::sort_output(c);
 
       auto a_dense = util::to_dense(a);
       auto b_dense = util::to_dense(b);
@@ -152,6 +155,7 @@ TEST(Add, ThreeStageMatrixOptAndPolicy) {
   c.update(c_values, c_rowptr, c_colind);
   spblas::add_fill_symbolic(util::test_policy{}, state, a, b, c);
   spblas::add_numeric(util::test_policy{}, state, a, b, c);
+  util::sort_output(c);
 
   auto a_dense = util::to_dense(a.base());
   auto b_dense = util::to_dense(b.base());
@@ -189,6 +193,7 @@ TEST(Add, CscCscCsc) {
       std::vector<I> c_colptr(n + 1);
       c.update(c_values, c_colptr, c_rowind);
       spblas::add_fill(state, a_opt, b, c);
+      util::sort_output(c);
 
       EXPECT_EQ(c_colptr.back(), state.get_result_nnz());
       EXPECT_EQ(util::count_positions(c), state.get_result_nnz());
@@ -213,6 +218,7 @@ TEST(Add, CscCscCsc) {
       c_values.assign(state.get_result_nnz(), T(-1));
       c.update(c_values, c_colptr, c_rowind);
       spblas::add_numeric(util::test_policy{}, state, a, b, c);
+      util::sort_output(c);
 
       auto c_dense = util::to_dense(c);
       for (std::size_t i = 0; i < c_dense.size(); i++) {
@@ -265,6 +271,7 @@ void transposed_operand_add_test() {
     std::vector<T> c_values(state.get_result_nnz());
     c.update(c_values, c_rowptr, c_colind);
     spblas::add_fill(state, a_t, b, c);
+    util::sort_output(c);
     EXPECT_EQ(util::to_dense(c), expected());
 
     // 3-stage, numeric again after A's values change.
@@ -278,6 +285,7 @@ void transposed_operand_add_test() {
       v *= T(2);
     }
     spblas::add_numeric(state, a_t, b, c3);
+    util::sort_output(c3);
     EXPECT_EQ(util::to_dense(c3), expected());
   } else {
     GTEST_SKIP() << "this backend has no add for mixed orientations";
