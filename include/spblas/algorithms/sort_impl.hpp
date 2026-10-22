@@ -30,9 +30,9 @@
 //   The stored entries are those the pointer array covers; the index and
 //   value arrays may be longer.
 //
-//   The order within rows of SpGEMM / SpADD outputs is currently
-//   backend-defined (whether they should guarantee sorted output is an open
-//   question); sort_matrix gives sorted output where it is needed.
+//   No operation guarantees sorted output: the order within rows (CSR) or
+//   columns (CSC) of SpGEMM / SpADD outputs is backend-defined, and
+//   sort_matrix gives sorted output where it is needed.
 //
 
 namespace spblas {
