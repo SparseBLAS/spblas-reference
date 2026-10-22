@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include <spblas/algorithms/detail/assign_scaled.hpp>
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
@@ -26,22 +27,6 @@
 //
 
 namespace spblas {
-
-namespace __detail {
-
-// y = beta * z, or y = 0 if beta == 0 (z is not read then).
-template <typename Beta, vector Z, vector Y>
-void assign_scaled_(Beta beta, Z&& z, Y&& y) {
-  using V = tensor_scalar_t<Y>;
-  const V beta_v = static_cast<V>(beta);
-  const bool zero = beta_v == V(0);
-
-  for (tensor_index_t<Y> i = 0; i < __backend::shape(y); i++) {
-    __backend::lookup(y, i) = zero ? V(0) : beta_v * __backend::lookup(z, i);
-  }
-}
-
-} // namespace __detail
 
 // y = alpha * A * x + beta * z
 template <__detail::scalar Alpha, matrix A, vector X, __detail::scalar Beta,

@@ -730,8 +730,8 @@ TEST(ViewAnalysis, WhatIsSolvable) {
   static_assert(!solvable<decltype(view::symmetric(a, uplo::lower))>);
   static_assert(!solvable<decltype(view::hermitian(a, uplo::lower))>);
   // Singular: rejected at compile time (a static_assert when called).
-  static_assert(!spblas::__detail::solvable_structure<decltype(view::triangle(
+  static_assert(!spblas::__detail::triangular_structure<decltype(view::triangle(
                     a, uplo::lower, diag::implicit_zero))>);
-  static_assert(!spblas::__detail::solvable_structure<decltype(view::diagonal(
+  static_assert(!spblas::__detail::triangular_structure<decltype(view::diagonal(
                     a, diag::implicit_zero))>);
 }

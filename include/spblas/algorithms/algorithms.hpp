@@ -13,6 +13,11 @@
 
 #include <spblas/algorithms/norm_impl.hpp>
 
+// Reference SpMV / SpMM with structure views, in every build (vendors
+// override what their library supports).
+#include <spblas/algorithms/spmm_structured_impl.hpp>
+#include <spblas/algorithms/spmv_structured_impl.hpp>
+
 #include <spblas/algorithms/sort_impl.hpp>
 
 #include <spblas/algorithms/scaled.hpp>
