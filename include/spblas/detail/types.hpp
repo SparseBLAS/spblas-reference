@@ -3,6 +3,10 @@
 #include <cstddef>
 #include <type_traits>
 
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+#include <spblas/vendor/onemkl_iespblas/types.hpp>
+#endif
+
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 #include <spblas/vendor/onemkl_sycl/types.hpp>
 #endif
