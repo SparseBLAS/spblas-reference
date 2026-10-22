@@ -19,7 +19,8 @@
 //            entries) serves all of them.
 //   x, y, z  dense vectors. z may alias y; if beta == 0, z is not read.
 //
-//   Not yet supported: view::triangle / symmetric / hermitian of A.
+//   Structure views of A (triangle, diagonal, symmetric, hermitian): see
+//   spmv_structured_impl.hpp.
 //
 // The policy-first overloads are in policy_forwarding.hpp.
 //
