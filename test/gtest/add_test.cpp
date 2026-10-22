@@ -221,3 +221,69 @@ TEST(Add, CscCscCsc) {
     }
   }
 }
+
+namespace {
+
+template <typename A, typename B, typename C>
+constexpr bool can_add = requires(spblas::operation_state& s, A a, B b, C c) {
+  spblas::add_compute(s, a, b, c);
+  spblas::add_fill(s, a, b, c);
+  spblas::add_numeric(s, a, b, c);
+};
+
+} // namespace
+
+// A^T + B with A in CSR (so A^T is CSC) and B, C in CSR. Not every backend
+// supports mixed orientations (the reference kernel does not). A template, so
+// that the unsupported branch is never instantiated.
+template <typename T, typename I>
+void transposed_operand_add_test() {
+  auto [m, n, nnz] = util::dims[1];
+  auto [a_values, a_rowptr, a_colind, a_shape, a_nnz] =
+      spblas::generate_csr<T, I>(n, m, nnz, 0);
+  auto [b_values, b_rowptr, b_colind, b_shape, b_nnz] =
+      spblas::generate_csr<T, I>(m, n, nnz, 1);
+  spblas::csr_wrapper<T, I> a(a_values, a_rowptr, a_colind, a_shape, a_nnz);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, b_shape, b_nnz);
+  auto a_t = spblas::view::transpose(a);
+
+  if constexpr (can_add<decltype(a_t), decltype(b), decltype(b)>) {
+    auto b_dense = util::to_dense(b);
+    auto expected = [&] {
+      auto d = util::to_dense(a_t);
+      for (std::size_t i = 0; i < d.size(); i++) {
+        d[i] += b_dense[i];
+      }
+      return d;
+    };
+
+    // 2-stage
+    spblas::csr_wrapper<T, I> c(m, n);
+    spblas::operation_state state;
+    spblas::add_compute(state, a_t, b, c);
+    std::vector<I> c_rowptr(m + 1), c_colind(state.get_result_nnz());
+    std::vector<T> c_values(state.get_result_nnz());
+    c.update(c_values, c_rowptr, c_colind);
+    spblas::add_fill(state, a_t, b, c);
+    EXPECT_EQ(util::to_dense(c), expected());
+
+    // 3-stage, numeric again after A's values change.
+    spblas::csr_wrapper<T, I> c3(m, n);
+    spblas::add_compute_symbolic(state, a_t, b, c3);
+    std::vector<I> rowptr3(m + 1), colind3(state.get_result_nnz());
+    std::vector<T> values3(state.get_result_nnz());
+    c3.update(values3, rowptr3, colind3);
+    spblas::add_fill_symbolic(state, a_t, b, c3);
+    for (auto&& v : a_values) {
+      v *= T(2);
+    }
+    spblas::add_numeric(state, a_t, b, c3);
+    EXPECT_EQ(util::to_dense(c3), expected());
+  } else {
+    GTEST_SKIP() << "this backend has no add for mixed orientations";
+  }
+}
+
+TEST(Add, TransposedOperandIfSupported) {
+  transposed_operand_add_test<double, spblas::index_t>();
+}

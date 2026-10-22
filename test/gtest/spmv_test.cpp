@@ -325,3 +325,49 @@ TEST(Multiply, SpMV_ScaleInvalidatesMatrixOpt) {
     EXPECT_EQ_(T(3) * y[i], y_scaled[i]);
   }
 }
+
+TEST(Multiply, SpMV_ConjugatedMatrixOptBeta) {
+  using T = std::complex<double>;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    spblas::matrix_opt a_opt(a);
+
+    T alpha(2, -1), beta(0.5, 1);
+    std::vector<T> x(n), z(m);
+    for (std::size_t j = 0; j < n; j++) {
+      x[j] = T(double(j % 5), double(j % 3) - 1);
+    }
+    for (std::size_t i = 0; i < m; i++) {
+      z[i] = T(1, double(i % 4));
+    }
+
+    std::vector<T> conj_values(values.size());
+    std::transform(values.begin(), values.end(), conj_values.begin(),
+                   [](T v) { return std::conj(v); });
+    auto y_ref = spmv_ref(conj_values, rowptr, colind, m, x, alpha, beta, z);
+
+    // Inspected (optimized) handle, used for conj(A) in both a separate and
+    // an aliased output.
+    spblas::operation_state state;
+    std::vector<T> y(m), y_alias = z;
+    auto a_conj = spblas::view::conjugate(a_opt);
+    spblas::multiply_inspect(state, alpha, a_conj, x, beta, z, y);
+    spblas::multiply(state, alpha, a_conj, x, beta, z, y);
+    spblas::multiply(state, alpha, a_conj, x, beta, y_alias, y_alias);
+
+    for (std::size_t i = 0; i < m; i++) {
+      EXPECT_NEAR(y_ref[i].real(), y[i].real(),
+                  1e-9 * (1 + std::abs(y_ref[i])));
+      EXPECT_NEAR(y_ref[i].imag(), y[i].imag(),
+                  1e-9 * (1 + std::abs(y_ref[i])));
+      EXPECT_NEAR(y_ref[i].real(), y_alias[i].real(),
+                  1e-9 * (1 + std::abs(y_ref[i])));
+      EXPECT_NEAR(y_ref[i].imag(), y_alias[i].imag(),
+                  1e-9 * (1 + std::abs(y_ref[i])));
+    }
+  }
+}

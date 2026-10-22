@@ -292,3 +292,56 @@ TEST(TriangularSolve, Int64Index) {
                             spblas::view::diag::explicit_diagonal));
   }
 }
+
+TEST(TriangularSolve, Conjugated) {
+  using T = std::complex<double>;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::square_dims[1];
+  triangular_test_matrix<double, I> real_a(n, nnz);
+
+  // A complex matrix with the same pattern and a dominant diagonal.
+  std::vector<T> values(real_a.values.size());
+  for (std::size_t p = 0; p < values.size(); p++) {
+    values[p] = T(real_a.values[p], 0.25 * real_a.values[p]);
+  }
+  spblas::csr_wrapper<T, I> a(values, real_a.rowptr, real_a.colind,
+                              {I(n), I(n)}, I(values.size()));
+  spblas::matrix_opt a_opt(a);
+
+  std::vector<T> b(n);
+  for (std::size_t i = 0; i < n; i++) {
+    b[i] = T(double(i % 3) + 1, double(i % 2));
+  }
+  T alpha(0, 2);
+
+  for (int use_opt = 0; use_opt < 2; use_opt++) {
+    std::vector<T> x(n);
+    spblas::operation_state state;
+    if (use_opt) {
+      auto t = spblas::view::triangle(spblas::view::conjugate(a_opt),
+                                      spblas::view::uplo::lower);
+      spblas::triangular_solve_inspect(state, t, alpha, b, x);
+      spblas::triangular_solve(state, t, alpha, b, x);
+    } else {
+      spblas::triangular_solve(
+          state,
+          spblas::view::triangle(spblas::view::conjugate(a),
+                                 spblas::view::uplo::upper),
+          alpha, b, x);
+    }
+
+    // Residual: tri(conj(A)) x == alpha b
+    bool lower = use_opt != 0;
+    for (std::size_t i = 0; i < n; i++) {
+      T r = 0;
+      for (auto p = real_a.rowptr[i]; p < real_a.rowptr[i + 1]; p++) {
+        std::size_t j = real_a.colind[p];
+        if (j == i || (lower ? j < i : j > i)) {
+          r += std::conj(values[p]) * x[j];
+        }
+      }
+      EXPECT_NEAR(std::abs(r - alpha * b[i]), 0.0, 1e-10 * std::abs(b[i]));
+    }
+  }
+}

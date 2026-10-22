@@ -505,3 +505,40 @@ TEST(SpGEMM, Int64Index) {
     ref.expect_matches(util::to_dense(c3));
   }
 }
+
+TEST(SpGEMM, ThreeStageConjugatedValuesChange) {
+  using T = std::complex<double>;
+  using I = spblas::index_t;
+
+  for (auto&& [m, k, nnz] : util::dims) {
+    csr_matrix<T, I> a(m, k, nnz, 0);
+    csr_matrix<T, I> b(k, m, nnz, 1);
+
+    spblas::operation_state state;
+    spblas::csr_wrapper<T, I> c(m, m);
+    auto a_conj = spblas::view::conjugate(a.csr());
+    spblas::multiply_compute_symbolic(state, T(1), a_conj, b.csr(), c);
+    std::vector<I> rowptr(m + 1), colind(state.get_result_nnz());
+    std::vector<T> values(state.get_result_nnz());
+    c.update(values, rowptr, colind);
+    spblas::multiply_fill_symbolic(state, T(1), a_conj, b.csr(), c);
+
+    for (int round = 0; round < 2; round++) {
+      if (round == 1) {
+        // New values for A (same pattern): numeric must see them through
+        // the conjugation.
+        for (auto&& v : a.values) {
+          v *= T(0, 1);
+        }
+      }
+      spblas::multiply_numeric(state, T(1), a_conj, b.csr(), c);
+
+      csr_matrix<T, I> a_c = a;
+      for (auto&& v : a_c.values) {
+        v = std::conj(v);
+      }
+      spgemm_ref(a_c, b, T(1)).expect_matches(util::to_dense(c));
+    }
+  }
+}
+
