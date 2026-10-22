@@ -93,18 +93,18 @@ brock@slothius:~/src/spblas-reference$ make
 [ 22%] Building CXX object _deps/fmt-build/CMakeFiles/fmt.dir/src/os.cc.o
 [ 33%] Linking CXX static library libfmt.a
 [ 33%] Built target fmt
-[ 44%] Building CXX object examples/CMakeFiles/simple_spmv.dir/simple_spmv.cpp.o
-[ 55%] Building CXX object examples/CMakeFiles/simple_spmm.dir/simple_spmm.cpp.o
-[ 66%] Building CXX object examples/CMakeFiles/simple_spgemm.dir/simple_spgemm.cpp.o
+[ 44%] Building CXX object examples/CMakeFiles/spmv_csr.dir/spmv_csr.cpp.o
+[ 55%] Building CXX object examples/CMakeFiles/spmm_csr.dir/spmm_csr.cpp.o
+[ 66%] Building CXX object examples/CMakeFiles/spgemm_csr.dir/spgemm_csr.cpp.o
 . . .
-[ 77%] Linking CXX executable simple_spmv
-[ 77%] Built target simple_spmv
+[ 77%] Linking CXX executable spmv_csr
+[ 77%] Built target spmv_csr
 1 warning generated.
-[ 88%] Linking CXX executable simple_spmm
+[ 88%] Linking CXX executable spmm_csr
 1 warning generated.
-[100%] Linking CXX executable simple_spgemm
-[100%] Built target simple_spmm
-[100%] Built target simple_spgemm
+[100%] Linking CXX executable spgemm_csr
+[100%] Built target spmm_csr
+[100%] Built target spgemm_csr
 brock@slothius:~/src/spblas-reference$
 ```
 
@@ -195,8 +195,8 @@ brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build -DCMAKE_EXE_LIN
 10  0x182f450d8  _pthread_wqthread + 228
 ld: Assertion failed: (resultIndex < sectData.atoms.size()), function findAtom, file Relocations.cpp, line 1336.
 collect2: error: ld returned 1 exit status
-make[2]: *** [examples/simple_spmv] Error 1
-make[1]: *** [examples/CMakeFiles/simple_spmv.dir/all] Error 2
+make[2]: *** [examples/spmv_csr] Error 1
+make[1]: *** [examples/CMakeFiles/spmv_csr.dir/all] Error 2
 make: *** [all] Error 2
 ```
 

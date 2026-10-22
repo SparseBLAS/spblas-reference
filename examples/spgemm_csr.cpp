@@ -44,12 +44,16 @@ int main(int argc, char** argv) {
 
   csr_wrapper<T> a(a_values, a_rowptr, a_colind, a_shape, nnz);
   csr_wrapper<T> b(b_values, b_rowptr, b_colind, b_shape, nnz);
+  // Inputs are wrapped in a matrix_opt, where the library may keep
+  // optimization data for them across calls.
+  matrix_opt a_opt(a);
+  matrix_opt b_opt(b);
 
   // Output with unknown sparsity: only the shape is known up front.
   csr_wrapper<T> c(m, n);
 
   operation_state state;
-  multiply_compute(state, 1.f, a, b, c);
+  multiply_compute(state, 1.f, a_opt, b_opt, c);
 
   fmt::print("\t\t C_nnz = {}", state.get_result_nnz());
 
@@ -59,7 +63,7 @@ int main(int argc, char** argv) {
   std::vector<spblas::index_t> c_colind(state.get_result_nnz());
   c.update(c_values, c_rowptr, c_colind);
 
-  multiply_fill(state, 1.f, a, b, c);
+  multiply_fill(state, 1.f, a_opt, b_opt, c);
 
   for (auto&& [i, row] : spblas::__backend::rows(c)) {
     fmt::print("{}: {}\n", i, row);

@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
   fmt::print("\n\t###########################################################"
              "######################");
-  fmt::print("\n\t### Running Full SpTRSV Example:");
+  fmt::print("\n\t### Running SpTRSV Example:");
   fmt::print("\n\t###");
   fmt::print("\n\t###   solve for x:  A * x = alpha * b");
   fmt::print("\n\t###");
@@ -38,23 +38,24 @@ int main(int argc, char** argv) {
                  [scale_factor](T val) { return scale_factor * val; });
 
   csr_wrapper<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
-
+  // Inputs are wrapped in a matrix_opt, where the library may keep
+  // optimization data for them across calls.
   matrix_opt a_opt(a);
 
   operation_state state;
 
   // Scale every value of `a` by 5 in place.
-  // scale(state, 5.f, a);
+  // scale(state, 5.f, a_opt);
 
   std::vector<T> x(m, 0);
   std::vector<T> b(m, 1);
 
   T alpha = 1.2f;
-  // solve for x:  upper(A) * x = alpha * b
-  auto upper_a =
-      view::triangle(a_opt, view::uplo::upper, view::diag::implicit_unit);
-  triangular_solve_inspect(state, upper_a, alpha, b, x);
-  triangular_solve(state, upper_a, alpha, b, x);
+  // solve for x:  lower(A) * x = alpha * b
+  triangular_solve(
+      state,
+      view::triangle(a_opt, view::uplo::lower, view::diag::implicit_unit),
+      alpha, b, x);
 
   fmt::print("\tExample is completed!\n");
 

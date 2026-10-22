@@ -34,18 +34,21 @@ int main(int argc, char** argv) {
       generate_csr<T, spblas::index_t>(m, n, nnz_in);
 
   csr_wrapper<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
+  // Inputs are wrapped in a matrix_opt, where the library may keep
+  // optimization data for them across calls.
+  matrix_opt a_opt(a);
 
   operation_state state;
 
   // Scale every value of `a` by 5 in place.
-  // scale(state, 5.f, a);
+  // scale(state, 5.f, a_opt);
 
   std::vector<T> x(n, 1);
   std::vector<T> y(m, 0);
 
   T alpha = 1.2f;
   // y = alpha * A * x
-  multiply(state, alpha, a, x, y);
+  multiply(state, alpha, a_opt, x, y);
 
   fmt::print("\tExample is completed!\n");
 
