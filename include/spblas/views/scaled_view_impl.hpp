@@ -95,7 +95,7 @@ scaled_view(S alpha, R&& r) -> scaled_view<S, __ranges::views::all_t<R>>;
 
 // Scaled view for matrices
 template <typename S, matrix M>
-  requires(view<M>)
+  requires(__detail::view<M>)
 class scaled_view<S, M> : public view_base {
 public:
   using scalar_type =
@@ -219,7 +219,7 @@ private:
 };
 
 template <typename S, matrix M>
-  requires(view<M>)
+  requires(__detail::view<M>)
 scaled_view(S s, M m) -> scaled_view<S, M>;
 
 } // namespace spblas

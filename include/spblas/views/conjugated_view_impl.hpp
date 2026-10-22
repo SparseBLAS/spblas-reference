@@ -83,7 +83,7 @@ conjugated_view(R&& r) -> conjugated_view<__ranges::views::all_t<R>>;
 
 // Conjugated view for matrices
 template <matrix M>
-  requires(view<M>)
+  requires(__detail::view<M>)
 class conjugated_view<M> : public view_base {
 public:
   using scalar_type = decltype(std::conj(std::declval<tensor_scalar_t<M>>()));
@@ -193,7 +193,7 @@ private:
 };
 
 template <matrix M>
-  requires(view<M>)
+  requires(__detail::view<M>)
 conjugated_view(M m) -> conjugated_view<M>;
 
 } // namespace spblas

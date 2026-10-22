@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory_resource>
+
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/log.hpp>
@@ -7,9 +9,11 @@
 #include <spblas/algorithms/transposed.hpp>
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
-#include <spblas/detail/operation_info_t.hpp>
+#include <spblas/views/view.hpp>
 
 namespace spblas {
+
+namespace __detail {
 
 // C = AB
 // CSR * CSR -> CSR
@@ -17,7 +21,8 @@ namespace spblas {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
-void multiply(A&& a, B&& b, C&& c) {
+void spgemm_fill(A&& a, B&& b, C&& c,
+                 std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -29,7 +34,7 @@ void multiply(A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
 
-  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
+  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1], allocator);
   __backend::csr_builder c_builder(c);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
@@ -57,7 +62,8 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
-operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
+auto spgemm_nnz(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -71,7 +77,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   using O = tensor_offset_t<C>;
 
   O nnz = 0;
-  __backend::spa_set<I> c_row(__backend::shape(c)[1]);
+  __backend::spa_set<I> c_row(__backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
@@ -85,7 +91,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
     nnz += c_row.size();
   }
 
-  return operation_info_t{__backend::shape(c), nnz};
+  return nnz;
 }
 
 // C = AB
@@ -94,7 +100,8 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::column_iterable<A> && __backend::column_iterable<B> &&
            __detail::is_csc_view_v<C>)
-void multiply(A&& a, B&& b, C&& c) {
+void spgemm_fill(A&& a, B&& b, C&& c,
+                 std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -102,7 +109,8 @@ void multiply(A&& a, B&& b, C&& c) {
     throw std::invalid_argument(
         "multiply: matrix dimensions are incompatible.");
   }
-  multiply(transposed(b), transposed(a), transposed(c));
+  spgemm_fill(spblas::view::transpose(b), spblas::view::transpose(a),
+              transposed(c), allocator);
 }
 
 // C = AB
@@ -111,7 +119,8 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::column_iterable<A> && __backend::column_iterable<B> &&
            __detail::is_csc_view_v<C>)
-operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
+auto spgemm_nnz(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -120,10 +129,8 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
         "multiply: matrix dimensions are incompatible.");
   }
 
-  auto info = multiply_compute(transposed(b), transposed(a), transposed(c));
-  info.update_impl_({info.result_shape()[1], info.result_shape()[0]},
-                    info.result_nnz());
-  return info;
+  return spgemm_nnz(spblas::view::transpose(b), spblas::view::transpose(a),
+                    transposed(c), allocator);
 }
 
 // C = AB
@@ -132,7 +139,8 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csc_view_v<C>)
-void multiply(A&& a, B&& b, C&& c) {
+void spgemm_fill(A&& a, B&& b, C&& c,
+                 std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -144,9 +152,10 @@ void multiply(A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
 
-  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
+  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1], allocator);
 
-  std::vector<std::vector<std::pair<I, T>>> columns(__backend::shape(c)[1]);
+  std::pmr::vector<std::pmr::vector<std::pair<I, T>>> columns(
+      __backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
@@ -183,7 +192,8 @@ void multiply(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csc_view_v<C>)
-operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
+auto spgemm_nnz(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -197,7 +207,7 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
   using O = tensor_offset_t<C>;
 
   O nnz = 0;
-  __backend::spa_set<I> c_row(__backend::shape(c)[1]);
+  __backend::spa_set<I> c_row(__backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
@@ -211,7 +221,9 @@ operation_info_t multiply_compute(A&& a, B&& b, C&& c) {
     nnz += c_row.size();
   }
 
-  return operation_info_t{__backend::shape(c), nnz};
+  return nnz;
 }
+
+} // namespace __detail
 
 } // namespace spblas

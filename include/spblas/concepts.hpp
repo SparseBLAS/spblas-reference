@@ -32,9 +32,15 @@ concept vector = __ranges::random_access_range<V> && !matrix<V>;
 template <typename T>
 concept tensor = matrix<T> || vector<T>;
 
+namespace __detail {
+
+// Lives in __detail because `spblas::view` is the namespace of view
+// functions (`spblas::view::transpose`, `spblas::view::triangle`, ...).
 template <typename T>
-concept view = tensor<T> &&
-               (std::derived_from<std::remove_cvref_t<T>, view_base> ||
-                __detail::is_matrix_mdspan_v<T> || __detail::__ranges::view<T>);
+concept view =
+    tensor<T> && (std::derived_from<std::remove_cvref_t<T>, view_base> ||
+                  is_matrix_mdspan_v<T> || __ranges::view<T>);
+
+} // namespace __detail
 
 } // namespace spblas

@@ -8,6 +8,7 @@
 
 #include <spblas/algorithms/algorithms.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/operation_state.hpp>
 #include <spblas/views/views.hpp>
 
 #include <spblas/backend/backend.hpp>

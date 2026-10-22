@@ -6,7 +6,7 @@
 #include <limits>
 #include <vector>
 
-#include "util.hpp"
+#include "../util.hpp"
 #include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/spblas.hpp>
 

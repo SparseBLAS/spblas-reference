@@ -21,11 +21,11 @@ get_matrix_handle(sycl::queue& q, M&& m,
   if constexpr (__detail::is_matrix_opt_v<decltype(m)>) {
     log_trace("using A as matrix_opt");
 
-    if (m.matrix_handle_ == nullptr) {
-      m.matrix_handle_ = create_matrix_handle(q, m.base());
+    if (m.state_->matrix_handle == nullptr) {
+      m.state_->matrix_handle = create_matrix_handle(q, m.base());
     }
 
-    return m.matrix_handle_;
+    return m.state_->matrix_handle;
   } else if constexpr (__detail::has_base<M>) {
     return get_matrix_handle(q, m.base(), handle);
   } else if (handle != nullptr) {
