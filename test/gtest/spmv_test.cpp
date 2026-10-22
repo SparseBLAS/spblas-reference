@@ -228,6 +228,29 @@ TEST(Multiply, SpMV_Conjugated) {
   }
 }
 
+// conj(conj(A)) x == A x.
+TEST(Multiply, SpMV_DoubleConjugate) {
+  using T = std::complex<float>;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[0];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  auto a_conj = spblas::view::conjugate(a);
+
+  std::vector<T> x(n, T(1, 1));
+  std::vector<T> y(m);
+  spblas::operation_state state;
+  spblas::multiply(state, T(1), spblas::view::conjugate(a_conj), x, y);
+
+  auto y_ref = spmv_ref(values, rowptr, colind, m, x, T(1), T(0), y);
+  for (std::size_t i = 0; i < m; i++) {
+    EXPECT_EQ_(y_ref[i].real(), y[i].real());
+    EXPECT_EQ_(y_ref[i].imag(), y[i].imag());
+  }
+}
+
 TEST(Multiply, SpMV_DimensionMismatchThrows) {
   using T = float;
   using I = spblas::index_t;
