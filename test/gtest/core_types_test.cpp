@@ -229,6 +229,17 @@ TEST(View, TransposeAndConjugate) {
       values, m.rowptr, m.colind, {3, 3}, 7);
   auto c_conj = spblas::view::conjugate(c);
   EXPECT_TRUE(spblas::__detail::is_conjugated(c_conj));
+
+  // conj(conj(A)) is A, for named and temporary views, matrices and vectors.
+  auto c_conj_conj = spblas::view::conjugate(c_conj);
+  static_assert(std::is_same_v<decltype(c_conj_conj), decltype(c)>);
+  static_assert(std::is_same_v<decltype(spblas::view::conjugate(
+                                   spblas::view::conjugate(c))),
+                               decltype(c)>);
+  EXPECT_EQ(c_conj_conj.values().data(), values.data());
+  std::vector<std::complex<float>> v(3);
+  auto v_conj_conj = spblas::conjugated(spblas::conjugated(v));
+  EXPECT_FALSE(spblas::__detail::is_conjugated(v_conj_conj));
 }
 
 // view::conjugate of a real vector is a non-owning identity view: it refers
