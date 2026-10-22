@@ -8,6 +8,7 @@
 #include <spblas/algorithms/transposed.hpp>
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
+#include <spblas/views/view.hpp>
 
 namespace spblas {
 
@@ -119,7 +120,8 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
         "multiply: matrix dimensions are incompatible.");
   }
 
-  return spgemm_fill(transposed(b), transposed(a), transposed(c));
+  return spgemm_fill(spblas::view::transpose(b), spblas::view::transpose(a),
+                     transposed(c));
 }
 
 // C = AB
@@ -137,7 +139,8 @@ auto spgemm_nnz(A&& a, B&& b, C&& c) {
         "multiply: matrix dimensions are incompatible.");
   }
 
-  return spgemm_nnz(transposed(b), transposed(a), transposed(c));
+  return spgemm_nnz(spblas::view::transpose(b), spblas::view::transpose(a),
+                    transposed(c));
 }
 
 } // namespace __detail

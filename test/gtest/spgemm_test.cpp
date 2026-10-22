@@ -79,8 +79,8 @@ struct spgemm_reference {
 };
 
 template <typename T, typename I, typename S>
-spgemm_reference<T> spgemm_ref(csr_matrix<T, I>& a, csr_matrix<T, I>& b,
-                               S alpha) {
+spgemm_reference<T> spgemm_ref(const csr_matrix<T, I>& a,
+                               const csr_matrix<T, I>& b, S alpha) {
   std::size_t m = a.shape[0], n = b.shape[1];
   spgemm_reference<T> r{std::vector<T>(m * n, T(0)),
                         std::vector<double>(m * n, 0.0),
@@ -142,9 +142,50 @@ auto run_spgemm(S alpha, A&& a, B&& b, std::size_t m, std::size_t n,
   return std::pair(r, dense);
 }
 
-template <bool CscA, bool CscB, bool CscC>
+// How a test passes its operands: as wrappers, in a matrix_opt, or through
+// view::conjugate (with complex values, so that conjugation matters).
+struct plain_operands {
+  using value_type = float;
+  static constexpr bool conjugates = false;
+  template <typename M>
+  static auto wrap(M m) {
+    return m;
+  }
+};
+
+struct matrix_opt_operands {
+  using value_type = float;
+  static constexpr bool conjugates = false;
+  template <typename M>
+  static auto wrap(M m) {
+    return spblas::matrix_opt(m);
+  }
+};
+
+struct conjugated_operands {
+  using value_type = std::complex<float>;
+  static constexpr bool conjugates = true;
+  template <typename M>
+  static auto wrap(M m) {
+    return spblas::view::conjugate(m);
+  }
+};
+
+// The matrix an operand passed through Ops::wrap represents.
+template <typename Ops, typename T, typename I>
+csr_matrix<T, I> represented(const csr_matrix<T, I>& m) {
+  csr_matrix<T, I> r = m;
+  if constexpr (Ops::conjugates) {
+    for (auto&& v : r.values) {
+      v = std::conj(v);
+    }
+  }
+  return r;
+}
+
+template <bool CscA, bool CscB, bool CscC, typename Ops = plain_operands>
 void spgemm_combination_test() {
-  using T = float;
+  using T = typename Ops::value_type;
   using I = spblas::index_t;
 
   for (auto&& [m, k, nnz] : util::dims) {
@@ -155,24 +196,25 @@ void spgemm_combination_test() {
         csc_matrix<T, I> a_csc(a_csr);
         csc_matrix<T, I> b_csc(b_csr);
 
-        auto a = [&] {
+        auto a = Ops::wrap([&] {
           if constexpr (CscA) {
             return a_csc.csc();
           } else {
             return a_csr.csr();
           }
-        }();
-        auto b = [&] {
+        }());
+        auto b = Ops::wrap([&] {
           if constexpr (CscB) {
             return b_csc.csc();
           } else {
             return b_csr.csr();
           }
-        }();
+        }());
 
         auto [c, c_dense] =
             run_spgemm<T, I>(alpha, a, b, m, n, std::bool_constant<CscC>{});
-        auto ref = spgemm_ref(a_csr, b_csr, alpha);
+        auto ref =
+            spgemm_ref(represented<Ops>(a_csr), represented<Ops>(b_csr), alpha);
 
         EXPECT_EQ(c.nnz, ref.positions);
         EXPECT_EQ(c.ptr.back(), c.nnz);
@@ -210,6 +252,27 @@ TEST(SpGEMM, CscCsrCsr) {
 
 TEST(SpGEMM, CscCsrCsc) {
   spgemm_combination_test<true, false, true>();
+}
+
+// Every format combination with matrix_opt and conjugated operands, which
+// the CSC-output kernels see through view::transpose.
+template <typename Ops>
+void spgemm_all_combinations_test() {
+  spgemm_combination_test<false, false, false, Ops>();
+  spgemm_combination_test<false, false, true, Ops>();
+  spgemm_combination_test<true, true, true, Ops>();
+  spgemm_combination_test<false, true, false, Ops>();
+  spgemm_combination_test<false, true, true, Ops>();
+  spgemm_combination_test<true, false, false, Ops>();
+  spgemm_combination_test<true, false, true, Ops>();
+}
+
+TEST(SpGEMM, MatrixOptOperandsAllFormats) {
+  spgemm_all_combinations_test<matrix_opt_operands>();
+}
+
+TEST(SpGEMM, ConjugatedOperandsAllFormats) {
+  spgemm_all_combinations_test<conjugated_operands>();
 }
 
 TEST(SpGEMM, AlphaZeroKeepsSymbolicPattern) {
@@ -306,9 +369,9 @@ std::vector<bool> dense_pattern(const std::vector<I>& pointers,
   return pattern;
 }
 
-template <bool CscA, bool CscB, bool CscC>
+template <bool CscA, bool CscB, bool CscC, typename Ops = plain_operands>
 void spgemm_three_stage_test() {
-  using T = float;
+  using T = typename Ops::value_type;
   using I = spblas::index_t;
   using C = std::conditional_t<CscC, spblas::csc_wrapper<T, I>,
                                spblas::csr_wrapper<T, I>>;
@@ -319,23 +382,24 @@ void spgemm_three_stage_test() {
       csr_matrix<T, I> b_csr(k, n, nnz, 1);
       csc_matrix<T, I> a_csc(a_csr);
       csc_matrix<T, I> b_csc(b_csr);
-      auto a = [&] {
+      auto a = Ops::wrap([&] {
         if constexpr (CscA) {
           return a_csc.csc();
         } else {
           return a_csr.csr();
         }
-      }();
-      auto b = [&] {
+      }());
+      auto b = Ops::wrap([&] {
         if constexpr (CscB) {
           return b_csc.csc();
         } else {
           return b_csr.csr();
         }
-      }();
+      }());
 
       T alpha = -2;
-      auto ref = spgemm_ref(a_csr, b_csr, alpha);
+      auto ref =
+          spgemm_ref(represented<Ops>(a_csr), represented<Ops>(b_csr), alpha);
 
       spblas::operation_state state;
       C c(m, n);
@@ -366,9 +430,13 @@ void spgemm_three_stage_test() {
       for (auto&& v : a_csc.values) {
         v *= T(3);
       }
+      if constexpr (spblas::__detail::is_matrix_opt_v<decltype(a)>) {
+        spblas::update_matrix(a);
+      }
       spblas::multiply_numeric(state, alpha, a, b, c);
       util::sort_output(c);
-      spgemm_ref(a_csr, b_csr, alpha).expect_matches(util::to_dense(c));
+      spgemm_ref(represented<Ops>(a_csr), represented<Ops>(b_csr), alpha)
+          .expect_matches(util::to_dense(c));
     }
   }
 }
@@ -389,6 +457,25 @@ TEST(SpGEMM, ThreeStageCsrCscCsr) {
 
 TEST(SpGEMM, ThreeStageCscCsrCsc) {
   spgemm_three_stage_test<true, false, true>();
+}
+
+template <typename Ops>
+void spgemm_three_stage_all_combinations_test() {
+  spgemm_three_stage_test<false, false, false, Ops>();
+  spgemm_three_stage_test<false, false, true, Ops>();
+  spgemm_three_stage_test<true, true, true, Ops>();
+  spgemm_three_stage_test<false, true, false, Ops>();
+  spgemm_three_stage_test<false, true, true, Ops>();
+  spgemm_three_stage_test<true, false, false, Ops>();
+  spgemm_three_stage_test<true, false, true, Ops>();
+}
+
+TEST(SpGEMM, ThreeStageMatrixOptOperandsAllFormats) {
+  spgemm_three_stage_all_combinations_test<matrix_opt_operands>();
+}
+
+TEST(SpGEMM, ThreeStageConjugatedOperandsAllFormats) {
+  spgemm_three_stage_all_combinations_test<conjugated_operands>();
 }
 
 TEST(SpGEMM, ThreeStageMatrixOptAndPolicy) {
