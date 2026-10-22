@@ -117,4 +117,17 @@ matrix_opt(T t, std::pmr::memory_resource*) -> matrix_opt<T>;
 template <typename T>
 matrix_opt(T t, const std::pmr::polymorphic_allocator<>&) -> matrix_opt<T>;
 
+// Tells the library that the user changed the *values* of the matrix `m`
+// wraps, in place. Only values may change: the sparsity pattern (row/column
+// pointers and indices) must stay as it is -- for a new pattern, create a new
+// wrapper and matrix_opt. Values inside a matrix_opt may only be changed this
+// way, or by library functions such as scale(): the library's optimization
+// data for the matrix is derived from them and is dropped here, to be rebuilt
+// on next use. Applies to every copy of `m`, which share that data. Operations
+// whose later stages rely on the pattern (e.g. multiply_numeric) remain valid.
+template <typename M>
+void update_matrix(matrix_opt<M>& m) {
+  m.state_->invalidate();
+}
+
 } // namespace spblas

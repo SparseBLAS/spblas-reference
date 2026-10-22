@@ -542,3 +542,41 @@ TEST(SpGEMM, ThreeStageConjugatedValuesChange) {
   }
 }
 
+// Values of matrix_opt operands changed between numeric stages, both through
+// update_matrix and through scale(): the stages must not depend on optimization
+// data the matrix_opt drops.
+TEST(SpGEMM, ThreeStageMatrixOptValuesChange) {
+  using T = double;
+  using I = spblas::index_t;
+
+  for (auto&& [m, k, nnz] : util::dims) {
+    csr_matrix<T, I> a_m(m, k, nnz, 0);
+    csr_matrix<T, I> b_m(k, m, nnz, 1);
+    spblas::matrix_opt a(a_m.csr());
+    spblas::matrix_opt b(b_m.csr());
+
+    spblas::operation_state state;
+    spblas::csr_wrapper<T, I> c(m, m);
+    spblas::multiply_compute_symbolic(state, T(1), a, b, c);
+    std::vector<I> rowptr(m + 1), colind(state.get_result_nnz());
+    std::vector<T> values(state.get_result_nnz());
+    c.update(values, rowptr, colind);
+    spblas::multiply_fill_symbolic(state, T(1), a, b, c);
+    spblas::multiply_numeric(state, T(1), a, b, c);
+    spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
+
+    // In-place change + update_matrix.
+    for (auto&& v : a_m.values) {
+      v *= T(3);
+    }
+    spblas::update_matrix(a);
+    spblas::multiply_numeric(state, T(1), a, b, c);
+    spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
+
+    // Change through the library.
+    spblas::operation_state scale_state;
+    spblas::scale(scale_state, T(0.5), b);
+    spblas::multiply_numeric(state, T(1), a, b, c);
+    spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
+  }
+}

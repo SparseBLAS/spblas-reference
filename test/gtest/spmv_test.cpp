@@ -371,3 +371,30 @@ TEST(Multiply, SpMV_ConjugatedMatrixOptBeta) {
     }
   }
 }
+
+TEST(Multiply, SpMV_UpdateMatrixAfterInPlaceChange) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::matrix_opt a_opt(a);
+
+  auto x = util::make_values<T>(n);
+  std::vector<T> y(m), y_changed(m);
+  spblas::operation_state state;
+  spblas::multiply_inspect(state, T(1), a_opt, x, y);
+  spblas::multiply(state, T(1), a_opt, x, y);
+
+  // The user changes the values in place and tells the library.
+  for (auto&& v : values) {
+    v *= T(-2);
+  }
+  spblas::update_matrix(a_opt);
+  spblas::multiply(state, T(1), a_opt, x, y_changed);
+  for (std::size_t i = 0; i < m; i++) {
+    EXPECT_EQ_(T(-2) * y[i], y_changed[i]);
+  }
+}
