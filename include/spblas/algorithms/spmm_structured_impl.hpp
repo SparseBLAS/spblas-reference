@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <spblas/algorithms/spmm_impl.hpp>
+#include <spblas/algorithms/detail/assign_scaled.hpp>
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
@@ -19,6 +19,9 @@
 //      CSR / CSC / matrix_opt, composed with view::transpose /
 //      view::conjugate in any order (see spmv_structured_impl.hpp).
 //   X, Y, Z dense matrices as for spmm_impl.hpp.
+//
+//   Included by every backend: a vendor overrides the cases it supports with
+//   more constrained overloads and keeps this one for the rest.
 //
 
 namespace spblas {
@@ -53,6 +56,34 @@ void multiply(operation_state& state, Alpha alpha, A&& a, X&& x, Beta beta,
               alpha_v * (a_v * __backend::lookup(x, k, j));
         }
       });
+}
+
+// Y = alpha * A * X
+template <__detail::scalar Alpha, matrix A, matrix X, matrix Y>
+  requires(__detail::structured_view<A> && __backend::lookupable<X> &&
+           __backend::lookupable<Y>)
+void multiply(operation_state& state, Alpha alpha, A&& a, X&& x, Y&& y) {
+  log_trace("");
+  multiply(state, alpha, std::forward<A>(a), std::forward<X>(x),
+           tensor_scalar_t<Y>(0), y, y);
+}
+
+// The reference implementation has nothing to prepare.
+template <__detail::scalar Alpha, matrix A, matrix X, matrix Y>
+  requires(__detail::structured_view<A> && __backend::lookupable<X> &&
+           __backend::lookupable<Y>)
+void multiply_inspect(operation_state& state, Alpha alpha, A&& a, X&& x,
+                      Y&& y) {
+  log_trace("");
+}
+
+template <__detail::scalar Alpha, matrix A, matrix X, __detail::scalar Beta,
+          matrix Z, matrix Y>
+  requires(__detail::structured_view<A> && __backend::lookupable<X> &&
+           __backend::lookupable<Z> && __backend::lookupable<Y>)
+void multiply_inspect(operation_state& state, Alpha alpha, A&& a, X&& x,
+                      Beta beta, Z&& z, Y&& y) {
+  log_trace("");
 }
 
 } // namespace spblas

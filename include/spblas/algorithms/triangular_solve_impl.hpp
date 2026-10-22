@@ -250,35 +250,22 @@ template <typename T>
 using structured_operand_t =
     decltype(std::declval<view_analysis_t<T>>().operand());
 
+// A triangular structure the reference kernels can iterate: its operand
+// op(base) is row- or column-iterable (diagonal regions need no operand).
 template <typename T>
 constexpr bool is_solvable_structure_() {
-  if constexpr (structured_view<T>) {
+  if constexpr (triangular_structure<T>) {
     using A = view_analysis_t<T>;
     using Op = structured_operand_t<T>;
-    return A::structure == view_structure::general &&
-           A::diag != diag_kind::implicit_zero &&
-           (A::region == view_region::diagonal ||
-            ((A::region == view_region::lower ||
-              A::region == view_region::upper) &&
-             (__backend::row_iterable<Op> || __backend::column_iterable<Op>) ));
+    return A::region == view_region::diagonal || __backend::row_iterable<Op> ||
+           __backend::column_iterable<Op>;
   } else {
     return false;
   }
 }
 
-// A view stack representing a nonsingular-by-construction triangular or
-// diagonal matrix the reference kernels can solve with.
 template <typename T>
 concept solvable_structure = is_solvable_structure_<T>();
-
-template <typename T>
-constexpr bool is_implicit_zero_structure_() {
-  if constexpr (structured_view<T>) {
-    return view_analysis_t<T>::diag == diag_kind::implicit_zero;
-  } else {
-    return false;
-  }
-}
 
 } // namespace __detail
 
