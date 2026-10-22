@@ -26,7 +26,9 @@
 //
 //   A: a CSR or CSC wrapper, or a matrix_opt of one (whose optimization data
 //   is then dropped, as the arrays it was built from were reordered). If A's
-//   values are not attached (pattern only), only the indices are sorted.
+//   values array is empty (pattern only), only the indices are sorted.
+//   The stored entries are those the pointer array covers; the index and
+//   value arrays may be longer.
 //
 //   The order within rows of SpGEMM / SpADD outputs is currently
 //   backend-defined (whether they should guarantee sorted output is an open
@@ -115,9 +117,14 @@ void sort_slices(operation_state& state, W&& w) {
         "sort_matrix: the matrix's pointer array must have (outer dimension "
         "+ 1) entries.");
   }
-  // A pattern without (enough) values gets only its indices sorted.
-  if (values.size() < indices.size()) {
-    values = values.first(0);
+  // Only the stored entries are sorted; the arrays may be longer. An empty
+  // values array means a pattern only, whose indices alone are sorted.
+  const std::size_t stored = pointers[pointers.size() - 1];
+  if (indices.size() < stored ||
+      (values.size() != 0 && values.size() < stored)) {
+    throw std::invalid_argument(
+        "sort_matrix: the index and value arrays must cover every stored "
+        "entry (or the value array be empty).");
   }
   batched_sort_by_key(pointers, indices, values, state.get_allocator());
 }

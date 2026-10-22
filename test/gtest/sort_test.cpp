@@ -94,6 +94,43 @@ TEST(SortMatrix, PatternOnly) {
   EXPECT_EQ(colind, (std::vector<I>{0, 2, 4, 1, 3}));
 }
 
+// Arrays longer than the stored entries: the values still move with the
+// indices, and the spare entries are left alone.
+TEST(SortMatrix, ArraysLongerThanStoredEntries) {
+  using T = float;
+  using I = spblas::index_t;
+
+  std::vector<I> rowptr{0, 2};
+  std::vector<I> colind{1, 0, 0};
+  std::vector<T> values{10, 20};
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, {1, 2}, 2);
+
+  spblas::operation_state state;
+  spblas::sort_matrix(state, a);
+  EXPECT_EQ(colind, (std::vector<I>{0, 1, 0}));
+  EXPECT_EQ(values, (std::vector<T>{20, 10}));
+}
+
+TEST(SortMatrix, ArraysTooShortThrow) {
+  using T = float;
+  using I = spblas::index_t;
+
+  std::vector<I> rowptr{0, 3};
+  std::vector<I> colind{2, 1, 0};
+  std::vector<T> values{1, 2};
+  spblas::csr_wrapper<T, I> a(1, 3);
+  a.update(values, rowptr, colind);
+
+  spblas::operation_state state;
+  EXPECT_THROW(spblas::sort_matrix(state, a), std::invalid_argument);
+  // Nothing was reordered.
+  EXPECT_EQ(colind, (std::vector<I>{2, 1, 0}));
+
+  std::vector<I> short_colind{2, 1};
+  a.update({}, rowptr, short_colind);
+  EXPECT_THROW(spblas::sort_matrix(state, a), std::invalid_argument);
+}
+
 TEST(SortMatrix, SpGEMMAndSpADDOutput) {
   using T = double;
   using I = spblas::index_t;
