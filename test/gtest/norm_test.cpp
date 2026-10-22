@@ -139,6 +139,53 @@ TEST(Norm, FrobeniusDoesNotOverflowOrUnderflow) {
   }
 }
 
+// NaN propagates to both norms, whatever the entry order; infinite entries
+// give an infinite norm (not NaN), unless there is also a NaN.
+TEST(Norm, NanAndInfinity) {
+  using T = double;
+  using I = spblas::index_t;
+  const T nan = std::numeric_limits<T>::quiet_NaN();
+  const T inf = std::numeric_limits<T>::infinity();
+
+  // One entry per row of a k x 1 matrix.
+  auto norms = [](std::vector<T> values) {
+    std::vector<I> rowptr(values.size() + 1), colind(values.size(), 0);
+    for (std::size_t i = 0; i < values.size(); i++) {
+      rowptr[i + 1] = I(i + 1);
+    }
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind,
+                                {I(values.size()), I(1)}, I(values.size()));
+    spblas::operation_state state;
+    return std::pair(spblas::matrix_inf_norm(state, a),
+                     spblas::matrix_frob_norm(state, a));
+  };
+
+  for (auto&& values :
+       {std::vector<T>{nan}, std::vector<T>{1, nan}, std::vector<T>{nan, 1},
+        std::vector<T>{inf, nan}, std::vector<T>{nan, inf},
+        std::vector<T>{inf, nan, 1}}) {
+    auto [inf_norm, frob_norm] = norms(values);
+    EXPECT_TRUE(std::isnan(inf_norm));
+    EXPECT_TRUE(std::isnan(frob_norm));
+  }
+  for (auto&& values :
+       {std::vector<T>{inf}, std::vector<T>{1, -inf}, std::vector<T>{inf, -inf},
+        std::vector<T>{inf, 2, inf}}) {
+    auto [inf_norm, frob_norm] = norms(values);
+    EXPECT_EQ(inf_norm, inf);
+    EXPECT_EQ(frob_norm, inf);
+  }
+
+  // A complex entry whose components are both infinite.
+  using C = std::complex<T>;
+  std::vector<C> values{C(inf, -inf)};
+  std::vector<I> rowptr{0, 1}, colind{0};
+  spblas::csr_wrapper<C, I> a(values, rowptr, colind, {1, 1}, 1);
+  spblas::operation_state state;
+  EXPECT_EQ(spblas::matrix_frob_norm(state, a), inf);
+  EXPECT_EQ(spblas::matrix_inf_norm(state, a), inf);
+}
+
 TEST(Norm, EmptyMatrix) {
   using T = float;
   using I = spblas::index_t;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory_resource>
 #include <utility>
 #include <vector>
@@ -26,6 +27,9 @@
 //
 //   The Frobenius norm uses LAPACK's scaled sum of squares (lassq), so it
 //   neither overflows nor underflows for representable results.
+//
+//   A NaN entry makes either norm NaN; otherwise an infinite entry makes it
+//   infinite.
 //
 
 namespace spblas {
@@ -53,6 +57,9 @@ __detail::norm_t<A> matrix_inf_norm(operation_state& state, A&& a) {
 
   R norm = 0;
   for (auto&& s : row_sums) {
+    if (std::isnan(s)) {
+      return s; // std::max would drop it
+    }
     norm = std::max(norm, s);
   }
   return norm;
@@ -64,10 +71,22 @@ __detail::norm_t<A> matrix_frob_norm(operation_state& state, A&& a) {
   log_trace("");
   using R = __detail::norm_t<A>;
 
-  // norm = scale * sqrt(sum_of_squares), with every |a_ij| / scale <= 1.
+  // norm = scale * sqrt(sum_of_squares), with every finite |a_ij| / scale
+  // <= 1. NaN and infinite components are only recorded: scaling by them
+  // would turn inf / inf into NaN.
   R scale = 0;
   R sum_of_squares = 1;
+  bool has_nan = false;
+  bool has_inf = false;
   auto accumulate = [&](R abs_v) {
+    if (std::isnan(abs_v)) {
+      has_nan = true;
+      return;
+    }
+    if (std::isinf(abs_v)) {
+      has_inf = true;
+      return;
+    }
     if (abs_v == R(0)) {
       return;
     }
@@ -91,6 +110,12 @@ __detail::norm_t<A> matrix_frob_norm(operation_state& state, A&& a) {
     }
   });
 
+  if (has_nan) {
+    return std::numeric_limits<R>::quiet_NaN();
+  }
+  if (has_inf) {
+    return std::numeric_limits<R>::infinity();
+  }
   return scale * std::sqrt(sum_of_squares);
 }
 
