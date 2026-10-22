@@ -64,8 +64,10 @@ public:
     return __backend::shape(matrix_);
   }
 
-  // Number of stored entries of `matrix()` inside the triangle; implied
-  // diagonal entries are not counted. O(nnz) on the first call, then cached.
+  // Number of entries of the represented triangle: the stored entries of
+  // `matrix()` inside it, with the diagonal from storage, or one entry per
+  // diagonal position for implicit_unit, or none for implicit_zero. O(nnz) on
+  // the first call, then cached.
   offset_type size() const {
     return size_.get([&] { return __detail::structured_view_size(*this); });
   }

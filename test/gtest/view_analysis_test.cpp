@@ -334,8 +334,10 @@ TEST(ViewAnalysis, UnstructuredStacks) {
                     view::diagonal(a)))>);
 }
 
-// size(): stored entries in the represented region, for any composition;
-// computed once and kept by the view and its copies.
+// size(): the entries of the represented matrix, for any composition: the
+// stored entries in the region, with an implied unit diagonal counted (one
+// per diagonal position) and an implied zero diagonal not; computed once and
+// kept by the view and its copies.
 TEST(ViewAnalysis, StructuredViewSize) {
   test_matrix m(9, 1);
   const std::size_t n = m.n;
@@ -354,7 +356,14 @@ TEST(ViewAnalysis, StructuredViewSize) {
 
   EXPECT_EQ(view::triangle(a, uplo::lower).size(), strictly_lower + diagonal);
   EXPECT_EQ(view::triangle(a, uplo::lower, diag::implicit_unit).size(),
+            strictly_lower + n);
+  EXPECT_EQ(view::triangle(a, uplo::lower, diag::implicit_zero).size(),
             strictly_lower);
+  // An implied diagonal stays implied under an outer explicit_diagonal.
+  EXPECT_EQ(view::triangle(view::triangle(a, uplo::lower, diag::implicit_unit),
+                           uplo::lower)
+                .size(),
+            strictly_lower + n);
   // upper(lower(A)^T) is the transpose of lower(A).
   EXPECT_EQ(view::triangle(view::transpose(view::triangle(a, uplo::lower)),
                            uplo::upper)
@@ -364,7 +373,12 @@ TEST(ViewAnalysis, StructuredViewSize) {
       view::triangle(view::triangle(m.csc(), uplo::lower), uplo::upper).size(),
       diagonal);
   EXPECT_EQ(view::diagonal(view::transpose(a)).size(), diagonal);
-  EXPECT_EQ(view::diagonal(a, diag::implicit_unit).size(), 0u);
+  EXPECT_EQ(view::diagonal(a, diag::implicit_unit).size(), n);
+  EXPECT_EQ(view::diagonal(a, diag::implicit_zero).size(), 0u);
+  EXPECT_EQ(view::triangle(view::transpose(view::triangle(a, uplo::upper)),
+                           uplo::upper, diag::implicit_unit)
+                .size(),
+            n); // upper(upper(A)^T) is the diagonal
 
   auto t = view::triangle(m.csr(), uplo::upper);
   const auto upper = t.size();
