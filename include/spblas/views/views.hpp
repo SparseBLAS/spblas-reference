@@ -6,6 +6,7 @@
 #include <spblas/views/csc_wrapper.hpp>
 #include <spblas/views/csr_view.hpp>
 #include <spblas/views/csr_wrapper.hpp>
+#include <spblas/views/diagonal_view.hpp>
 #include <spblas/views/inspectors.hpp>
 #include <spblas/views/matrix_opt.hpp>
 #include <spblas/views/matrix_opt_impl.hpp>
@@ -15,3 +16,6 @@
 #include <spblas/views/triangle_view.hpp>
 #include <spblas/views/view.hpp>
 #include <spblas/views/view_base.hpp>
+
+// Analysis of composed views (and the size of triangle / diagonal views).
+#include <spblas/detail/view_analysis.hpp>
