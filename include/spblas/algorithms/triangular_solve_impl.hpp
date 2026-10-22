@@ -63,7 +63,8 @@ void triangular_solve(A&& a, Triangle t, DiagonalStorage d, B&& b, X&& x) {
                      std::declval<tensor_scalar_t<X>>());
 
   if constexpr (std::is_same_v<Triangle, upper_triangle_t>) {
-    for (auto&& [i, a_row] : __ranges::views::reverse(__backend::rows(a))) {
+    for (auto&& [i, a_row] :
+         spblas::__ranges::views::reverse(__backend::rows(a))) {
       V dot_product = 0;
       T diagonal_value = 0;
       for (auto&& [k, a_v] : a_row) {
@@ -117,36 +118,28 @@ void triangular_solve(operation_info_t& info, A&& a, Triangle t,
 //
 // operation_state API (SparseBLAS paper)
 //
-//   triangular_solve_inspect([policy,] state, view::triangle(A, uplo, diag),
-//                            [alpha,] b, x)
-//   triangular_solve([policy,] state, view::triangle(A, uplo, diag),
-//                    [alpha,] b, x)
-//     Solves T x = alpha * b for x, where T is the selected triangle of A.
-//     x may alias b. view::diag::implicit_zero is rejected (T is singular).
+//   triangular_solve_inspect([policy,] state, T, [alpha,] b, x)
+//   triangular_solve([policy,] state, T, [alpha,] b, x)
+//     Solves T x = alpha * b for x. x may alias b.
+//
+//   T: any composition of view::triangle / view::diagonal with
+//   view::transpose and view::conjugate that represents a triangular or
+//   diagonal matrix, in any order (e.g. view::triangle(A, uplo::lower),
+//   view::transpose(view::triangle(A, uplo::lower)),
+//   view::triangle(view::triangle(A, uplo::lower), uplo::upper)), also
+//   through view::symmetric (a triangle of a symmetric matrix). The stack is
+//   reduced by __detail::analyze_view to op(region(A)) at compile time and
+//   solved as a triangle of op(A), or as a diagonal solve.
+//   view::diag::implicit_zero is rejected at compile time (singular).
 //
 //   A: CSR (row-oriented substitution) or CSC (column-oriented), and a
 //   matrix_opt of either.
 //
-//   Any composition of view::triangle / view::diagonal with view::transpose
-//   and view::conjugate that represents a triangular or diagonal matrix is
-//   accepted, in any order (e.g. view::transpose(view::triangle(A, lower)),
-//   view::triangle(view::triangle(A, lower), upper)): the stack is reduced
-//   by __detail::analyze_view to op(region(A)) and solved as
-//   view::triangle(op(A), ...) or as a diagonal solve.
-//
 
 namespace __detail {
 
-template <typename T>
-using triangle_matrix_t = decltype(std::declval<T>().matrix());
-
-template <typename T, typename M, typename B, typename X>
-void check_triangular_solve_(T&& t, M&& a, B&& b, X&& x) {
-  if (t.diag() == view::diag::implicit_zero) {
-    throw std::invalid_argument(
-        "triangular_solve: view::diag::implicit_zero is not supported (the "
-        "triangle would be singular).");
-  }
+template <typename M, typename B, typename X>
+void check_triangular_solve_shapes_(M&& a, B&& b, X&& x) {
   if (__backend::shape(a)[0] != __backend::shape(a)[1] ||
       __backend::shape(a)[0] != __backend::shape(b) ||
       __backend::shape(a)[1] != __backend::shape(x)) {
@@ -155,39 +148,34 @@ void check_triangular_solve_(T&& t, M&& a, B&& b, X&& x) {
   }
 }
 
-} // namespace __detail
-
-template <typename T, __detail::scalar Alpha, vector B, vector X>
-  requires(__detail::is_triangle_view_v<T> &&
-           __backend::row_iterable<__detail::triangle_matrix_t<T>> &&
-           __backend::lookupable<B> && __backend::lookupable<X>)
-void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
-                      X&& x) {
-  log_trace("");
-  auto a = t.matrix();
-  __detail::check_triangular_solve_(t, a, b, x);
-
+// Row-oriented substitution with the Upper / lower triangle of a.
+template <bool Upper, bool ExplicitDiagonal, typename M, typename Alpha,
+          typename B, typename X>
+void triangular_solve_rows_(M&& a, Alpha alpha, B&& b, X&& x) {
   using V = tensor_scalar_t<X>;
   const V alpha_v = static_cast<V>(alpha);
-  const bool upper = t.uplo() == view::uplo::upper;
-  const bool explicit_diagonal = t.diag() == view::diag::explicit_diagonal;
 
   auto solve_row = [&](auto i, auto&& a_row) {
     V dot_product = 0;
-    tensor_scalar_t<__detail::triangle_matrix_t<T>> diagonal_value = 0;
+    tensor_scalar_t<M> diagonal_value = 0;
     for (auto&& [k, a_v] : a_row) {
-      if (upper ? k > i : k < i) {
+      if (Upper ? k > i : k < i) {
         dot_product += a_v * __backend::lookup(x, k);
       } else if (k == i) {
         diagonal_value = a_v;
       }
     }
     V rhs = alpha_v * __backend::lookup(b, i) - dot_product;
-    __backend::lookup(x, i) = explicit_diagonal ? rhs / diagonal_value : rhs;
+    if constexpr (ExplicitDiagonal) {
+      __backend::lookup(x, i) = rhs / diagonal_value;
+    } else {
+      __backend::lookup(x, i) = rhs;
+    }
   };
 
-  if (upper) {
-    for (auto&& [i, a_row] : __ranges::views::reverse(__backend::rows(a))) {
+  if constexpr (Upper) {
+    for (auto&& [i, a_row] :
+         spblas::__ranges::views::reverse(__backend::rows(a))) {
       solve_row(i, a_row);
     }
   } else {
@@ -197,23 +185,13 @@ void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
   }
 }
 
-// Column-oriented substitution, for triangles of column-iterable matrices
-// (CSC, matrix_opt of CSC).
-template <typename T, __detail::scalar Alpha, vector B, vector X>
-  requires(__detail::is_triangle_view_v<T> &&
-           !__backend::row_iterable<__detail::triangle_matrix_t<T>> &&
-           __backend::column_iterable<__detail::triangle_matrix_t<T>> &&
-           __backend::lookupable<B> && __backend::lookupable<X>)
-void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
-                      X&& x) {
-  log_trace("");
-  auto a = t.matrix();
-  __detail::check_triangular_solve_(t, a, b, x);
-
+// Column-oriented substitution, for column-iterable matrices (CSC, matrix_opt
+// of CSC, the transpose of CSR).
+template <bool Upper, bool ExplicitDiagonal, typename M, typename Alpha,
+          typename B, typename X>
+void triangular_solve_columns_(M&& a, Alpha alpha, B&& b, X&& x) {
   using V = tensor_scalar_t<X>;
   const V alpha_v = static_cast<V>(alpha);
-  const bool upper = t.uplo() == view::uplo::upper;
-  const bool explicit_diagonal = t.diag() == view::diag::explicit_diagonal;
 
   // x = alpha * b, then eliminate one column at a time.
   for (tensor_index_t<X> i = 0; i < __backend::shape(x); i++) {
@@ -221,8 +199,8 @@ void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
   }
 
   auto solve_column = [&](auto j, auto&& a_column) {
-    if (explicit_diagonal) {
-      tensor_scalar_t<__detail::triangle_matrix_t<T>> diagonal_value = 0;
+    if constexpr (ExplicitDiagonal) {
+      tensor_scalar_t<M> diagonal_value = 0;
       for (auto&& [i, a_v] : a_column) {
         if (i == j) {
           diagonal_value = a_v;
@@ -232,15 +210,15 @@ void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
     }
     const V x_j = __backend::lookup(x, j);
     for (auto&& [i, a_v] : a_column) {
-      if (upper ? i < j : i > j) {
+      if (Upper ? i < j : i > j) {
         __backend::lookup(x, i) -= a_v * x_j;
       }
     }
   };
 
-  if (upper) {
+  if constexpr (Upper) {
     for (auto&& [j, a_column] :
-         __ranges::views::reverse(__backend::columns(a))) {
+         spblas::__ranges::views::reverse(__backend::columns(a))) {
       solve_column(j, a_column);
     }
   } else {
@@ -250,103 +228,101 @@ void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
   }
 }
 
-namespace __detail {
-
-// A stack with structure that is not simply view::triangle over an
-// unstructured operand (which the kernels above take directly).
-template <typename T>
-constexpr bool is_plain_triangle_() {
-  if constexpr (is_triangle_view_v<T>) {
-    return !structured_view<triangle_matrix_t<T>>;
-  } else {
-    return false;
-  }
-}
-
-template <typename T>
-concept composed_structure = structured_view<T> && !is_plain_triangle_<T>();
-
-template <typename T>
-using structured_operand_t =
-    decltype(std::declval<view_analysis_t<T>>().operand());
-
-// x = alpha * inv(D) * b for the diagonal D of op(base).
+// x = alpha * inv(D) * b for the represented diagonal D.
 template <typename Analysis, typename Alpha, typename B, typename X>
 void diagonal_solve_(operation_state& state, const Analysis& a, Alpha alpha,
                      B&& b, X&& x) {
-  const auto shape = __backend::shape(a.base);
-  if (a.diag == spblas::view::diag::implicit_zero) {
-    throw std::invalid_argument(
-        "triangular_solve: view::diag::implicit_zero is not supported (the "
-        "matrix would be singular).");
-  }
-  if (shape[0] != shape[1] || shape[0] != __backend::shape(b) ||
-      shape[1] != __backend::shape(x)) {
-    throw std::invalid_argument(
-        "triangular_solve: matrix and vector dimensions are incompatible.");
-  }
-
+  check_triangular_solve_shapes_(a.base, b, x);
   using V = tensor_scalar_t<X>;
-  const V alpha_v = static_cast<V>(alpha);
-  if (a.diag == spblas::view::diag::implicit_unit) {
-    for (tensor_index_t<X> i = 0; i < __backend::shape(x); i++) {
-      __backend::lookup(x, i) = alpha_v * __backend::lookup(b, i);
-    }
-    return;
-  }
-
-  // The diagonal of op(base) is that of base, conjugated if op conjugates.
   using T = tensor_scalar_t<typename Analysis::base_type>;
-  std::pmr::vector<T> diagonal(shape[0], T(0), state.get_allocator());
-  __backend::for_each(a.base, [&](auto&& e) {
-    auto&& [idx, v] = e;
-    auto&& [i, j] = idx;
-    if (i == j) {
-      if constexpr (Analysis::conjugate && is_std_complex_v<T>) {
-        diagonal[i] = std::conj(v);
-      } else {
-        diagonal[i] = v;
-      }
-    }
-  });
+  const V alpha_v = static_cast<V>(alpha);
+
+  std::pmr::vector<T> diagonal(__backend::shape(x), T(0),
+                               state.get_allocator());
+  __detail::for_each_represented_entry(
+      a, [&](auto i, auto, auto&& v) { diagonal[i] = v; });
   for (tensor_index_t<X> i = 0; i < __backend::shape(x); i++) {
     __backend::lookup(x, i) = alpha_v * __backend::lookup(b, i) / diagonal[i];
   }
 }
 
+template <typename T>
+using structured_operand_t =
+    decltype(std::declval<view_analysis_t<T>>().operand());
+
+template <typename T>
+constexpr bool is_solvable_structure_() {
+  if constexpr (structured_view<T>) {
+    using A = view_analysis_t<T>;
+    using Op = structured_operand_t<T>;
+    return A::structure == view_structure::general &&
+           A::diag != diag_kind::implicit_zero &&
+           (A::region == view_region::diagonal ||
+            ((A::region == view_region::lower ||
+              A::region == view_region::upper) &&
+             (__backend::row_iterable<Op> || __backend::column_iterable<Op>) ));
+  } else {
+    return false;
+  }
+}
+
+// A view stack representing a nonsingular-by-construction triangular or
+// diagonal matrix the reference kernels can solve with.
+template <typename T>
+concept solvable_structure = is_solvable_structure_<T>();
+
+template <typename T>
+constexpr bool is_implicit_zero_structure_() {
+  if constexpr (structured_view<T>) {
+    return view_analysis_t<T>::diag == diag_kind::implicit_zero;
+  } else {
+    return false;
+  }
+}
+
 } // namespace __detail
 
-// Composed views: solved through their analysis (see the top of the file).
 template <typename T, __detail::scalar Alpha, vector B, vector X>
-  requires(__detail::composed_structure<T> &&
-           (__backend::row_iterable<__detail::structured_operand_t<T>> ||
-            __backend::column_iterable<__detail::structured_operand_t<T>>) &&
-           __backend::lookupable<B> && __backend::lookupable<X>)
+  requires(__detail::solvable_structure<T> && __backend::lookupable<B> &&
+           __backend::lookupable<X>)
 void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
                       X&& x) {
   log_trace("");
   auto a = __detail::analyze_view(t);
-  switch (a.represented_region()) {
-  case __detail::view_region::lower:
-  case __detail::view_region::upper: {
-    const auto uplo = a.represented_region() == __detail::view_region::lower
-                          ? view::uplo::lower
-                          : view::uplo::upper;
-    triangular_solve(state, view::triangle(a.operand(), uplo, a.diag), alpha,
-                     std::forward<B>(b), std::forward<X>(x));
-    break;
-  }
-  case __detail::view_region::diagonal:
+  using A = decltype(a);
+
+  if constexpr (A::region == __detail::view_region::diagonal) {
     __detail::diagonal_solve_(state, a, alpha, b, x);
-    break;
-  case __detail::view_region::full:
-    // A structured stack always restricts the region.
-    throw std::logic_error("triangular_solve: unexpected full region.");
+  } else {
+    constexpr bool upper =
+        A::represented_region == __detail::view_region::upper;
+    constexpr bool explicit_diagonal =
+        A::diag == __detail::diag_kind::explicit_diagonal;
+    auto op = a.operand();
+    __detail::check_triangular_solve_shapes_(op, b, x);
+    if constexpr (__backend::row_iterable<decltype(op)>) {
+      __detail::triangular_solve_rows_<upper, explicit_diagonal>(op, alpha, b,
+                                                                 x);
+    } else {
+      __detail::triangular_solve_columns_<upper, explicit_diagonal>(op, alpha,
+                                                                    b, x);
+    }
   }
 }
 
+// An implied zero diagonal makes the matrix singular.
+template <typename T, __detail::scalar Alpha, vector B, vector X>
+  requires(__detail::is_implicit_zero_structure_<T>())
+void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
+                      X&& x) {
+  static_assert(!__detail::is_implicit_zero_structure_<T>(),
+                "triangular_solve: view::diag::implicit_zero is not supported "
+                "(the matrix would be singular).");
+}
+
 template <typename T, vector B, vector X>
-  requires(__detail::structured_view<T>)
+  requires(__detail::solvable_structure<T> ||
+           __detail::is_implicit_zero_structure_<T>())
 void triangular_solve(operation_state& state, T&& t, B&& b, X&& x) {
   log_trace("");
   triangular_solve(state, std::forward<T>(t), tensor_scalar_t<X>(1),
@@ -355,14 +331,14 @@ void triangular_solve(operation_state& state, T&& t, B&& b, X&& x) {
 
 // The reference implementation has nothing to prepare.
 template <typename T, __detail::scalar Alpha, vector B, vector X>
-  requires(__detail::structured_view<T>)
+  requires(__detail::solvable_structure<T>)
 void triangular_solve_inspect(operation_state& state, T&& t, Alpha alpha, B&& b,
                               X&& x) {
   log_trace("");
 }
 
 template <typename T, vector B, vector X>
-  requires(__detail::structured_view<T>)
+  requires(__detail::solvable_structure<T>)
 void triangular_solve_inspect(operation_state& state, T&& t, B&& b, X&& x) {
   log_trace("");
 }
