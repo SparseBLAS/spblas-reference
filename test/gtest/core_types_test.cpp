@@ -186,8 +186,10 @@ TEST(View, Triangle) {
   // Must not be unwrapped transparently by backends that match CSR bases.
   static_assert(!spblas::__detail::has_csr_base<decltype(lower)>);
 
-  EXPECT_EQ(lower.uplo(), spblas::view::uplo::lower);
-  EXPECT_EQ(lower.diag(), spblas::view::diag::explicit_diagonal);
+  static_assert(
+      std::is_same_v<decltype(lower)::uplo_type, spblas::view::uplo::lower_t>);
+  static_assert(std::is_same_v<decltype(lower)::diag_type,
+                               spblas::view::diag::explicit_diagonal_t>);
   EXPECT_EQ(spblas::__backend::shape(lower),
             (spblas::index<spblas::index_t>(3, 3)));
   EXPECT_EQ(spblas::__backend::size(lower), 5);
@@ -195,10 +197,13 @@ TEST(View, Triangle) {
   auto upper = spblas::view::triangle(a, spblas::view::uplo::upper);
   EXPECT_EQ(upper.size(), 5);
 
-  auto strict_lower = spblas::view::triangle(a, spblas::view::uplo::lower,
-                                             spblas::view::diag::implicit_unit);
-  EXPECT_EQ(strict_lower.diag(), spblas::view::diag::implicit_unit);
-  EXPECT_EQ(strict_lower.size(), 2);
+  // An implied unit diagonal counts (2 strictly lower entries + 3 diagonal
+  // positions); an implied zero diagonal does not (below).
+  auto unit_lower = spblas::view::triangle(a, spblas::view::uplo::lower,
+                                           spblas::view::diag::implicit_unit);
+  static_assert(std::is_same_v<decltype(unit_lower)::diag_type,
+                               spblas::view::diag::implicit_unit_t>);
+  EXPECT_EQ(unit_lower.size(), 5);
 
   // Through a matrix_opt and through a CSC (column-iterable) matrix.
   spblas::matrix_opt a_opt(a);
@@ -229,6 +234,17 @@ TEST(View, TransposeAndConjugate) {
       values, m.rowptr, m.colind, {3, 3}, 7);
   auto c_conj = spblas::view::conjugate(c);
   EXPECT_TRUE(spblas::__detail::is_conjugated(c_conj));
+
+  // conj(conj(A)) is A, for named and temporary views, matrices and vectors.
+  auto c_conj_conj = spblas::view::conjugate(c_conj);
+  static_assert(std::is_same_v<decltype(c_conj_conj), decltype(c)>);
+  static_assert(std::is_same_v<decltype(spblas::view::conjugate(
+                                   spblas::view::conjugate(c))),
+                               decltype(c)>);
+  EXPECT_EQ(c_conj_conj.values().data(), values.data());
+  std::vector<std::complex<float>> v(3);
+  auto v_conj_conj = spblas::conjugated(spblas::conjugated(v));
+  EXPECT_FALSE(spblas::__detail::is_conjugated(v_conj_conj));
 }
 
 TEST(View, TransposeOfMatrixOpt) {

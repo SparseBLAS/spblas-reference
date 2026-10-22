@@ -19,7 +19,8 @@ if (SPBLAS_CPU_BACKEND)
          scale_test.cpp
          norm_test.cpp
          sort_test.cpp
-         allocator_test.cpp)
+         allocator_test.cpp
+         view_analysis_test.cpp)
   else()
     list(APPEND TEST_SOURCES
          legacy/spmv_test.cpp

@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include <spblas/algorithms/detail/assign_scaled.hpp>
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
@@ -20,32 +21,13 @@
 //   X, Y, Z  dense matrices (mdspan, any layout with element lookup).
 //            Z may alias Y; if beta == 0, Z is not read.
 //
-//   Not yet supported: view::triangle / symmetric / hermitian of A, and a
-//   dense A with a sparse X.
+//   Structure views of A: see spmm_structured_impl.hpp. Not yet supported:
+//   a dense A with a sparse X.
 //
 // The policy-first overloads are in policy_forwarding.hpp.
 //
 
 namespace spblas {
-
-namespace __detail {
-
-// Y = beta * Z, or Y = 0 if beta == 0 (Z is not read then).
-template <typename Beta, matrix Z, matrix Y>
-void assign_scaled_(Beta beta, Z&& z, Y&& y) {
-  using V = tensor_scalar_t<Y>;
-  const V beta_v = static_cast<V>(beta);
-  const bool zero = beta_v == V(0);
-
-  for (tensor_index_t<Y> i = 0; i < __backend::shape(y)[0]; i++) {
-    for (tensor_index_t<Y> j = 0; j < __backend::shape(y)[1]; j++) {
-      __backend::lookup(y, i, j) =
-          zero ? V(0) : beta_v * __backend::lookup(z, i, j);
-    }
-  }
-}
-
-} // namespace __detail
 
 // Y = alpha * A * X + beta * Z
 template <__detail::scalar Alpha, matrix A, matrix X, __detail::scalar Beta,
