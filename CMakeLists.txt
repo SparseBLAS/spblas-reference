@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS "-O3 -march=native")
 option(ENABLE_SANITIZERS "Enable Clang sanitizers" OFF)
 option(ENABLE_ROCSPARSE "Enable rocSPARSE" OFF)
 option(ENABLE_CUSPARSE "Enable cuSPARSE" OFF)
+option(ENABLE_ONEMKL_IESPBLAS "Enable oneMKL IESPARSE" OFF)
 
 # Get includes, which declares the `spblas` library
 add_subdirectory(include)
@@ -22,6 +23,32 @@ include(FetchContent)
 
 set(SPBLAS_CPU_BACKEND OFF)
 set(SPBLAS_GPU_BACKEND OFF)
+
+# oneMKL threading layer: match the compiler's OpenMP runtime unless the user
+# chose one (intel_thread needs libiomp5, which ships with the Intel compilers).
+if ((ENABLE_ONEMKL_IESPBLAS OR ENABLE_ONEMKL_SYCL) AND NOT DEFINED MKL_THREADING)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+    set(MKL_THREADING intel_thread CACHE STRING "oneMKL threading layer")
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(MKL_THREADING gnu_thread CACHE STRING "oneMKL threading layer")
+  endif()
+endif()
+
+if (ENABLE_ONEMKL_IESPBLAS)
+  set(SPBLAS_CPU_BACKEND ON)
+  # The IE Sparse BLAS backend uses LP64 (MKL_INT = int); 64-bit indices go
+  # through the _64 entry points instead of the ILP64 interface.
+  if (NOT DEFINED MKL_INTERFACE AND NOT DEFINED MKL_INTERFACE_FULL)
+    set(MKL_INTERFACE lp64 CACHE STRING "oneMKL interface layer")
+  endif()
+  find_package(MKL REQUIRED)
+  if (NOT MKL_INTERFACE STREQUAL "lp64")
+    message(FATAL_ERROR "ENABLE_ONEMKL_IESPBLAS requires the oneMKL LP64 interface "
+                        "(got '${MKL_INTERFACE}'); configure with -DMKL_INTERFACE=lp64.")
+  endif()
+  target_link_libraries(spblas INTERFACE MKL::MKL) # C APIs
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPBLAS_ENABLE_ONEMKL_IESPBLAS")
+endif()
 
 if (ENABLE_ONEMKL_SYCL)
   set(SPBLAS_CPU_BACKEND ON)
@@ -95,7 +122,8 @@ if (ENABLE_CUSPARSE)
 endif()
 
 # If no vendor backend is enabled, enable CPU backend for reference implementation
-if (NOT ENABLE_ONEMKL_SYCL AND
+if (NOT ENABLE_ONEMKL_IESPBLAS AND
+    NOT ENABLE_ONEMKL_SYCL AND
     NOT ENABLE_ARMPL AND
     NOT ENABLE_AOCLSPARSE AND
     NOT ENABLE_ROCSPARSE AND
@@ -107,7 +135,7 @@ endif()
 # Backends that implement the operation_state API from the SparseBLAS paper
 # build the tests and examples for it; the others build the legacy ones under
 # test/gtest/legacy and examples/legacy until they are migrated.
-if (SPBLAS_REFERENCE_BACKEND)
+if (SPBLAS_REFERENCE_BACKEND OR ENABLE_ONEMKL_IESPBLAS)
   set(SPBLAS_PAPER_API ON)
 endif()
 
