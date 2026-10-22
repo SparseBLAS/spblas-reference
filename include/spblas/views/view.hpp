@@ -18,7 +18,6 @@
 // Stacks of these views are reduced to one canonical form by
 // __detail::analyze_view (detail/view_analysis.hpp).
 //
-// Not yet provided: view::symmetric, view::hermitian.
 
 namespace spblas {
 
@@ -57,15 +56,30 @@ auto conjugate(T&& t) {
 }
 
 // The `u` triangle of `m` with diagonal handling `d`.
-template <matrix M>
-auto triangle(M&& m, uplo u, diag d = diag::explicit_diagonal) {
-  return triangle_view<std::remove_cvref_t<M>>(std::forward<M>(m), u, d);
+template <matrix M, uplo_tag U, diag_tag D = diag::explicit_diagonal_t>
+auto triangle(M&& m, U u, D d = {}) {
+  return triangle_view<std::remove_cvref_t<M>, U, D>(std::forward<M>(m));
 }
 
 // The diagonal of `m` (neither strict triangle) with diagonal handling `d`.
-template <matrix M>
-auto diagonal(M&& m, diag d = diag::explicit_diagonal) {
-  return diagonal_view<std::remove_cvref_t<M>>(std::forward<M>(m), d);
+template <matrix M, diag_tag D = diag::explicit_diagonal_t>
+auto diagonal(M&& m, D d = {}) {
+  return diagonal_view<std::remove_cvref_t<M>, D>(std::forward<M>(m));
+}
+
+// The symmetric matrix T + S^T, where T is the `u` triangle of `m` (with
+// diagonal handling `d`) and S its strict part.
+template <matrix M, uplo_tag U, diag_tag D = diag::explicit_diagonal_t>
+auto symmetric(M&& m, U u, D d = {}) {
+  return symmetric_view<std::remove_cvref_t<M>, U, D>(std::forward<M>(m));
+}
+
+// The Hermitian matrix T + S^H, with T and S as for symmetric; only the real
+// part of the stored diagonal is used (as LAPACK's ?hemv). For real value
+// types this is view::symmetric.
+template <matrix M, uplo_tag U, diag_tag D = diag::explicit_diagonal_t>
+auto hermitian(M&& m, U u, D d = {}) {
+  return hermitian_view<std::remove_cvref_t<M>, U, D>(std::forward<M>(m));
 }
 
 } // namespace view

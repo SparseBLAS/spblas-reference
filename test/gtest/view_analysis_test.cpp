@@ -3,28 +3,37 @@
 #include <cmath>
 #include <complex>
 #include <random>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
 // __detail::analyze_view reduces stacks of transpose / conjugate / triangle /
-// diagonal views to op(region(base)) (detail/view_analysis.hpp); the
-// triangular solve accepts any such stack representing a triangular or
-// diagonal matrix.
+// diagonal / symmetric / hermitian views to op(structure(region(base))) at
+// compile time (detail/view_analysis.hpp). The triangular solve accepts any
+// stack representing a triangular or diagonal matrix; SpMV / SpMM accept any
+// structured stack.
 
 namespace {
 
-using spblas::__detail::analyze_view;
+using spblas::__detail::describe_view;
+using spblas::__detail::diag_kind;
 using spblas::__detail::view_region;
+using spblas::__detail::view_structure;
 namespace view = spblas::view;
-using spblas::view::diag;
-using spblas::view::uplo;
+namespace uplo = spblas::view::uplo;
+namespace diag = spblas::view::diag;
 
 using T = std::complex<double>;
 using I = spblas::index_t;
 
-// A dense n x n matrix with a nonzero diagonal and its CSR / CSC arrays.
+// The analysis of a view expression (unevaluated: only its type is used).
+#define DESC(...) describe_view<decltype(__VA_ARGS__)>()
+
+// A dense n x n matrix with a nonzero (complex) diagonal and its CSR / CSC
+// arrays.
 struct test_matrix {
   std::size_t n;
   std::vector<T> dense;
@@ -75,10 +84,17 @@ struct test_matrix {
   }
 };
 
+//
 // Dense counterparts of the views, applied to the represented matrix.
+//
 using dense_t = std::vector<T>;
 
-dense_t d_transpose(const dense_t& m, std::size_t n) {
+std::size_t dim(const dense_t& m) {
+  return std::size_t(std::lround(std::sqrt(m.size())));
+}
+
+dense_t d_transpose(const dense_t& m) {
+  const std::size_t n = dim(m);
   dense_t r(n * n);
   for (std::size_t i = 0; i < n; i++) {
     for (std::size_t j = 0; j < n; j++) {
@@ -95,37 +111,76 @@ dense_t d_conjugate(dense_t m) {
   return m;
 }
 
-void apply_diag(dense_t& r, const dense_t& m, std::size_t n, diag d) {
-  for (std::size_t i = 0; i < n; i++) {
-    r[i * n + i] = d == diag::explicit_diagonal ? m[i * n + i]
-                   : d == diag::implicit_unit   ? T(1)
-                                                : T(0);
+template <typename D>
+T diagonal_value(const dense_t& m, std::size_t i, D) {
+  if constexpr (std::is_same_v<D, diag::explicit_diagonal_t>) {
+    return m[i * dim(m) + i];
+  } else if constexpr (std::is_same_v<D, diag::implicit_unit_t>) {
+    return T(1);
+  } else {
+    return T(0);
   }
 }
 
-dense_t d_triangle(const dense_t& m, std::size_t n, uplo u,
-                   diag d = diag::explicit_diagonal) {
+template <typename U, typename D = diag::explicit_diagonal_t>
+dense_t d_triangle(const dense_t& m, U, D d = {}) {
+  const std::size_t n = dim(m);
+  constexpr bool lower = std::is_same_v<U, uplo::lower_t>;
   dense_t r(n * n, T(0));
   for (std::size_t i = 0; i < n; i++) {
     for (std::size_t j = 0; j < n; j++) {
-      if (u == uplo::lower ? j < i : j > i) {
+      if (lower ? j < i : j > i) {
         r[i * n + j] = m[i * n + j];
       }
     }
+    r[i * n + i] = diagonal_value(m, i, d);
   }
-  apply_diag(r, m, n, d);
   return r;
 }
 
-dense_t d_diagonal(const dense_t& m, std::size_t n,
-                   diag d = diag::explicit_diagonal) {
+template <typename D = diag::explicit_diagonal_t>
+dense_t d_diagonal(const dense_t& m, D d = {}) {
+  const std::size_t n = dim(m);
   dense_t r(n * n, T(0));
-  apply_diag(r, m, n, d);
+  for (std::size_t i = 0; i < n; i++) {
+    r[i * n + i] = diagonal_value(m, i, d);
+  }
   return r;
+}
+
+// T + S^T (symmetric) or T + S^H with the real part of the diagonal
+// (hermitian), T the u triangle of m.
+template <bool Hermitian, typename U, typename D>
+dense_t d_complete(const dense_t& m, U u, D d) {
+  const std::size_t n = dim(m);
+  dense_t t = d_triangle(m, u, d);
+  dense_t r = t;
+  for (std::size_t i = 0; i < n; i++) {
+    for (std::size_t j = 0; j < n; j++) {
+      if (i != j && t[i * n + j] != T(0)) {
+        r[j * n + i] = Hermitian ? std::conj(t[i * n + j]) : t[i * n + j];
+      }
+    }
+    if (Hermitian) {
+      r[i * n + i] = T(r[i * n + i].real());
+    }
+  }
+  return r;
+}
+
+template <typename U, typename D = diag::explicit_diagonal_t>
+dense_t d_symmetric(const dense_t& m, U u, D d = {}) {
+  return d_complete<false>(m, u, d);
+}
+
+template <typename U, typename D = diag::explicit_diagonal_t>
+dense_t d_hermitian(const dense_t& m, U u, D d = {}) {
+  return d_complete<true>(m, u, d);
 }
 
 // Solves m x = rhs by Gaussian elimination with partial pivoting.
-std::vector<T> dense_solve(dense_t m, std::vector<T> rhs, std::size_t n) {
+std::vector<T> dense_solve(dense_t m, std::vector<T> rhs) {
+  const std::size_t n = dim(m);
   for (std::size_t k = 0; k < n; k++) {
     std::size_t p = k;
     for (std::size_t i = k + 1; i < n; i++) {
@@ -156,89 +211,261 @@ std::vector<T> dense_solve(dense_t m, std::vector<T> rhs, std::size_t n) {
   return x;
 }
 
-// Solves the view with triangular_solve and compares with a dense solve of
-// `dense`, the matrix the view represents.
-template <typename V>
-void expect_solves(V&& v, const dense_t& dense, const char* what) {
-  SCOPED_TRACE(what);
-  const std::size_t n = std::size_t(std::lround(std::sqrt(dense.size())));
-  std::vector<T> b(n);
+std::vector<T> test_vector(std::size_t n, int shift) {
+  std::vector<T> v(n);
   for (std::size_t i = 0; i < n; i++) {
-    b[i] = T(double(i % 5) - 2, 1);
+    v[i] = T(double((i + shift) % 5) - 2, double(i % 3) - 1);
   }
-  const T alpha(2, -1);
-  std::vector<T> rhs(n);
-  for (std::size_t i = 0; i < n; i++) {
-    rhs[i] = alpha * b[i];
-  }
-  auto ref = dense_solve(dense, rhs, n);
+  return v;
+}
 
-  std::vector<T> x(n);
-  spblas::operation_state state;
-  spblas::triangular_solve(state, v, alpha, b, x);
-  for (std::size_t i = 0; i < n; i++) {
-    EXPECT_NEAR(std::abs(x[i] - ref[i]), 0, 1e-10 * (1 + std::abs(ref[i])))
+void expect_near(const std::vector<T>& expected, const std::vector<T>& actual) {
+  ASSERT_EQ(expected.size(), actual.size());
+  for (std::size_t i = 0; i < expected.size(); i++) {
+    EXPECT_NEAR(std::abs(expected[i] - actual[i]), 0,
+                1e-10 * (1 + std::abs(expected[i])))
         << "i = " << i;
   }
 }
 
-// Every spelling, for one base matrix (a wrapper or a matrix_opt).
-template <typename A>
-void solve_compositions(A a, const dense_t& d, std::size_t n) {
-  const auto dt = d_transpose(d, n);
+//
+// Triangular solve
+//
 
-  expect_solves(view::triangle(a, uplo::lower), d_triangle(d, n, uplo::lower),
+// Solves with the view and compares with a dense solve of `dense`, the
+// matrix the view represents.
+template <typename V>
+void expect_solves(const V& v, const dense_t& dense, const char* what) {
+  SCOPED_TRACE(what);
+  const std::size_t n = dim(dense);
+  const T alpha(2, -1);
+  auto b = test_vector(n, 0);
+  std::vector<T> rhs(n);
+  for (std::size_t i = 0; i < n; i++) {
+    rhs[i] = alpha * b[i];
+  }
+
+  std::vector<T> x(n);
+  spblas::operation_state state;
+  spblas::triangular_solve(state, v, alpha, b, x);
+  expect_near(dense_solve(dense, rhs), x);
+}
+
+template <typename A>
+void solve_compositions(A a, const dense_t& d) {
+  const auto dt = d_transpose(d);
+
+  expect_solves(view::triangle(a, uplo::lower), d_triangle(d, uplo::lower),
                 "triangle(A, lower)");
   expect_solves(view::triangle(a, uplo::upper, diag::implicit_unit),
-                d_triangle(d, n, uplo::upper, diag::implicit_unit),
+                d_triangle(d, uplo::upper, diag::implicit_unit),
                 "triangle(A, upper, implicit_unit)");
   expect_solves(view::transpose(view::triangle(a, uplo::lower)),
-                d_transpose(d_triangle(d, n, uplo::lower), n),
+                d_transpose(d_triangle(d, uplo::lower)),
                 "transpose(triangle(A, lower))");
   expect_solves(view::triangle(view::transpose(a), uplo::upper),
-                d_triangle(dt, n, uplo::upper),
-                "triangle(transpose(A), upper)");
-  expect_solves(view::conjugate(view::transpose(
-                    view::triangle(a, uplo::upper, diag::implicit_unit))),
-                d_conjugate(d_transpose(
-                    d_triangle(d, n, uplo::upper, diag::implicit_unit), n)),
-                "conjugate(transpose(triangle(A, upper, implicit_unit)))");
+                d_triangle(dt, uplo::upper), "triangle(transpose(A), upper)");
+  expect_solves(
+      view::conjugate(
+          view::transpose(view::triangle(a, uplo::upper, diag::implicit_unit))),
+      d_conjugate(d_transpose(d_triangle(d, uplo::upper, diag::implicit_unit))),
+      "conjugate(transpose(triangle(A, upper, implicit_unit)))");
   expect_solves(
       view::triangle(view::conjugate(view::transpose(a)), uplo::lower),
-      d_triangle(d_conjugate(dt), n, uplo::lower),
+      d_triangle(d_conjugate(dt), uplo::lower),
       "triangle(conjugate(transpose(A)), lower)");
-  expect_solves(view::triangle(view::triangle(a, uplo::lower), uplo::lower,
-                               diag::implicit_unit),
-                d_triangle(d_triangle(d, n, uplo::lower), n, uplo::lower,
-                           diag::implicit_unit),
-                "triangle(triangle(A, lower), lower, implicit_unit)");
+  expect_solves(
+      view::triangle(view::triangle(a, uplo::lower), uplo::lower,
+                     diag::implicit_unit),
+      d_triangle(d_triangle(d, uplo::lower), uplo::lower, diag::implicit_unit),
+      "triangle(triangle(A, lower), lower, implicit_unit)");
   expect_solves(view::triangle(view::triangle(a, uplo::lower), uplo::upper),
-                d_triangle(d_triangle(d, n, uplo::lower), n, uplo::upper),
+                d_triangle(d_triangle(d, uplo::lower), uplo::upper),
                 "triangle(triangle(A, lower), upper)");
   expect_solves(
       view::triangle(view::transpose(view::triangle(a, uplo::lower)),
                      uplo::lower),
-      d_triangle(d_transpose(d_triangle(d, n, uplo::lower), n), n, uplo::lower),
+      d_triangle(d_transpose(d_triangle(d, uplo::lower)), uplo::lower),
       "triangle(transpose(triangle(A, lower)), lower)");
-  expect_solves(view::diagonal(a), d_diagonal(d, n), "diagonal(A)");
+  expect_solves(view::diagonal(a), d_diagonal(d), "diagonal(A)");
   expect_solves(view::diagonal(view::conjugate(view::transpose(a))),
-                d_diagonal(d_conjugate(dt), n),
+                d_diagonal(d_conjugate(dt)),
                 "diagonal(conjugate(transpose(A)))");
   expect_solves(view::diagonal(a, diag::implicit_unit),
-                d_diagonal(d, n, diag::implicit_unit),
+                d_diagonal(d, diag::implicit_unit),
                 "diagonal(A, implicit_unit)");
   expect_solves(
       view::conjugate(view::conjugate(view::triangle(a, uplo::lower))),
-      d_triangle(d, n, uplo::lower),
-      "conjugate(conjugate(triangle(A, lower)))");
+      d_triangle(d, uplo::lower), "conjugate(conjugate(triangle(A, lower)))");
+  // Triangles of symmetric / hermitian matrices.
+  expect_solves(view::triangle(view::symmetric(a, uplo::lower), uplo::upper),
+                d_triangle(d_symmetric(d, uplo::lower), uplo::upper),
+                "triangle(symmetric(A, lower), upper)");
+  expect_solves(
+      view::triangle(view::hermitian(a, uplo::lower), uplo::upper,
+                     diag::implicit_unit),
+      d_triangle(d_hermitian(d, uplo::lower), uplo::upper, diag::implicit_unit),
+      "triangle(hermitian(A, lower), upper, implicit_unit)");
 
   // Named (lvalue) views compose like temporaries.
   auto lower = view::triangle(a, uplo::lower);
   auto lower_t = view::transpose(lower);
-  auto lower_th = view::conjugate(lower_t);
-  expect_solves(lower_th,
-                d_conjugate(d_transpose(d_triangle(d, n, uplo::lower), n)),
+  auto lower_h = view::conjugate(lower_t);
+  expect_solves(lower_h, d_conjugate(d_transpose(d_triangle(d, uplo::lower))),
                 "named: conjugate(transpose(triangle(A, lower)))");
+
+  // A triangle chosen at run time.
+  for (bool is_lower : {true, false}) {
+    view::with_uplo(is_lower, [&](auto u) {
+      expect_solves(view::triangle(a, u), d_triangle(d, u),
+                    "with_uplo: triangle(A, u)");
+    });
+  }
+}
+
+//
+// SpMV / SpMM
+//
+
+// y = alpha * A * x + beta * z with the view, compared with `dense`.
+template <typename V>
+void expect_spmv(const V& v, const dense_t& dense, const char* what) {
+  SCOPED_TRACE(what);
+  const std::size_t n = dim(dense);
+  const T alpha(1.5, -0.5), beta(-1, 2);
+  auto x = test_vector(n, 1);
+  auto z = test_vector(n, 3);
+
+  std::vector<T> ref(n);
+  for (std::size_t i = 0; i < n; i++) {
+    T s = 0;
+    for (std::size_t j = 0; j < n; j++) {
+      s += dense[i * n + j] * x[j];
+    }
+    ref[i] = alpha * s + beta * z[i];
+  }
+
+  std::vector<T> y(n);
+  spblas::operation_state state;
+  spblas::multiply(state, alpha, v, x, beta, z, y);
+  expect_near(ref, y);
+
+  // Without beta / z, and in place (z aliases y).
+  std::vector<T> y2(n);
+  spblas::multiply(state, T(1), v, x, y2);
+  std::vector<T> ref2(n, T(0));
+  for (std::size_t i = 0; i < n; i++) {
+    for (std::size_t j = 0; j < n; j++) {
+      ref2[i] += dense[i * n + j] * x[j];
+    }
+  }
+  expect_near(ref2, y2);
+}
+
+template <typename V>
+void expect_spmm(const V& v, const dense_t& dense, const char* what) {
+  SCOPED_TRACE(what);
+  const std::size_t n = dim(dense), k = 3;
+  const T alpha(0.5, 1);
+  std::vector<T> x_values(n * k), y_values(n * k, T(0)), ref(n * k, T(0));
+  for (std::size_t i = 0; i < n * k; i++) {
+    x_values[i] = T(double(i % 7) - 3, double(i % 2));
+  }
+  for (std::size_t i = 0; i < n; i++) {
+    for (std::size_t c = 0; c < k; c++) {
+      for (std::size_t j = 0; j < n; j++) {
+        ref[i * k + c] += alpha * dense[i * n + j] * x_values[j * k + c];
+      }
+    }
+  }
+  spblas::mdspan_row_major<T, I> x(x_values.data(), n, k);
+  spblas::mdspan_row_major<T, I> y(y_values.data(), n, k);
+  spblas::operation_state state;
+  spblas::multiply(state, alpha, v, x, y);
+  expect_near(ref, y_values);
+}
+
+template <typename A>
+void multiply_compositions(A a, const dense_t& d) {
+  const auto dt = d_transpose(d);
+
+  // SpTRMV
+  expect_spmv(view::triangle(a, uplo::lower), d_triangle(d, uplo::lower),
+              "triangle(A, lower)");
+  expect_spmv(view::triangle(a, uplo::upper, diag::implicit_unit),
+              d_triangle(d, uplo::upper, diag::implicit_unit),
+              "triangle(A, upper, implicit_unit)");
+  expect_spmv(view::transpose(view::triangle(a, uplo::lower)),
+              d_transpose(d_triangle(d, uplo::lower)),
+              "transpose(triangle(A, lower))");
+  expect_spmv(view::triangle(a, uplo::lower, diag::implicit_zero),
+              d_triangle(d, uplo::lower, diag::implicit_zero),
+              "triangle(A, lower, implicit_zero)");
+  // Diagonal
+  expect_spmv(view::diagonal(a), d_diagonal(d), "diagonal(A)");
+  expect_spmv(view::diagonal(a, diag::implicit_unit),
+              d_diagonal(d, diag::implicit_unit), "diagonal(A, implicit_unit)");
+  // SpSYMV
+  expect_spmv(view::symmetric(a, uplo::lower), d_symmetric(d, uplo::lower),
+              "symmetric(A, lower)");
+  expect_spmv(view::symmetric(a, uplo::upper, diag::implicit_unit),
+              d_symmetric(d, uplo::upper, diag::implicit_unit),
+              "symmetric(A, upper, implicit_unit)");
+  expect_spmv(view::transpose(view::symmetric(a, uplo::upper)),
+              d_transpose(d_symmetric(d, uplo::upper)),
+              "transpose(symmetric(A, upper))");
+  expect_spmv(view::symmetric(view::transpose(a), uplo::upper),
+              d_symmetric(dt, uplo::upper), "symmetric(transpose(A), upper)");
+  expect_spmv(view::conjugate(view::symmetric(a, uplo::lower)),
+              d_conjugate(d_symmetric(d, uplo::lower)),
+              "conjugate(symmetric(A, lower))");
+  expect_spmv(view::symmetric(view::triangle(a, uplo::lower), uplo::upper),
+              d_symmetric(d_triangle(d, uplo::lower), uplo::upper),
+              "symmetric(triangle(A, lower), upper)");
+  expect_spmv(view::symmetric(view::symmetric(a, uplo::lower), uplo::upper),
+              d_symmetric(d_symmetric(d, uplo::lower), uplo::upper),
+              "symmetric(symmetric(A, lower), upper)");
+  // SpHEMV (A's diagonal is complex: only its real part is used)
+  expect_spmv(view::hermitian(a, uplo::lower), d_hermitian(d, uplo::lower),
+              "hermitian(A, lower)");
+  expect_spmv(view::hermitian(a, uplo::upper, diag::implicit_unit),
+              d_hermitian(d, uplo::upper, diag::implicit_unit),
+              "hermitian(A, upper, implicit_unit)");
+  expect_spmv(view::transpose(view::hermitian(a, uplo::lower)),
+              d_transpose(d_hermitian(d, uplo::lower)),
+              "transpose(hermitian(A, lower))");
+  expect_spmv(view::conjugate(view::transpose(view::hermitian(a, uplo::upper))),
+              d_conjugate(d_transpose(d_hermitian(d, uplo::upper))),
+              "conjugate(transpose(hermitian(A, upper)))");
+  expect_spmv(view::hermitian(view::transpose(a), uplo::lower),
+              d_hermitian(dt, uplo::lower), "hermitian(transpose(A), lower)");
+  expect_spmv(view::hermitian(view::conjugate(view::transpose(a)), uplo::upper),
+              d_hermitian(d_conjugate(dt), uplo::upper),
+              "hermitian(conjugate(transpose(A)), upper)");
+  // A triangle of a symmetric / hermitian matrix.
+  expect_spmv(view::triangle(view::symmetric(a, uplo::lower), uplo::upper),
+              d_triangle(d_symmetric(d, uplo::lower), uplo::upper),
+              "triangle(symmetric(A, lower), upper)");
+  expect_spmv(
+      view::triangle(view::hermitian(a, uplo::upper), uplo::lower,
+                     diag::implicit_unit),
+      d_triangle(d_hermitian(d, uplo::upper), uplo::lower, diag::implicit_unit),
+      "triangle(hermitian(A, upper), lower, implicit_unit)");
+  // Named views.
+  auto s = view::symmetric(a, uplo::lower);
+  auto s_t = view::transpose(s);
+  expect_spmv(s_t, d_symmetric(d, uplo::lower),
+              "named: transpose(symmetric(A, lower))");
+
+  // SpMM
+  expect_spmm(view::triangle(a, uplo::upper, diag::implicit_unit),
+              d_triangle(d, uplo::upper, diag::implicit_unit),
+              "SpMM triangle(A, upper, implicit_unit)");
+  expect_spmm(view::symmetric(a, uplo::lower), d_symmetric(d, uplo::lower),
+              "SpMM symmetric(A, lower)");
+  expect_spmm(view::hermitian(view::transpose(a), uplo::upper),
+              d_hermitian(dt, uplo::upper),
+              "SpMM hermitian(transpose(A), upper)");
 }
 
 } // namespace
@@ -247,21 +474,19 @@ TEST(ViewAnalysis, TransposeOfTriangleEqualsTriangleOfTranspose) {
   test_matrix m(6);
   spblas::matrix_opt a(m.csr());
 
-  auto x = analyze_view(view::transpose(view::triangle(a, uplo::lower)));
-  auto y = analyze_view(view::triangle(view::transpose(a), uplo::upper));
-  static_assert(std::is_same_v<decltype(x), decltype(y)>);
-  static_assert(decltype(x)::transpose && !decltype(x)::conjugate &&
-                decltype(x)::structured);
-  EXPECT_EQ(x.region, view_region::lower); // in A's coordinates
-  EXPECT_EQ(y.region, view_region::lower);
-  EXPECT_EQ(x.represented_region(), view_region::upper);
+  constexpr auto x = DESC(view::transpose(view::triangle(a, uplo::lower)));
+  constexpr auto y = DESC(view::triangle(view::transpose(a), uplo::upper));
+  static_assert(x == y);
+  static_assert(x.transpose && !x.conjugate && x.structured);
+  static_assert(x.region == view_region::lower); // in A's coordinates
 
-  // A CSR wrapper is transposed by reinterpreting it as CSC: the base differs,
-  // the represented triangle does not.
-  auto w = analyze_view(view::triangle(view::transpose(m.csr()), uplo::upper));
+  // A CSR wrapper is transposed by reinterpreting it as CSC: the base
+  // differs, the represented triangle does not.
+  auto w = spblas::__detail::analyze_view(
+      view::triangle(view::transpose(m.csr()), uplo::upper));
   static_assert(!decltype(w)::transpose);
   static_assert(spblas::__detail::is_csc_wrapper_v<decltype(w.base)>);
-  EXPECT_EQ(w.represented_region(), view_region::upper);
+  static_assert(decltype(w)::represented_region == view_region::upper);
 }
 
 TEST(ViewAnalysis, NamedViewsComposeLikeTemporaries) {
@@ -270,20 +495,20 @@ TEST(ViewAnalysis, NamedViewsComposeLikeTemporaries) {
 
   auto t = view::transpose(a);
   auto tt = view::transpose(t);
-  static_assert(!decltype(analyze_view(tt))::transpose);
   static_assert(spblas::__detail::is_matrix_opt_v<decltype(tt)>);
 
   auto c = view::conjugate(a);
   auto cc = view::conjugate(c);
-  static_assert(!decltype(analyze_view(cc))::conjugate);
+  static_assert(spblas::__detail::is_matrix_opt_v<decltype(cc)>);
 
   auto l = view::triangle(a, uplo::lower);
   auto lu = view::triangle(l, uplo::upper);
-  EXPECT_EQ(analyze_view(lu).region, view_region::diagonal);
+  static_assert(DESC(lu).region == view_region::diagonal);
+  static_assert(DESC(lu) == DESC(view::diagonal(a)));
 
   auto lt = view::transpose(l);
   auto ltl = view::triangle(lt, uplo::lower);
-  EXPECT_EQ(analyze_view(ltl).region, view_region::diagonal);
+  static_assert(DESC(ltl) == DESC(view::diagonal(a)));
 }
 
 TEST(ViewAnalysis, DiagonalHandling) {
@@ -292,52 +517,118 @@ TEST(ViewAnalysis, DiagonalHandling) {
 
   // An implied diagonal stays implied under explicit_diagonal; a later
   // implied diagonal replaces it.
-  EXPECT_EQ(analyze_view(view::triangle(view::triangle(a, uplo::lower,
-                                                       diag::implicit_unit),
-                                        uplo::lower))
-                .diag,
-            diag::implicit_unit);
-  EXPECT_EQ(analyze_view(view::triangle(view::triangle(a, uplo::lower,
-                                                       diag::implicit_unit),
-                                        uplo::lower, diag::implicit_zero))
-                .diag,
-            diag::implicit_zero);
-  EXPECT_EQ(analyze_view(view::diagonal(view::triangle(a, uplo::upper),
-                                        diag::implicit_unit))
-                .diag,
-            diag::implicit_unit);
+  static_assert(
+      DESC(view::triangle(view::triangle(a, uplo::lower, diag::implicit_unit),
+                          uplo::lower))
+          .diag == diag_kind::implicit_unit);
+  static_assert(
+      DESC(view::triangle(view::triangle(a, uplo::lower, diag::implicit_unit),
+                          uplo::lower, diag::implicit_zero))
+          .diag == diag_kind::implicit_zero);
+  static_assert(
+      DESC(view::diagonal(view::triangle(a, uplo::upper), diag::implicit_unit))
+          .diag == diag_kind::implicit_unit);
 
   // The chains of PR #71's tests (Tag.LongChain).
-  auto c1 = analyze_view(
-      view::triangle(view::transpose(view::triangle(a, uplo::lower)),
-                     uplo::upper, diag::implicit_zero));
-  static_assert(decltype(c1)::transpose && !decltype(c1)::conjugate);
-  EXPECT_EQ(c1.region, view_region::lower);
-  EXPECT_EQ(c1.diag, diag::implicit_zero);
+  constexpr auto c1 =
+      DESC(view::triangle(view::transpose(view::triangle(a, uplo::lower)),
+                          uplo::upper, diag::implicit_zero));
+  static_assert(c1.transpose && !c1.conjugate);
+  static_assert(c1.region == view_region::lower);
+  static_assert(c1.diag == diag_kind::implicit_zero);
 
-  auto c2 = analyze_view(view::conjugate(
+  constexpr auto c2 = DESC(view::conjugate(
       view::triangle(view::transpose(view::triangle(a, uplo::lower)),
                      uplo::lower, diag::implicit_zero)));
-  static_assert(decltype(c2)::conjugate);
-  EXPECT_EQ(c2.represented_region(), view_region::diagonal);
-  EXPECT_EQ(c2.diag, diag::implicit_zero);
+  static_assert(c2.conjugate && !c2.transpose); // a diagonal drops transpose
+  static_assert(c2.region == view_region::diagonal);
+  static_assert(c2.diag == diag_kind::implicit_zero);
+}
+
+// The composition rules of symmetric / hermitian views (plan §8).
+TEST(ViewAnalysis, SymmetricAndHermitianRules) {
+  test_matrix m(6);
+  spblas::matrix_opt a(m.csr());
+
+  constexpr auto sym_lower = DESC(view::symmetric(a, uplo::lower));
+  static_assert(sym_lower.structure == view_structure::symmetric &&
+                sym_lower.region == view_region::lower &&
+                !sym_lower.transpose && !sym_lower.conjugate);
+  // S^T == S
+  static_assert(DESC(view::transpose(view::symmetric(a, uplo::lower))) ==
+                sym_lower);
+  // symmetric(A^T, u) == symmetric(A, flip(u))
+  static_assert(DESC(view::symmetric(view::transpose(a), uplo::upper)) ==
+                sym_lower);
+  // triangle(S(A, u), u) == triangle(A, u); the other triangle is its
+  // transpose
+  static_assert(
+      DESC(view::triangle(view::symmetric(a, uplo::lower), uplo::lower)) ==
+      DESC(view::triangle(a, uplo::lower)));
+  static_assert(
+      DESC(view::triangle(view::symmetric(a, uplo::lower), uplo::upper)) ==
+      DESC(view::transpose(view::triangle(a, uplo::lower))));
+  // symmetric(triangle(A, u), u) == symmetric(A, u); other u: the diagonal
+  static_assert(DESC(view::symmetric(view::triangle(a, uplo::lower),
+                                     uplo::lower)) == sym_lower);
+  static_assert(DESC(view::symmetric(view::triangle(a, uplo::lower),
+                                     uplo::upper)) == DESC(view::diagonal(a)));
+  // S(S(A, u), v) == S(A, u); diagonal(S(A, u)) == diagonal(A)
+  static_assert(DESC(view::symmetric(view::symmetric(a, uplo::lower),
+                                     uplo::upper)) == sym_lower);
+  static_assert(DESC(view::diagonal(view::symmetric(a, uplo::lower))) ==
+                DESC(view::diagonal(a)));
+
+  constexpr auto herm_upper = DESC(view::hermitian(a, uplo::upper));
+  static_assert(herm_upper.structure == view_structure::hermitian);
+  // H^T == conj(H); H^H == H
+  static_assert(DESC(view::transpose(view::hermitian(a, uplo::upper))) ==
+                DESC(view::conjugate(view::hermitian(a, uplo::upper))));
+  static_assert(DESC(view::conjugate(view::transpose(
+                    view::hermitian(a, uplo::upper)))) == herm_upper);
+  // hermitian(A^H, u) == hermitian(A, flip(u))
+  static_assert(DESC(view::hermitian(view::conjugate(view::transpose(a)),
+                                     uplo::lower)) == herm_upper);
+  // The other triangle of a hermitian matrix is the conjugate transpose (with
+  // an implied diagonal: the explicit one would need its real part).
+  static_assert(DESC(view::triangle(view::hermitian(a, uplo::upper),
+                                    uplo::lower, diag::implicit_unit)) ==
+                DESC(view::conjugate(view::transpose(
+                    view::triangle(a, uplo::upper, diag::implicit_unit)))));
+
+  // Hermitian of real values is symmetric.
+  using R = spblas::csr_wrapper<double, I>;
+  static_assert(describe_view<decltype(view::hermitian(std::declval<R>(),
+                                                       uplo::lower))>() ==
+                describe_view<decltype(view::symmetric(std::declval<R>(),
+                                                       uplo::lower))>());
+
+  // Not representable: any operation (even asking for size()) on these is a
+  // static_assert.
+  static_assert(
+      !DESC(view::triangle(view::hermitian(a, uplo::lower), uplo::lower))
+           .valid);
+  static_assert(!DESC(view::diagonal(view::hermitian(a, uplo::lower))).valid);
+  static_assert(
+      !DESC(view::symmetric(view::hermitian(a, uplo::lower), uplo::lower))
+           .valid);
 }
 
 TEST(ViewAnalysis, UnstructuredStacks) {
   test_matrix m(6);
   spblas::matrix_opt a(m.csr());
-  auto x = analyze_view(view::conjugate(view::transpose(a)));
-  static_assert(!decltype(x)::structured);
-  EXPECT_EQ(x.region, view_region::full);
+  constexpr auto x = DESC(view::conjugate(view::transpose(a)));
+  static_assert(!x.structured && x.region == view_region::full);
   static_assert(!spblas::__detail::structured_view<decltype(a)>);
   static_assert(spblas::__detail::structured_view<decltype(view::transpose(
                     view::diagonal(a)))>);
 }
 
 // size(): the entries of the represented matrix, for any composition: the
-// stored entries in the region, with an implied unit diagonal counted (one
-// per diagonal position) and an implied zero diagonal not; computed once and
-// kept by the view and its copies.
+// stored entries in the region (strict-triangle entries twice for symmetric /
+// hermitian views), an implied unit diagonal counted (one per diagonal
+// position), an implied zero diagonal not; computed once and kept by the
+// view and its copies.
 TEST(ViewAnalysis, StructuredViewSize) {
   test_matrix m(9, 1);
   const std::size_t n = m.n;
@@ -352,6 +643,7 @@ TEST(ViewAnalysis, StructuredViewSize) {
   };
   spblas::matrix_opt a(m.csr());
   const auto strictly_lower = stored([](auto i, auto j) { return j < i; });
+  const auto strictly_upper = stored([](auto i, auto j) { return j > i; });
   const auto diagonal = stored([](auto i, auto j) { return i == j; });
 
   EXPECT_EQ(view::triangle(a, uplo::lower).size(), strictly_lower + diagonal);
@@ -359,7 +651,6 @@ TEST(ViewAnalysis, StructuredViewSize) {
             strictly_lower + n);
   EXPECT_EQ(view::triangle(a, uplo::lower, diag::implicit_zero).size(),
             strictly_lower);
-  // An implied diagonal stays implied under an outer explicit_diagonal.
   EXPECT_EQ(view::triangle(view::triangle(a, uplo::lower, diag::implicit_unit),
                            uplo::lower)
                 .size(),
@@ -375,10 +666,16 @@ TEST(ViewAnalysis, StructuredViewSize) {
   EXPECT_EQ(view::diagonal(view::transpose(a)).size(), diagonal);
   EXPECT_EQ(view::diagonal(a, diag::implicit_unit).size(), n);
   EXPECT_EQ(view::diagonal(a, diag::implicit_zero).size(), 0u);
-  EXPECT_EQ(view::triangle(view::transpose(view::triangle(a, uplo::upper)),
-                           uplo::upper, diag::implicit_unit)
-                .size(),
-            n); // upper(upper(A)^T) is the diagonal
+
+  // Symmetric / hermitian: the represented (mirrored) entries.
+  EXPECT_EQ(view::symmetric(a, uplo::lower).size(),
+            2 * strictly_lower + diagonal);
+  EXPECT_EQ(view::hermitian(a, uplo::upper, diag::implicit_unit).size(),
+            2 * strictly_upper + n);
+  EXPECT_EQ(view::symmetric(m.csc(), uplo::upper, diag::implicit_zero).size(),
+            2 * strictly_upper);
+  EXPECT_EQ(view::triangle(view::symmetric(a, uplo::lower), uplo::upper).size(),
+            strictly_lower + diagonal);
 
   auto t = view::triangle(m.csr(), uplo::upper);
   const auto upper = t.size();
@@ -396,26 +693,18 @@ TEST(ViewAnalysis, StructuredViewSize) {
 
 TEST(ViewAnalysis, TriangularSolveCompositions) {
   test_matrix m(17, 3);
-  solve_compositions(m.csr(), m.dense, m.n);
-  solve_compositions(m.csc(), m.dense, m.n);
-  solve_compositions(spblas::matrix_opt(m.csr()), m.dense, m.n);
-  solve_compositions(spblas::matrix_opt(m.csc()), m.dense, m.n);
+  solve_compositions(m.csr(), m.dense);
+  solve_compositions(m.csc(), m.dense);
+  solve_compositions(spblas::matrix_opt(m.csr()), m.dense);
+  solve_compositions(spblas::matrix_opt(m.csc()), m.dense);
 }
 
-TEST(ViewAnalysis, TriangularSolveRejectsImplicitZero) {
-  test_matrix m(5);
-  auto a = m.csr();
-  std::vector<T> b(m.n, T(1)), x(m.n);
-  spblas::operation_state state;
-  EXPECT_THROW(
-      spblas::triangular_solve(
-          state,
-          view::transpose(view::triangle(a, uplo::lower, diag::implicit_zero)),
-          b, x),
-      std::invalid_argument);
-  EXPECT_THROW(spblas::triangular_solve(
-                   state, view::diagonal(a, diag::implicit_zero), b, x),
-               std::invalid_argument);
+TEST(ViewAnalysis, StructuredMultiplyCompositions) {
+  test_matrix m(15, 5);
+  multiply_compositions(m.csr(), m.dense);
+  multiply_compositions(m.csc(), m.dense);
+  multiply_compositions(spblas::matrix_opt(m.csr()), m.dense);
+  multiply_compositions(spblas::matrix_opt(m.csc()), m.dense);
 }
 
 namespace {
@@ -428,11 +717,21 @@ constexpr bool solvable =
 
 } // namespace
 
-TEST(ViewAnalysis, UnstructuredMatricesAreNotSolvable) {
-  using A = spblas::csr_wrapper<T, I>;
+TEST(ViewAnalysis, WhatIsSolvable) {
+  test_matrix m(4);
+  auto a = m.csr();
+  using A = decltype(a);
   static_assert(!solvable<A>);
-  static_assert(!solvable<decltype(view::transpose(std::declval<A>()))>);
-  static_assert(solvable<decltype(view::transpose(
-                    view::triangle(std::declval<A>(), uplo::lower)))>);
-  static_assert(solvable<decltype(view::diagonal(std::declval<A>()))>);
+  static_assert(!solvable<decltype(view::transpose(a))>);
+  static_assert(
+      solvable<decltype(view::transpose(view::triangle(a, uplo::lower)))>);
+  static_assert(solvable<decltype(view::diagonal(a))>);
+  // Not triangular.
+  static_assert(!solvable<decltype(view::symmetric(a, uplo::lower))>);
+  static_assert(!solvable<decltype(view::hermitian(a, uplo::lower))>);
+  // Singular: rejected at compile time (a static_assert when called).
+  static_assert(!spblas::__detail::solvable_structure<decltype(view::triangle(
+                    a, uplo::lower, diag::implicit_zero))>);
+  static_assert(!spblas::__detail::solvable_structure<decltype(view::diagonal(
+                    a, diag::implicit_zero))>);
 }

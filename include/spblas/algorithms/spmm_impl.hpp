@@ -20,8 +20,8 @@
 //   X, Y, Z  dense matrices (mdspan, any layout with element lookup).
 //            Z may alias Y; if beta == 0, Z is not read.
 //
-//   Not yet supported: view::triangle / symmetric / hermitian of A, and a
-//   dense A with a sparse X.
+//   Structure views of A: see spmm_structured_impl.hpp. Not yet supported:
+//   a dense A with a sparse X.
 //
 // The policy-first overloads are in policy_forwarding.hpp.
 //

@@ -14,7 +14,9 @@
 
 #include <spblas/algorithms/spgemm_impl.hpp>
 #include <spblas/algorithms/spmm_impl.hpp>
+#include <spblas/algorithms/spmm_structured_impl.hpp>
 #include <spblas/algorithms/spmv_impl.hpp>
+#include <spblas/algorithms/spmv_structured_impl.hpp>
 
 // The policy-first overloads (reference: the policy is ignored).
 #include <spblas/algorithms/policy_forwarding.hpp>
