@@ -106,6 +106,19 @@ TEST(OperationState, ResultNnzOverflowThrows) {
   EXPECT_EQ(state.get_result_nnz(), 42);
 }
 
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+TEST(OperationState, OneMKLDefaultResourceAlignment) {
+  auto allocator = spblas::operation_state{}.get_allocator();
+  for (std::size_t alignment : {1, 8, 64, 128}) {
+    void* p = allocator.allocate_bytes(10, alignment);
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(p) %
+                  std::max<std::size_t>(alignment, 64),
+              0);
+    allocator.deallocate_bytes(p, 10, alignment);
+  }
+}
+#endif
+
 TEST(MatrixOpt, SharedStateFromUserResource) {
   small_csr m;
   counting_resource resource;
