@@ -241,6 +241,7 @@ void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
 template <typename T, vector B, vector X>
   requires(__detail::is_triangle_view_v<T>)
 void triangular_solve(operation_state& state, T&& t, B&& b, X&& x) {
+  log_trace("");
   triangular_solve(state, std::forward<T>(t), tensor_scalar_t<X>(1),
                    std::forward<B>(b), std::forward<X>(x));
 }

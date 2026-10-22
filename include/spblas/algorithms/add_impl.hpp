@@ -7,6 +7,7 @@
 #include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
+#include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/operation_state.hpp>
 
@@ -14,6 +15,7 @@ namespace spblas {
 
 template <vector A, vector B, vector C>
 void add(A&& a, B&& b, C&& c) {
+  log_trace("");
   if (__backend::shape(a) != __backend::shape(b) ||
       __backend::shape(b) != __backend::shape(c)) {
     throw std::invalid_argument("add: vector dimensions are incompatible.");
@@ -29,6 +31,7 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::lookupable<A> && __backend::lookupable<B> &&
            __backend::lookupable<C>)
 void add(A&& a, B&& b, C&& c) {
+  log_trace("");
   if (__backend::shape(a) != __backend::shape(b) ||
       __backend::shape(b) != __backend::shape(c)) {
     throw std::invalid_argument("add: matrix dimensions are incompatible.");
@@ -46,6 +49,7 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
 void add(A&& a, B&& b, C&& c) {
+  log_trace("");
   __detail::spadd_fill(a, b, c);
 }
 
@@ -53,12 +57,14 @@ template <matrix A, matrix B, matrix C>
   requires(__backend::row_lookupable<A> && __backend::row_lookupable<B> &&
            __backend::row_lookupable<C>)
 operation_info_t add_inspect(A&& a, B&& b, C&& c) {
+  log_trace("");
   return operation_info_t{__backend::shape(c),
                           index_t(__detail::spadd_nnz(a, b, c))};
 }
 
 template <matrix A, matrix B, matrix C>
 void add_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
+  log_trace("");
   add(a, b, c);
 }
 
@@ -86,12 +92,15 @@ void add_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
 
 // The reference implementation has nothing to prepare.
 template <matrix A, matrix B, matrix C>
-void add_inspect(operation_state& state, A&& a, B&& b, C&& c) {}
+void add_inspect(operation_state& state, A&& a, B&& b, C&& c) {
+  log_trace("");
+}
 
 template <matrix A, matrix B, matrix C>
   requires(__detail::spadd_by_rows<A, B, C> ||
            __detail::spadd_by_columns<A, B, C>)
 void add_compute(operation_state& state, A&& a, B&& b, C&& c) {
+  log_trace("");
   state.update_impl_(__detail::spadd_nnz(a, b, c));
 }
 
@@ -99,6 +108,7 @@ template <matrix A, matrix B, matrix C>
   requires(__detail::spadd_by_rows<A, B, C> ||
            __detail::spadd_by_columns<A, B, C>)
 void add_fill(operation_state& state, A&& a, B&& b, C&& c) {
+  log_trace("");
   __detail::spadd_fill(a, b, c);
 }
 
@@ -106,6 +116,7 @@ template <matrix A, matrix B, matrix C>
   requires(__detail::spadd_by_rows<A, B, C> ||
            __detail::spadd_by_columns<A, B, C>)
 void add_compute_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
+  log_trace("");
   state.update_impl_(__detail::spadd_nnz(a, b, c));
 }
 
@@ -113,6 +124,7 @@ template <matrix A, matrix B, matrix C>
   requires(__detail::spadd_by_rows<A, B, C> ||
            __detail::spadd_by_columns<A, B, C>)
 void add_fill_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
+  log_trace("");
   __detail::fill_pattern_only(state, c, "add_fill_symbolic",
                               [&](auto&& t) { __detail::spadd_fill(a, b, t); });
 }
@@ -121,6 +133,7 @@ template <matrix A, matrix B, matrix C>
   requires(__detail::spadd_by_rows<A, B, C> ||
            __detail::spadd_by_columns<A, B, C>)
 void add_numeric(operation_state& state, A&& a, B&& b, C&& c) {
+  log_trace("");
   __detail::fill_values_only(state, c, __detail::spadd_nnz(a, b, c),
                              "add_numeric",
                              [&](auto&& t) { __detail::spadd_fill(a, b, t); });
@@ -128,31 +141,37 @@ void add_numeric(operation_state& state, A&& a, B&& b, C&& c) {
 
 template <__detail::execution_policy P, typename... Args>
 void add_inspect(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   add_inspect(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 void add_compute(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   add_compute(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 void add_fill(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   add_fill(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 void add_compute_symbolic(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   add_compute_symbolic(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 void add_fill_symbolic(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   add_fill_symbolic(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 void add_numeric(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   add_numeric(state, std::forward<Args>(args)...);
 }
 

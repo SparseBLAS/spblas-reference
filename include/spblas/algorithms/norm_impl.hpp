@@ -98,11 +98,13 @@ __detail::norm_t<A> matrix_frob_norm(operation_state& state, A&& a) {
 // sequentially and ignores it.
 template <__detail::execution_policy P, typename... Args>
 auto matrix_inf_norm(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   return matrix_inf_norm(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 auto matrix_frob_norm(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   return matrix_frob_norm(state, std::forward<Args>(args)...);
 }
 

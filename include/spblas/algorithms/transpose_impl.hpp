@@ -6,6 +6,7 @@
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
+#include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/operation_state.hpp>
 #include <spblas/detail/view_inspectors.hpp>
@@ -14,6 +15,7 @@ namespace spblas {
 
 template <matrix A, matrix B>
 operation_info_t transpose_inspect(A&& a, B&& b) {
+  log_trace("");
   return {};
 }
 
@@ -74,12 +76,14 @@ void transpose_fill(A&& a, B&& b) {
 template <matrix A, matrix B>
   requires(__detail::is_csr_view_v<A> && __detail::is_csr_view_v<B>)
 void transpose(A&& a, B&& b) {
+  log_trace("");
   __detail::transpose_fill(a, b);
 }
 
 template <matrix A, matrix B>
   requires(__detail::is_csr_view_v<A> && __detail::is_csr_view_v<B>)
 void transpose(operation_info_t& info, A&& a, B&& b) {
+  log_trace("");
   transpose(std::forward<A>(a), std::forward<B>(b));
 }
 
@@ -106,11 +110,14 @@ concept transpose_input =
 // The reference implementation has nothing to prepare.
 template <matrix A, matrix B>
   requires(__detail::transpose_input<A> && __detail::is_csr_wrapper_v<B>)
-void transpose_inspect(operation_state& state, A&& a, B&& b) {}
+void transpose_inspect(operation_state& state, A&& a, B&& b) {
+  log_trace("");
+}
 
 template <matrix A, matrix B>
   requires(__detail::transpose_input<A> && __detail::is_csr_wrapper_v<B>)
 void transpose(operation_state& state, A&& a, B&& b) {
+  log_trace("");
   __detail::transpose_fill(a, b);
 }
 
@@ -118,11 +125,13 @@ void transpose(operation_state& state, A&& a, B&& b) {
 // sequentially and ignores it.
 template <__detail::execution_policy P, typename... Args>
 void transpose_inspect(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   transpose_inspect(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>
 void transpose(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   transpose(state, std::forward<Args>(args)...);
 }
 

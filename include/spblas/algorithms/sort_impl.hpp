@@ -138,6 +138,7 @@ void sort_matrix(operation_state& state, A&& a) {
 // sequentially and ignores it.
 template <__detail::execution_policy P, typename... Args>
 void sort_matrix(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   sort_matrix(state, std::forward<Args>(args)...);
 }
 

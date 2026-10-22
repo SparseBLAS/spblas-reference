@@ -3,6 +3,7 @@
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
+#include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_state.hpp>
 
 #include <algorithm>
@@ -23,11 +24,13 @@ void scale_impl_(Scalar alpha, T&& t) {
 
 template <typename Scalar, matrix M>
 void scale(Scalar alpha, M&& m) {
+  log_trace("");
   scale_impl_(alpha, std::forward<M>(m));
 }
 
 template <typename Scalar, vector V>
 void scale(Scalar alpha, V&& v) {
+  log_trace("");
   scale_impl_(alpha, std::forward<V>(v));
 }
 
@@ -41,6 +44,7 @@ template <__detail::scalar Alpha, matrix M>
   requires(__detail::is_csr_wrapper_v<M> || __detail::is_csc_wrapper_v<M> ||
            __detail::is_matrix_opt_v<M>)
 void scale(operation_state& state, Alpha alpha, M&& m) {
+  log_trace("");
   if constexpr (__detail::is_matrix_opt_v<M>) {
     scale_impl_(alpha, m.base());
     // The values changed: drop optimization data derived from them.
@@ -54,6 +58,7 @@ void scale(operation_state& state, Alpha alpha, M&& m) {
 // sequentially and ignores it.
 template <__detail::execution_policy P, typename... Args>
 void scale(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
   scale(state, std::forward<Args>(args)...);
 }
 
