@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory_resource>
+
 #include <stdexcept>
 
 #include <spblas/backend/backend.hpp>
@@ -9,9 +11,13 @@
 #include <spblas/views/inspectors.hpp>
 
 // Reference SpADD kernels, C = A + B, in spblas::__detail:
-//   spadd_nnz(a, b, c)   number of entries in C's pattern (union of A's
-//                        and B's patterns)
-//   spadd_fill(a, b, c)  fills C's arrays (sized by spadd_nnz)
+//   spadd_nnz(a, b, c, allocator)   number of entries in C's pattern (union
+//                                   of A's and B's patterns)
+//   spadd_fill(a, b, c, allocator)  fills C's arrays (sized by spadd_nnz)
+//
+//   Their scratch storage comes from `allocator`, a
+//   std::pmr::polymorphic_allocator<>; operations pass their
+//   operation_state's.
 //
 //   A, B, C all CSR (A, B row-lookupable), or all CSC (A, B
 //   column-lookupable); matrix_opt of either works too. Mixed orientations
@@ -50,7 +56,8 @@ void check_spadd_shapes(A&& a, B&& b, C&& c) {
 
 template <matrix A, matrix B, matrix C>
   requires(spadd_by_rows<A, B, C> || spadd_by_columns<A, B, C>)
-tensor_offset_t<C> spadd_nnz(A&& a, B&& b, C&& c) {
+tensor_offset_t<C> spadd_nnz(A&& a, B&& b, C&& c,
+                             std::pmr::polymorphic_allocator<> allocator) {
   check_spadd_shapes(a, b, c);
 
   using I = tensor_index_t<C>;
@@ -59,7 +66,7 @@ tensor_offset_t<C> spadd_nnz(A&& a, B&& b, C&& c) {
   const I inner = __backend::shape(c)[by_columns ? 0 : 1];
 
   tensor_offset_t<C> nnz = 0;
-  __backend::spa_set<I> c_slice(inner);
+  __backend::spa_set<I> c_slice(inner, allocator);
 
   for (I o = 0; o < outer; o++) {
     c_slice.clear();
@@ -76,7 +83,8 @@ tensor_offset_t<C> spadd_nnz(A&& a, B&& b, C&& c) {
 
 template <matrix A, matrix B, matrix C>
   requires(spadd_by_rows<A, B, C> || spadd_by_columns<A, B, C>)
-void spadd_fill(A&& a, B&& b, C&& c) {
+void spadd_fill(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   check_spadd_shapes(a, b, c);
 
   using T = tensor_scalar_t<C>;
@@ -85,7 +93,7 @@ void spadd_fill(A&& a, B&& b, C&& c) {
   const I outer = __backend::shape(c)[by_columns ? 1 : 0];
   const I inner = __backend::shape(c)[by_columns ? 0 : 1];
 
-  __backend::spa_accumulator<T, I> c_slice(inner);
+  __backend::spa_accumulator<T, I> c_slice(inner, allocator);
   auto c_builder = [&] {
     if constexpr (by_columns) {
       return __backend::csc_builder(c);

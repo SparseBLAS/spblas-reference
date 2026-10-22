@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory_resource>
+
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/log.hpp>
@@ -19,7 +21,8 @@ namespace __detail {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
-void spgemm_fill(A&& a, B&& b, C&& c) {
+void spgemm_fill(A&& a, B&& b, C&& c,
+                 std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -31,7 +34,7 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
 
-  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
+  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1], allocator);
   __backend::csr_builder c_builder(c);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
@@ -59,7 +62,8 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csr_view_v<C>)
-auto spgemm_nnz(A&& a, B&& b, C&& c) {
+auto spgemm_nnz(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -73,7 +77,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c) {
   using O = tensor_offset_t<C>;
 
   O nnz = 0;
-  __backend::spa_set<I> c_row(__backend::shape(c)[1]);
+  __backend::spa_set<I> c_row(__backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
@@ -96,7 +100,8 @@ auto spgemm_nnz(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::column_iterable<A> && __backend::column_iterable<B> &&
            __detail::is_csc_view_v<C>)
-void spgemm_fill(A&& a, B&& b, C&& c) {
+void spgemm_fill(A&& a, B&& b, C&& c,
+                 std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -105,7 +110,7 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
         "multiply: matrix dimensions are incompatible.");
   }
   spgemm_fill(spblas::view::transpose(b), spblas::view::transpose(a),
-              transposed(c));
+              transposed(c), allocator);
 }
 
 // C = AB
@@ -114,7 +119,8 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::column_iterable<A> && __backend::column_iterable<B> &&
            __detail::is_csc_view_v<C>)
-auto spgemm_nnz(A&& a, B&& b, C&& c) {
+auto spgemm_nnz(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -124,7 +130,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c) {
   }
 
   return spgemm_nnz(spblas::view::transpose(b), spblas::view::transpose(a),
-                    transposed(c));
+                    transposed(c), allocator);
 }
 
 // C = AB
@@ -133,7 +139,8 @@ auto spgemm_nnz(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csc_view_v<C>)
-void spgemm_fill(A&& a, B&& b, C&& c) {
+void spgemm_fill(A&& a, B&& b, C&& c,
+                 std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -145,9 +152,10 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
   using T = tensor_scalar_t<C>;
   using I = tensor_index_t<C>;
 
-  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1]);
+  __backend::spa_accumulator<T, I> c_row(__backend::shape(c)[1], allocator);
 
-  std::vector<std::vector<std::pair<I, T>>> columns(__backend::shape(c)[1]);
+  std::pmr::vector<std::pmr::vector<std::pair<I, T>>> columns(
+      __backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();
@@ -184,7 +192,8 @@ void spgemm_fill(A&& a, B&& b, C&& c) {
 template <matrix A, matrix B, matrix C>
   requires(__backend::row_iterable<A> && __backend::row_iterable<B> &&
            __detail::is_csc_view_v<C>)
-auto spgemm_nnz(A&& a, B&& b, C&& c) {
+auto spgemm_nnz(A&& a, B&& b, C&& c,
+                std::pmr::polymorphic_allocator<> allocator) {
   log_trace("");
   if (__backend::shape(a)[0] != __backend::shape(c)[0] ||
       __backend::shape(b)[1] != __backend::shape(c)[1] ||
@@ -198,7 +207,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c) {
   using O = tensor_offset_t<C>;
 
   O nnz = 0;
-  __backend::spa_set<I> c_row(__backend::shape(c)[1]);
+  __backend::spa_set<I> c_row(__backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
     c_row.clear();

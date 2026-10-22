@@ -18,7 +18,8 @@ if (SPBLAS_CPU_BACKEND)
          triangular_solve_test.cpp
          scale_test.cpp
          norm_test.cpp
-         sort_test.cpp)
+         sort_test.cpp
+         allocator_test.cpp)
   else()
     list(APPEND TEST_SOURCES
          legacy/spmv_test.cpp

@@ -50,7 +50,7 @@ template <matrix A, matrix B, matrix C>
            __detail::is_csr_view_v<C>)
 void add(A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::spadd_fill(a, b, c);
+  __detail::spadd_fill(a, b, c, __detail::default_memory_resource());
 }
 
 template <matrix A, matrix B, matrix C>
@@ -59,7 +59,8 @@ template <matrix A, matrix B, matrix C>
 operation_info_t add_inspect(A&& a, B&& b, C&& c) {
   log_trace("");
   return operation_info_t{__backend::shape(c),
-                          index_t(__detail::spadd_nnz(a, b, c))};
+                          index_t(__detail::spadd_nnz(
+                              a, b, c, __detail::default_memory_resource()))};
 }
 
 template <matrix A, matrix B, matrix C>
@@ -101,7 +102,7 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_compute(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spadd_nnz(a, b, c));
+  state.update_impl_(__detail::spadd_nnz(a, b, c, state.get_allocator()));
 }
 
 template <matrix A, matrix B, matrix C>
@@ -109,7 +110,7 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_fill(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::spadd_fill(a, b, c);
+  __detail::spadd_fill(a, b, c, state.get_allocator());
 }
 
 template <matrix A, matrix B, matrix C>
@@ -117,7 +118,7 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_compute_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spadd_nnz(a, b, c));
+  state.update_impl_(__detail::spadd_nnz(a, b, c, state.get_allocator()));
 }
 
 template <matrix A, matrix B, matrix C>
@@ -125,8 +126,9 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_fill_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::fill_pattern_only(state, c, "add_fill_symbolic",
-                              [&](auto&& t) { __detail::spadd_fill(a, b, t); });
+  __detail::fill_pattern_only(state, c, "add_fill_symbolic", [&](auto&& t) {
+    __detail::spadd_fill(a, b, t, state.get_allocator());
+  });
 }
 
 template <matrix A, matrix B, matrix C>
@@ -134,9 +136,10 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_numeric(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::fill_values_only(state, c, __detail::spadd_nnz(a, b, c),
-                             "add_numeric",
-                             [&](auto&& t) { __detail::spadd_fill(a, b, t); });
+  __detail::fill_values_only(
+      state, c, __detail::spadd_nnz(a, b, c, state.get_allocator()),
+      "add_numeric",
+      [&](auto&& t) { __detail::spadd_fill(a, b, t, state.get_allocator()); });
 }
 
 template <__detail::execution_policy P, typename... Args>

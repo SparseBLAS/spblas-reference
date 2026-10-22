@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <functional>
+#include <memory_resource>
 #include <span>
 #include <tuple>
 #include <unordered_map>
@@ -13,10 +15,14 @@ namespace spblas {
 
 namespace __backend {
 
+// Hash-based row accumulators. Their storage comes from `allocator`;
+// algorithms pass their operation_state's.
+
 template <typename T, std::integral I>
 class hash_accumulator {
 public:
-  hash_accumulator(I count) {}
+  hash_accumulator(I count, std::pmr::polymorphic_allocator<> allocator = {})
+      : hash_(allocator) {}
 
   T& operator[](I pos) {
     return hash_[pos];
@@ -41,7 +47,8 @@ public:
   void sort() {}
 
   auto get() {
-    std::vector<std::pair<I, T>> values(hash_.begin(), hash_.end());
+    std::pmr::vector<std::pair<I, T>> values(hash_.begin(), hash_.end(),
+                                             hash_.get_allocator());
 
     std::sort(values.begin(), values.end(), [](auto&& a, auto&& b) {
       return std::get<0>(a) < std::get<0>(b);
@@ -51,13 +58,14 @@ public:
   }
 
 private:
-  std::unordered_map<I, T> hash_;
+  std::pmr::unordered_map<I, T> hash_;
 };
 
 template <std::integral T>
 class hash_set {
 public:
-  hash_set(T count) {}
+  hash_set(T count, std::pmr::polymorphic_allocator<> allocator = {})
+      : set_(allocator) {}
 
   void insert(T key) {
     set_.insert(key);
@@ -84,7 +92,7 @@ public:
   }
 
 private:
-  std::unordered_set<T> set_;
+  std::pmr::unordered_set<T> set_;
 };
 
 } // namespace __backend

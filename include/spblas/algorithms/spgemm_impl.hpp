@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory_resource>
 
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
@@ -35,7 +36,8 @@
 //
 //   The reference implementation runs the full kernel in each fill stage
 //   (into temporaries from the state's allocator), trading speed for
-//   simplicity.
+//   simplicity. All temporaries, including the kernels' row accumulators,
+//   come from the state's allocator.
 //
 //   The supported A / B / C format combinations and their kernels are listed
 //   in detail/spgemm/spgemm.hpp. C's pattern is symbolic: entries that are
@@ -76,19 +78,25 @@ void multiply_inspect(operation_state& state, Alpha alpha, A&& a, B&& b,
 
 template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
   requires((__detail::is_csr_wrapper_v<C> || __detail::is_csc_wrapper_v<C>) &&
-           requires(A&& a, B&& b, C&& c) { __detail::spgemm_nnz(a, b, c); })
+           requires(A&& a, B&& b, C&& c,
+                    std::pmr::polymorphic_allocator<> allocator) {
+             __detail::spgemm_nnz(a, b, c, allocator);
+           })
 void multiply_compute(operation_state& state, Alpha alpha, A&& a, B&& b,
                       C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spgemm_nnz(a, b, c));
+  state.update_impl_(__detail::spgemm_nnz(a, b, c, state.get_allocator()));
 }
 
 template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
   requires((__detail::is_csr_wrapper_v<C> || __detail::is_csc_wrapper_v<C>) &&
-           requires(A&& a, B&& b, C&& c) { __detail::spgemm_fill(a, b, c); })
+           requires(A&& a, B&& b, C&& c,
+                    std::pmr::polymorphic_allocator<> allocator) {
+             __detail::spgemm_fill(a, b, c, allocator);
+           })
 void multiply_fill(operation_state& state, Alpha alpha, A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::spgemm_fill(a, b, c);
+  __detail::spgemm_fill(a, b, c, state.get_allocator());
 
   __detail::scale_values_(alpha, c);
 }
@@ -96,38 +104,46 @@ void multiply_fill(operation_state& state, Alpha alpha, A&& a, B&& b, C&& c) {
 // 3-stage SpGEMM: compute_symbolic sets state.get_result_nnz().
 template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
   requires(__detail::compressed_output<C> &&
-           requires(A&& a, B&& b, C&& c) { __detail::spgemm_nnz(a, b, c); })
+           requires(A&& a, B&& b, C&& c,
+                    std::pmr::polymorphic_allocator<> allocator) {
+             __detail::spgemm_nnz(a, b, c, allocator);
+           })
 void multiply_compute_symbolic(operation_state& state, Alpha alpha, A&& a,
                                B&& b, C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spgemm_nnz(a, b, c));
+  state.update_impl_(__detail::spgemm_nnz(a, b, c, state.get_allocator()));
 }
 
 // 3-stage SpGEMM: fills C's pattern; alpha does not affect it.
 template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
   requires(__detail::compressed_output<C> &&
-           requires(A&& a, B&& b, C&& c) { __detail::spgemm_fill(a, b, c); })
+           requires(A&& a, B&& b, C&& c,
+                    std::pmr::polymorphic_allocator<> allocator) {
+             __detail::spgemm_fill(a, b, c, allocator);
+           })
 void multiply_fill_symbolic(operation_state& state, Alpha alpha, A&& a, B&& b,
                             C&& c) {
   log_trace("");
   __detail::fill_pattern_only(
       state, c, "multiply_fill_symbolic",
-      [&](auto&& t) { __detail::spgemm_fill(a, b, t); });
+      [&](auto&& t) { __detail::spgemm_fill(a, b, t, state.get_allocator()); });
 }
 
 // 3-stage SpGEMM: fills C's values into the pattern from fill_symbolic.
 template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
   requires(__detail::compressed_output<C> &&
-           requires(A&& a, B&& b, C&& c) {
-             __detail::spgemm_nnz(a, b, c);
-             __detail::spgemm_fill(a, b, c);
+           requires(A&& a, B&& b, C&& c,
+                    std::pmr::polymorphic_allocator<> allocator) {
+             __detail::spgemm_nnz(a, b, c, allocator);
+             __detail::spgemm_fill(a, b, c, allocator);
            })
 void multiply_numeric(operation_state& state, Alpha alpha, A&& a, B&& b,
                       C&& c) {
   log_trace("");
-  __detail::fill_values_only(state, c, __detail::spgemm_nnz(a, b, c),
-                             "multiply_numeric",
-                             [&](auto&& t) { __detail::spgemm_fill(a, b, t); });
+  __detail::fill_values_only(
+      state, c, __detail::spgemm_nnz(a, b, c, state.get_allocator()),
+      "multiply_numeric",
+      [&](auto&& t) { __detail::spgemm_fill(a, b, t, state.get_allocator()); });
   __detail::scale_values_(alpha, c);
 }
 

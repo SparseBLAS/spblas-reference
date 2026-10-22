@@ -1,8 +1,13 @@
 #pragma once
 
 // Reference SpGEMM kernels, C = A * B, in spblas::__detail:
-//   spgemm_nnz(a, b, c)   number of entries in C's symbolic pattern
-//   spgemm_fill(a, b, c)  fills C's arrays (sized by spgemm_nnz)
+//   spgemm_nnz(a, b, c, allocator)   number of entries in C's symbolic
+//                                    pattern
+//   spgemm_fill(a, b, c, allocator)  fills C's arrays (sized by spgemm_nnz)
+//
+//   Their scratch storage (row accumulators etc.) comes from `allocator`, a
+//   std::pmr::polymorphic_allocator<>; operations pass their
+//   operation_state's.
 //
 //   A    B    C    kernel
 //   CSR  CSR  CSR  Gustavson                    spgemm_gustavsons.hpp
