@@ -6,6 +6,7 @@
 #include <spblas/algorithms/conjugated_impl.hpp>
 #include <spblas/algorithms/transposed.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/views/diagonal_view.hpp>
 #include <spblas/views/inspectors.hpp>
 #include <spblas/views/transposed_view.hpp>
 #include <spblas/views/triangle_view.hpp>
@@ -14,7 +15,10 @@
 // lightweight and non-owning; implementations may still materialize them
 // (e.g. an explicit transpose inside a matrix_opt).
 //
-// Not yet provided: view::diagonal, view::symmetric, view::hermitian.
+// Stacks of these views are reduced to one canonical form by
+// __detail::analyze_view (detail/view_analysis.hpp).
+//
+// Not yet provided: view::symmetric, view::hermitian.
 
 namespace spblas {
 
@@ -47,6 +51,12 @@ auto conjugate(T&& t) {
 template <matrix M>
 auto triangle(M&& m, uplo u, diag d = diag::explicit_diagonal) {
   return triangle_view<std::remove_cvref_t<M>>(std::forward<M>(m), u, d);
+}
+
+// The diagonal of `m` (neither strict triangle) with diagonal handling `d`.
+template <matrix M>
+auto diagonal(M&& m, diag d = diag::explicit_diagonal) {
+  return diagonal_view<std::remove_cvref_t<M>>(std::forward<M>(m), d);
 }
 
 } // namespace view

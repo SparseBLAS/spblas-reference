@@ -1,5 +1,9 @@
 #pragma once
 
+#include <complex>
+#include <memory_resource>
+#include <stdexcept>
+
 #include <spblas/backend/backend.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/api_concepts.hpp>
@@ -7,6 +11,7 @@
 #include <spblas/detail/operation_info_t.hpp>
 #include <spblas/detail/operation_state.hpp>
 #include <spblas/detail/triangular_types.hpp>
+#include <spblas/detail/view_analysis.hpp>
 #include <spblas/views/triangle_view.hpp>
 
 namespace spblas {
@@ -121,6 +126,13 @@ void triangular_solve(operation_info_t& info, A&& a, Triangle t,
 //
 //   A: CSR (row-oriented substitution) or CSC (column-oriented), and a
 //   matrix_opt of either.
+//
+//   Any composition of view::triangle / view::diagonal with view::transpose
+//   and view::conjugate that represents a triangular or diagonal matrix is
+//   accepted, in any order (e.g. view::transpose(view::triangle(A, lower)),
+//   view::triangle(view::triangle(A, lower), upper)): the stack is reduced
+//   by __detail::analyze_view to op(region(A)) and solved as
+//   view::triangle(op(A), ...) or as a diagonal solve.
 //
 
 namespace __detail {
@@ -238,8 +250,103 @@ void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
   }
 }
 
+namespace __detail {
+
+// A stack with structure that is not simply view::triangle over an
+// unstructured operand (which the kernels above take directly).
+template <typename T>
+constexpr bool is_plain_triangle_() {
+  if constexpr (is_triangle_view_v<T>) {
+    return !structured_view<triangle_matrix_t<T>>;
+  } else {
+    return false;
+  }
+}
+
+template <typename T>
+concept composed_structure = structured_view<T> && !is_plain_triangle_<T>();
+
+template <typename T>
+using structured_operand_t =
+    decltype(std::declval<view_analysis_t<T>>().operand());
+
+// x = alpha * inv(D) * b for the diagonal D of op(base).
+template <typename Analysis, typename Alpha, typename B, typename X>
+void diagonal_solve_(operation_state& state, const Analysis& a, Alpha alpha,
+                     B&& b, X&& x) {
+  const auto shape = __backend::shape(a.base);
+  if (a.diag == spblas::view::diag::implicit_zero) {
+    throw std::invalid_argument(
+        "triangular_solve: view::diag::implicit_zero is not supported (the "
+        "matrix would be singular).");
+  }
+  if (shape[0] != shape[1] || shape[0] != __backend::shape(b) ||
+      shape[1] != __backend::shape(x)) {
+    throw std::invalid_argument(
+        "triangular_solve: matrix and vector dimensions are incompatible.");
+  }
+
+  using V = tensor_scalar_t<X>;
+  const V alpha_v = static_cast<V>(alpha);
+  if (a.diag == spblas::view::diag::implicit_unit) {
+    for (tensor_index_t<X> i = 0; i < __backend::shape(x); i++) {
+      __backend::lookup(x, i) = alpha_v * __backend::lookup(b, i);
+    }
+    return;
+  }
+
+  // The diagonal of op(base) is that of base, conjugated if op conjugates.
+  using T = tensor_scalar_t<typename Analysis::base_type>;
+  std::pmr::vector<T> diagonal(shape[0], T(0), state.get_allocator());
+  __backend::for_each(a.base, [&](auto&& e) {
+    auto&& [idx, v] = e;
+    auto&& [i, j] = idx;
+    if (i == j) {
+      if constexpr (Analysis::conjugate && is_std_complex_v<T>) {
+        diagonal[i] = std::conj(v);
+      } else {
+        diagonal[i] = v;
+      }
+    }
+  });
+  for (tensor_index_t<X> i = 0; i < __backend::shape(x); i++) {
+    __backend::lookup(x, i) = alpha_v * __backend::lookup(b, i) / diagonal[i];
+  }
+}
+
+} // namespace __detail
+
+// Composed views: solved through their analysis (see the top of the file).
+template <typename T, __detail::scalar Alpha, vector B, vector X>
+  requires(__detail::composed_structure<T> &&
+           (__backend::row_iterable<__detail::structured_operand_t<T>> ||
+            __backend::column_iterable<__detail::structured_operand_t<T>>) &&
+           __backend::lookupable<B> && __backend::lookupable<X>)
+void triangular_solve(operation_state& state, T&& t, Alpha alpha, B&& b,
+                      X&& x) {
+  log_trace("");
+  auto a = __detail::analyze_view(t);
+  switch (a.represented_region()) {
+  case __detail::view_region::lower:
+  case __detail::view_region::upper: {
+    const auto uplo = a.represented_region() == __detail::view_region::lower
+                          ? view::uplo::lower
+                          : view::uplo::upper;
+    triangular_solve(state, view::triangle(a.operand(), uplo, a.diag), alpha,
+                     std::forward<B>(b), std::forward<X>(x));
+    break;
+  }
+  case __detail::view_region::diagonal:
+    __detail::diagonal_solve_(state, a, alpha, b, x);
+    break;
+  case __detail::view_region::full:
+    // A structured stack always restricts the region.
+    throw std::logic_error("triangular_solve: unexpected full region.");
+  }
+}
+
 template <typename T, vector B, vector X>
-  requires(__detail::is_triangle_view_v<T>)
+  requires(__detail::structured_view<T>)
 void triangular_solve(operation_state& state, T&& t, B&& b, X&& x) {
   log_trace("");
   triangular_solve(state, std::forward<T>(t), tensor_scalar_t<X>(1),
@@ -248,14 +355,14 @@ void triangular_solve(operation_state& state, T&& t, B&& b, X&& x) {
 
 // The reference implementation has nothing to prepare.
 template <typename T, __detail::scalar Alpha, vector B, vector X>
-  requires(__detail::is_triangle_view_v<T>)
+  requires(__detail::structured_view<T>)
 void triangular_solve_inspect(operation_state& state, T&& t, Alpha alpha, B&& b,
                               X&& x) {
   log_trace("");
 }
 
 template <typename T, vector B, vector X>
-  requires(__detail::is_triangle_view_v<T>)
+  requires(__detail::structured_view<T>)
 void triangular_solve_inspect(operation_state& state, T&& t, B&& b, X&& x) {
   log_trace("");
 }
