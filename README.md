@@ -1,10 +1,9 @@
 # Sparse BLAS Reference
 This repository holds a prototype Sparse BLAS implementation.
 
-## Views
-The interface is currently built around views.  Views are non-owning, lightweight objects.
-They reference data, but they do not own it.  Views make it easy to use a library without
-having to copy data in and out of it.
+## Matrix Wrappers
+The interface is built around non-owning, lightweight matrix wrappers. They reference data,
+but they do not own it, so a library can be used without copying data in and out of it.
 
 ```cpp
   using namespace spblas;
@@ -15,36 +14,52 @@ having to copy data in and out of it.
   std::vector<int> rowptr = ...;
   std::vector<int> colind = ...;
 
-  // They can create a view
-  csr_view<float, int> a(values, rowptr, colind, {m, n}, nnz);
+  // They can create a wrapper
+  csr_wrapper<float, int> a(values, rowptr, colind, {m, n}, nnz);
 
-  // We can then perform an operation. No copies required.
-
-  multiply(a, b, c);
+  // Every operation takes an operation_state, which can carry library data
+  // between calls, and explicit scaling factors. No copies required.
+  operation_state state;
+  multiply(state, alpha, a, x, y);              // y = alpha * A * x
+  multiply(state, alpha, a, x, beta, z, y);     // y = alpha * A * x + beta * z
 ```
+
+Views such as `view::transpose(a)`, `view::conjugate(a)` and
+`view::triangle(a, view::uplo::lower)` can be passed wherever a matrix is expected, and a
+`matrix_opt(a)` lets the library keep optimization data for a matrix across calls.
+
+The reference backend implements this API, which follows the SparseBLAS
+position paper. The other backends still provide the earlier API
+(`csr_view`, `scaled()`, `operation_info_t`) and are being migrated.
 
 ## Multi-Phase Operations
 Multi-phase operations allow implementations to perform inspector-executor style optimizations.
-In the inspect phase, an implementation can optimize the format of a matrix or provide other
-metadata that will allow the operation to be performed more efficiently.  Having an inspect
-phase also allows users to fully control data layout and allocation by having them allocate more
-space for the output if needed in a sparse-times-sparse operation.
+In the optional inspect phase, an implementation can optimize the format of a matrix or provide other
+metadata that will allow the operation to be performed more efficiently.  For operations whose
+sparse output is not known in advance, such as sparse-times-sparse, the user allocates the output
+once the library has computed its size, so users fully control data layout and allocation.
 
 ```cpp
-  // Call `inspect` to perform optimization phase.
-  // Implementations may apply arbitrary optimizations here.
-  auto info = multiply_inspect(a, b, c /*, optimization hints */);
+  // Optional: implementations may apply arbitrary optimizations here.
+  multiply_inspect(state, alpha, a, b, c);
 
-  // If c is sparse, I may need to allocate more memory for the output.
-  std::vector<float> c_values(info.result_nnz());
-  std::vector<spblas::index_t> c_rowptr(info.result_shape()[0] + 1);
-  std::vector<spblas::index_t> c_colind(info.result_nnz());
+  // Compute the size of the output C, which so far has only a shape:
+  // csr_wrapper<float, int> c(m, n);
+  multiply_compute(state, alpha, a, b, c);
 
+  // Allocate C's arrays.
+  std::vector<float> c_values(state.get_result_nnz());
+  std::vector<int> c_rowptr(m + 1);
+  std::vector<int> c_colind(state.get_result_nnz());
   c.update(c_values, c_rowptr, c_colind);
 
-  // I can then execute the operation using `info`
-  multiply_execute(info, a, b, c);
+  // Fill C.
+  multiply_fill(state, alpha, a, b, c);
 ```
+
+A three-stage variant, `multiply_compute_symbolic` / `multiply_fill_symbolic` /
+`multiply_numeric`, separates the sparsity pattern from the values so that the pattern can be
+reused while the values of `a` and `b` change.
 
 ## Building
 The project has a CMake build that should work out-of-the-box on most systems.
@@ -104,8 +119,8 @@ brock@slothius:~/src/spblas-reference$ CXX=g++-13 cmake -B build
 
 ### Compiling with a Vendor Backend
 A vendor backend can be enabled by passing in an `-DENABLE_{BACKEND}=ON` switch
-to `cmake`.  Currently, oneMKL, ArmPL, rocSPARSE and cuSPARSE are the supported vendor
-backends.
+to `cmake`.  Currently, oneMKL (SYCL API), ArmPL, AOCL-Sparse, rocSPARSE and cuSPARSE are
+the supported vendor backends.
 
 ### Compiling with oneMKL
 The most straightforward way to build with oneMKL is by installing the [oneAPI
