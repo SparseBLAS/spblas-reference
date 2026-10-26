@@ -71,7 +71,7 @@ __detail::norm_t<A> matrix_inf_norm(operation_state& state, A&& a) {
   using R = __detail::norm_t<A>;
 
   std::pmr::vector<R> row_sums(__backend::shape(a)[0], R(0),
-                               state.get_allocator());
+                               state.get_allocator().host());
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, v] = e;
     auto&& [i, j] = idx;

@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <spblas/detail/allocator.hpp>
 #include <spblas/detail/backend_state.hpp>
 #include <spblas/detail/types.hpp>
 
@@ -12,18 +13,15 @@ namespace spblas {
 
 // State for one SparseBLAS operation, passed to every stage of it
 // (`_inspect`, `_compute`, `_fill`, ...) and reusable across repeated calls.
-// Library-internal allocations use the memory resource given at construction,
-// or the backend's default resource if none is given.
+// Library-internal allocations use the allocator given at construction (a
+// spblas::allocator, or a std::pmr resource / polymorphic_allocator as its
+// host role); roles not given use the backend's default allocator.
 class operation_state {
 public:
-  operation_state() : operation_state(__detail::default_memory_resource()) {}
+  operation_state() = default;
 
-  explicit operation_state(std::pmr::memory_resource* resource)
-      : resource_(resource != nullptr ? resource
-                                      : __detail::default_memory_resource()) {}
-
-  explicit operation_state(const std::pmr::polymorphic_allocator<>& allocator)
-      : operation_state(allocator.resource()) {}
+  explicit operation_state(spblas::allocator allocator)
+      : allocator_(allocator) {}
 
   operation_state(operation_state&&) = default;
   operation_state& operator=(operation_state&&) = default;
@@ -36,8 +34,10 @@ public:
     return result_nnz_;
   }
 
-  std::pmr::polymorphic_allocator<> get_allocator() const noexcept {
-    return std::pmr::polymorphic_allocator<>(resource_);
+  // The allocator given at construction; its unset roles resolve to the
+  // backend's default allocator.
+  spblas::allocator get_allocator() const noexcept {
+    return allocator_;
   }
 
   // For implementations only. `result_nnz` may use the output matrix's own
@@ -56,7 +56,7 @@ public:
   __detail::backend_operation_state_t state_;
 
 private:
-  std::pmr::memory_resource* resource_;
+  spblas::allocator allocator_;
   offset_t result_nnz_ = 0;
 };
 

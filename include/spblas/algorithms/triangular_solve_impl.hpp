@@ -238,7 +238,7 @@ void diagonal_solve_(operation_state& state, const Analysis& a, Alpha alpha,
   const V alpha_v = static_cast<V>(alpha);
 
   std::pmr::vector<T> diagonal(__backend::shape(x), T(0),
-                               state.get_allocator());
+                               state.get_allocator().host());
   __detail::for_each_represented_entry(
       a, [&](auto i, auto, auto&& v) { diagonal[i] = v; });
   for (tensor_index_t<X> i = 0; i < __backend::shape(x); i++) {

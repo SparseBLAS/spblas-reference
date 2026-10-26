@@ -6,6 +6,7 @@
 #include <spblas/backend/concepts.hpp>
 #include <spblas/backend/cpos.hpp>
 #include <spblas/concepts.hpp>
+#include <spblas/detail/allocator.hpp>
 #include <spblas/detail/backend_state.hpp>
 #include <spblas/views/properties.hpp>
 
@@ -13,8 +14,9 @@ namespace spblas {
 
 // A matrix wrapper plus opaque, library-owned optimization data for it.
 // Copies share the optimization data, which is released with the last copy.
-// The data is allocated from the memory resource given at construction, or
-// the backend's default resource if none is given.
+// The data is allocated from the allocator given at construction (a
+// spblas::allocator, or a std::pmr resource / polymorphic_allocator as its
+// host role); the shared data itself comes from the host role.
 //
 // The matrix_opt keeps its own copy of the wrapper, shared by all copies of
 // the matrix_opt (and the views over them), so properties set through any of
@@ -31,18 +33,16 @@ public:
   using index_type = tensor_index_t<M>;
   using offset_type = tensor_offset_t<M>;
 
-  explicit matrix_opt(M matrix, std::pmr::memory_resource* resource = nullptr)
-      : resource_(resource != nullptr ? resource
-                                      : __detail::default_memory_resource()) {
+  explicit matrix_opt(M matrix, spblas::allocator allocator = {})
+      : allocator_(allocator) {
     auto data = std::allocate_shared<shared_data_>(
-        std::pmr::polymorphic_allocator<shared_data_>(resource_), matrix);
+        std::pmr::polymorphic_allocator<shared_data_>(
+            allocator_.host().resource()),
+        matrix);
     matrix_ = &data->matrix;
     state_ = std::shared_ptr<__detail::backend_matrix_opt_state_t>(
         data, &data->state);
   }
-
-  matrix_opt(M matrix, const std::pmr::polymorphic_allocator<>& allocator)
-      : matrix_opt(matrix, allocator.resource()) {}
 
   auto shape() const noexcept {
     return __backend::shape(base());
@@ -69,8 +69,10 @@ public:
     matrix_->set_sort_state(s);
   }
 
-  std::pmr::polymorphic_allocator<> get_allocator() const noexcept {
-    return std::pmr::polymorphic_allocator<>(resource_);
+  // The allocator given at construction; its unset roles resolve to the
+  // backend's default allocator.
+  spblas::allocator get_allocator() const noexcept {
+    return allocator_;
   }
 
 private:
@@ -123,7 +125,7 @@ private:
     __detail::backend_matrix_opt_state_t state;
   };
 
-  std::pmr::memory_resource* resource_;
+  spblas::allocator allocator_;
   M* matrix_; // into the shared data, which state_ keeps alive
 
 public:
@@ -135,10 +137,7 @@ template <typename T>
 matrix_opt(T t) -> matrix_opt<T>;
 
 template <typename T>
-matrix_opt(T t, std::pmr::memory_resource*) -> matrix_opt<T>;
-
-template <typename T>
-matrix_opt(T t, const std::pmr::polymorphic_allocator<>&) -> matrix_opt<T>;
+matrix_opt(T t, spblas::allocator) -> matrix_opt<T>;
 
 // Tells the library that the user changed the *values* of the matrix `m`
 // wraps, in place. Only values may change: the sparsity pattern (row/column

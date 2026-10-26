@@ -34,6 +34,30 @@ private:
   }
 };
 
+// A compute-role resource that forwards to new/delete and counts calls.
+class counting_compute_resource : public spblas::memory_resource {
+public:
+  std::size_t allocations = 0;
+  std::size_t deallocations = 0;
+
+private:
+  void* do_allocate(std::size_t bytes, std::size_t alignment,
+                    stream_type) override {
+    ++allocations;
+    return std::pmr::new_delete_resource()->allocate(bytes, alignment);
+  }
+
+  void do_deallocate(void* p, std::size_t bytes, std::size_t alignment,
+                     stream_type) override {
+    ++deallocations;
+    std::pmr::new_delete_resource()->deallocate(p, bytes, alignment);
+  }
+
+  spblas::memory_space do_space() const noexcept override {
+    return spblas::memory_space::shared;
+  }
+};
+
 // 3x3 matrix
 //   [1 2 0]
 //   [3 4 5]
@@ -63,7 +87,7 @@ TEST(OperationState, DefaultResource) {
   static_assert(
       std::is_same_v<decltype(state.get_result_nnz()), spblas::offset_t>);
   EXPECT_EQ(state.get_result_nnz(), 0);
-  EXPECT_EQ(state.get_allocator().resource(),
+  EXPECT_EQ(state.get_allocator().host().resource(),
             spblas::__detail::default_memory_resource());
 }
 
@@ -71,9 +95,9 @@ TEST(OperationState, UserResource) {
   counting_resource resource;
 
   spblas::operation_state state(&resource);
-  EXPECT_EQ(state.get_allocator().resource(), &resource);
+  EXPECT_EQ(state.get_allocator().host().resource(), &resource);
 
-  auto allocator = state.get_allocator();
+  auto allocator = state.get_allocator().host();
   void* p = allocator.allocate_bytes(100);
   allocator.deallocate_bytes(p, 100);
   EXPECT_EQ(resource.allocations, 1);
@@ -81,16 +105,70 @@ TEST(OperationState, UserResource) {
 
   state.update_impl_(7);
   spblas::operation_state moved(std::move(state));
-  EXPECT_EQ(moved.get_allocator().resource(), &resource);
+  EXPECT_EQ(moved.get_allocator().host().resource(), &resource);
   EXPECT_EQ(moved.get_result_nnz(), 7);
 
   spblas::operation_state from_allocator(
       std::pmr::polymorphic_allocator<>{&resource});
-  EXPECT_EQ(from_allocator.get_allocator().resource(), &resource);
+  EXPECT_EQ(from_allocator.get_allocator().host().resource(), &resource);
 
   spblas::operation_state from_null(nullptr);
-  EXPECT_EQ(from_null.get_allocator().resource(),
+  EXPECT_EQ(from_null.get_allocator().host().resource(),
             spblas::__detail::default_memory_resource());
+}
+
+TEST(Allocator, Roles) {
+  using spblas::memory_space;
+  spblas::memory_resource::stream_type stream{};
+  auto* backend_default = spblas::__detail::default_memory_resource();
+
+  // Nothing given: the backend's default for both roles (CPU backends compute
+  // in host memory).
+  spblas::allocator unset;
+  EXPECT_EQ(unset.host().resource(), backend_default);
+  EXPECT_EQ(unset.compute().space(), memory_space::host);
+  EXPECT_EQ(unset.compute().host_resource(), backend_default);
+  EXPECT_EQ(spblas::allocator(nullptr).host().resource(), backend_default);
+
+  // A host resource alone serves both roles.
+  counting_resource host;
+  spblas::allocator from_host(&host);
+  EXPECT_EQ(from_host.host().resource(), &host);
+  void* p = from_host.compute().allocate(64, 64, stream);
+  from_host.compute().deallocate(p, 64, 64, stream);
+  EXPECT_EQ(host.allocations, 1);
+  EXPECT_EQ(host.deallocations, 1);
+
+  // A compute resource is preferred for the compute role; the host role
+  // keeps its own resource, or the default.
+  counting_compute_resource compute;
+  spblas::allocator both(&compute, &host);
+  EXPECT_EQ(both.host().resource(), &host);
+  EXPECT_EQ(both.compute().compute_resource(), &compute);
+  EXPECT_EQ(both.compute().space(), memory_space::shared);
+  p = both.compute().allocate(32, 16, stream);
+  both.compute().deallocate(p, 32, 16, stream);
+  EXPECT_EQ(compute.allocations, 1);
+  EXPECT_EQ(compute.deallocations, 1);
+  EXPECT_EQ(host.allocations, 1);
+
+  spblas::allocator compute_only(&compute);
+  EXPECT_EQ(compute_only.host().resource(), backend_default);
+
+  // The default allocator ignores the policy on CPU backends.
+  EXPECT_EQ(spblas::__detail::default_allocator(util::test_policy{})
+                .host()
+                .resource(),
+            backend_default);
+
+  // operation_state and matrix_opt return what they were given.
+  spblas::operation_state state(both);
+  EXPECT_EQ(state.get_allocator().compute().compute_resource(), &compute);
+  small_csr m;
+  spblas::matrix_opt a_opt(m.wrapper(), both);
+  EXPECT_EQ(a_opt.get_allocator().host().resource(), &host);
+  EXPECT_EQ(a_opt.get_allocator().compute().compute_resource(), &compute);
+  EXPECT_GE(host.allocations, 2); // a_opt's shared data
 }
 
 TEST(OperationState, ResultNnzOverflowThrows) {
@@ -117,7 +195,7 @@ TEST(MatrixOpt, SharedStateFromUserResource) {
   {
     spblas::matrix_opt a_opt(m.wrapper(), &resource);
     EXPECT_GE(resource.allocations, 1);
-    EXPECT_EQ(a_opt.get_allocator().resource(), &resource);
+    EXPECT_EQ(a_opt.get_allocator().host().resource(), &resource);
 
     auto copy = a_opt;
     EXPECT_EQ(copy.state_.get(), a_opt.state_.get());
@@ -129,7 +207,7 @@ TEST(MatrixOpt, SharedStateFromUserResource) {
   EXPECT_EQ(resource.allocations, resource.deallocations);
 
   spblas::matrix_opt default_opt(m.wrapper());
-  EXPECT_EQ(default_opt.get_allocator().resource(),
+  EXPECT_EQ(default_opt.get_allocator().host().resource(),
             spblas::__detail::default_memory_resource());
 }
 

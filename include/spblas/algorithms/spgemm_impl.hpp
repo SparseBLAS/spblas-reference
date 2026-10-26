@@ -90,7 +90,8 @@ template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
 void multiply_compute(operation_state& state, Alpha alpha, A&& a, B&& b,
                       C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spgemm_nnz(a, b, c, state.get_allocator()));
+  state.update_impl_(
+      __detail::spgemm_nnz(a, b, c, state.get_allocator().host()));
 }
 
 template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
@@ -101,7 +102,7 @@ template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
            })
 void multiply_fill(operation_state& state, Alpha alpha, A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::spgemm_fill(a, b, c, state.get_allocator());
+  __detail::spgemm_fill(a, b, c, state.get_allocator().host());
   __detail::set_output_sort_state(c, sort_state::sorted);
 
   __detail::scale_values_(alpha, c);
@@ -117,7 +118,8 @@ template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
 void multiply_compute_symbolic(operation_state& state, Alpha alpha, A&& a,
                                B&& b, C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spgemm_nnz(a, b, c, state.get_allocator()));
+  state.update_impl_(
+      __detail::spgemm_nnz(a, b, c, state.get_allocator().host()));
 }
 
 // 3-stage SpGEMM: fills C's pattern; alpha does not affect it.
@@ -131,8 +133,9 @@ void multiply_fill_symbolic(operation_state& state, Alpha alpha, A&& a, B&& b,
                             C&& c) {
   log_trace("");
   __detail::fill_pattern_only(
-      state, c, "multiply_fill_symbolic",
-      [&](auto&& t) { __detail::spgemm_fill(a, b, t, state.get_allocator()); });
+      state, c, "multiply_fill_symbolic", [&](auto&& t) {
+        __detail::spgemm_fill(a, b, t, state.get_allocator().host());
+      });
   __detail::set_output_sort_state(c, sort_state::sorted);
 }
 
@@ -148,9 +151,10 @@ void multiply_numeric(operation_state& state, Alpha alpha, A&& a, B&& b,
                       C&& c) {
   log_trace("");
   __detail::fill_values_only(
-      state, c, __detail::spgemm_nnz(a, b, c, state.get_allocator()),
-      "multiply_numeric",
-      [&](auto&& t) { __detail::spgemm_fill(a, b, t, state.get_allocator()); });
+      state, c, __detail::spgemm_nnz(a, b, c, state.get_allocator().host()),
+      "multiply_numeric", [&](auto&& t) {
+        __detail::spgemm_fill(a, b, t, state.get_allocator().host());
+      });
   __detail::scale_values_(alpha, c);
 }
 
