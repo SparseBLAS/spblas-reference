@@ -6,6 +6,7 @@
 #include <spblas/concepts.hpp>
 #include <spblas/detail/log.hpp>
 
+#include <spblas/algorithms/detail/checked_nnz.hpp>
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/views/view.hpp>
@@ -75,7 +76,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
   using I = tensor_index_t<C>;
   using O = tensor_offset_t<C>;
 
-  O nnz = 0;
+  std::size_t nnz = 0;
   __backend::spa_set<I> c_row(__backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
@@ -90,7 +91,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
     nnz += c_row.size();
   }
 
-  return nnz;
+  return checked_nnz<O>(nnz);
 }
 
 // C = AB
@@ -211,7 +212,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
   using I = tensor_index_t<C>;
   using O = tensor_offset_t<C>;
 
-  O nnz = 0;
+  std::size_t nnz = 0;
   __backend::spa_set<I> c_row(__backend::shape(c)[1], allocator);
 
   for (auto&& [i, a_row] : __backend::rows(a)) {
@@ -226,7 +227,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
     nnz += c_row.size();
   }
 
-  return nnz;
+  return checked_nnz<O>(nnz);
 }
 
 } // namespace __detail

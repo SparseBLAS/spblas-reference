@@ -6,6 +6,7 @@
 #include <spblas/concepts.hpp>
 #include <spblas/detail/log.hpp>
 
+#include <spblas/algorithms/detail/checked_nnz.hpp>
 #include <spblas/algorithms/detail/sparse_dot_product.hpp>
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/hash_accumulator.hpp>
@@ -93,7 +94,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
     row_accumulators.emplace_back(__backend::shape(c)[1], allocator);
   }
 
-  O nnz = 0;
+  std::size_t nnz = 0;
 
   for (std::size_t k = 0; k < __backend::shape(a)[1]; k++) {
     auto&& a_vec = __backend::lookup_column(a, k);
@@ -110,7 +111,7 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
     nnz += row_acc.size();
   }
 
-  return nnz;
+  return checked_nnz<O>(nnz);
 }
 
 // C = AB

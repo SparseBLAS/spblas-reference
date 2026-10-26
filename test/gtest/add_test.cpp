@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <stdexcept>
+
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
@@ -294,4 +297,34 @@ void transposed_operand_add_test() {
 
 TEST(Add, TransposedOperandIfSupported) {
   transposed_operand_add_test<double, spblas::index_t>();
+}
+
+// A result whose nnz does not fit the output's offset type throws instead
+// of wrapping: two disjoint 128-entry rows of a 1 x 256 matrix have a
+// 256-entry union, which a std::uint8_t offset cannot hold (before, nnz
+// wrapped to 0 and get_result_nnz() reported 0).
+TEST(Add, NnzOverflowOfOutputOffsetTypeThrows) {
+  using T = double;
+  using I = std::uint16_t;
+  using O = std::uint8_t;
+
+  std::vector<T> values(128, T(1));
+  std::vector<O> pointers{0, 128};
+  std::vector<I> even(128), odd(128);
+  for (I k = 0; k < 128; k++) {
+    even[k] = I(2 * k);
+    odd[k] = I(2 * k + 1);
+  }
+  spblas::csr_wrapper<T, I, O> a(values, pointers, even, {1, 256}, 128);
+  spblas::csr_wrapper<T, I, O> b(values, pointers, odd, {1, 256}, 128);
+  spblas::csc_wrapper<T, I, O> a_t(values, pointers, even, {256, 1}, 128);
+  spblas::csc_wrapper<T, I, O> b_t(values, pointers, odd, {256, 1}, 128);
+
+  spblas::operation_state state;
+  spblas::csr_wrapper<T, I, O> c(1, 256);
+  EXPECT_THROW(spblas::add_compute(state, a, b, c), std::overflow_error);
+  EXPECT_THROW(spblas::add_compute_symbolic(state, a, b, c),
+               std::overflow_error);
+  spblas::csc_wrapper<T, I, O> c_t(256, 1);
+  EXPECT_THROW(spblas::add_compute(state, a_t, b_t, c_t), std::overflow_error);
 }

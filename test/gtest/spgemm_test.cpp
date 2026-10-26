@@ -758,3 +758,52 @@ TEST(SpGEMM, PreallocatedOutputWithNnzZero) {
   spgemm_preallocated_nnz_zero_test<true, false, false>();
   spgemm_preallocated_nnz_zero_test<true, false, true>();
 }
+
+// A product whose nnz does not fit the output's offset type throws instead
+// of wrapping: [1 1] times a 2 x 256 matrix whose rows hold the even and odd
+// columns has 256 entries, which a std::uint8_t offset cannot hold. Needs a
+// backend that multiplies these index types (a function template, so the
+// unsupported branch is not instantiated).
+namespace {
+
+template <typename I>
+void spgemm_nnz_overflow_test() {
+  using T = double;
+  using A = spblas::csr_wrapper<T, I, std::uint16_t>;
+  using C = spblas::csr_wrapper<T, I, std::uint8_t>;
+  using C_csc = spblas::csc_wrapper<T, I, std::uint8_t>;
+
+  if constexpr (requires(spblas::operation_state& s, A& a, C& c, C_csc& c_csc) {
+                  spblas::multiply_compute(s, T(1), a, a, c);
+                  spblas::multiply_compute_symbolic(s, T(1), a, a, c);
+                  spblas::multiply_compute(s, T(1), a, a, c_csc);
+                }) {
+    std::vector<T> a_values{1, 1}, b_values(256, T(1));
+    std::vector<std::uint16_t> a_rowptr{0, 2}, b_rowptr{0, 128, 256};
+    std::vector<I> a_colind{0, 1}, b_colind(256);
+    for (I k = 0; k < 128; k++) {
+      b_colind[k] = I(2 * k);
+      b_colind[128 + k] = I(2 * k + 1);
+    }
+    A a(a_values, a_rowptr, a_colind, {1, 2}, 2);
+    A b(b_values, b_rowptr, b_colind, {2, 256}, 256);
+
+    spblas::operation_state state;
+    C c(1, 256);
+    EXPECT_THROW(spblas::multiply_compute(state, T(1), a, b, c),
+                 std::overflow_error);
+    EXPECT_THROW(spblas::multiply_compute_symbolic(state, T(1), a, b, c),
+                 std::overflow_error);
+    C_csc c_csc(1, 256);
+    EXPECT_THROW(spblas::multiply_compute(state, T(1), a, b, c_csc),
+                 std::overflow_error);
+  } else {
+    GTEST_SKIP() << "SpGEMM with these index / offset types is not supported";
+  }
+}
+
+} // namespace
+
+TEST(SpGEMM, NnzOverflowOfOutputOffsetTypeThrows) {
+  spgemm_nnz_overflow_test<std::uint16_t>();
+}

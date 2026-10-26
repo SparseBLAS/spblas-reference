@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 
+#include <spblas/algorithms/detail/checked_nnz.hpp>
 #include <spblas/backend/backend.hpp>
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/spa_accumulator.hpp>
@@ -65,7 +66,7 @@ tensor_offset_t<C> spadd_nnz(A&& a, B&& b, C&& c,
   const I outer = __backend::shape(c)[by_columns ? 1 : 0];
   const I inner = __backend::shape(c)[by_columns ? 0 : 1];
 
-  tensor_offset_t<C> nnz = 0;
+  std::size_t nnz = 0;
   __backend::spa_set<I> c_slice(inner, allocator);
 
   for (I o = 0; o < outer; o++) {
@@ -78,7 +79,7 @@ tensor_offset_t<C> spadd_nnz(A&& a, B&& b, C&& c,
     }
     nnz += c_slice.size();
   }
-  return nnz;
+  return checked_nnz<tensor_offset_t<C>>(nnz);
 }
 
 template <matrix A, matrix B, matrix C>
