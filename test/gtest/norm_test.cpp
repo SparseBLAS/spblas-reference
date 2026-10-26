@@ -210,6 +210,22 @@ TEST(Norm, NanAndInfinity) {
   EXPECT_EQ(spblas::matrix_frob_norm(state, a), inf);
   EXPECT_EQ(spblas::matrix_inf_norm(state, a), inf);
   EXPECT_EQ(spblas::matrix_one_norm(state, a), inf);
+
+  // A complex entry with one infinite and one NaN component, in either
+  // order: std::abs of it is infinite, but every norm must be NaN.
+  for (C entry : {C(inf, nan), C(nan, inf), C(-inf, nan), C(nan, -inf)}) {
+    std::vector<C> mixed{entry, C(1, 0)};
+    std::vector<I> mixed_rowptr{0, 2}, mixed_colind{0, 1};
+    spblas::csr_wrapper<C, I> b(mixed, mixed_rowptr, mixed_colind, {1, 2}, 2);
+    EXPECT_TRUE(std::isnan(spblas::matrix_inf_norm(state, b)));
+    EXPECT_TRUE(std::isnan(spblas::matrix_one_norm(state, b)));
+    EXPECT_TRUE(std::isnan(spblas::matrix_frob_norm(state, b)));
+
+    std::vector<C> single{entry};
+    spblas::csr_wrapper<C, I> c(single, rowptr, colind, {1, 1}, 1);
+    EXPECT_TRUE(std::isnan(spblas::matrix_inf_norm(state, c)));
+    EXPECT_TRUE(std::isnan(spblas::matrix_one_norm(state, c)));
+  }
 }
 
 TEST(Norm, EmptyMatrix) {

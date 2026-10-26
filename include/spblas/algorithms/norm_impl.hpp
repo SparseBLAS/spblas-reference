@@ -41,6 +41,20 @@ namespace __detail {
 template <typename M>
 using norm_t = decltype(std::abs(std::declval<tensor_scalar_t<M>>()));
 
+// |v|, but NaN if a component of v is NaN: for std::complex, std::abs is
+// hypot(re, im), which is infinite when one component is infinite even if
+// the other is NaN.
+template <typename T>
+auto abs_or_nan(const T& v) {
+  using R = decltype(std::abs(v));
+  if constexpr (is_std_complex_v<T>) {
+    if (std::isnan(v.real()) || std::isnan(v.imag())) {
+      return std::numeric_limits<R>::quiet_NaN();
+    }
+  }
+  return std::abs(v);
+}
+
 } // namespace __detail
 
 template <matrix A>
@@ -54,7 +68,7 @@ __detail::norm_t<A> matrix_inf_norm(operation_state& state, A&& a) {
   __backend::for_each(a, [&](auto&& e) {
     auto&& [idx, v] = e;
     auto&& [i, j] = idx;
-    row_sums[i] += std::abs(v);
+    row_sums[i] += __detail::abs_or_nan(v);
   });
 
   R norm = 0;
