@@ -98,7 +98,11 @@ void fill_values_only(operation_state& state, C&& c, std::size_t nnz,
   const auto c_values = c.values();
   const std::size_t outer = outer_dimension(c);
 
-  if (c_pointers.size() != outer + 1 || c_values.size() < c_indices.size()) {
+  // The stored entries are those C's pointer array covers; the index and
+  // value arrays may be longer.
+  if (c_pointers.size() != outer + 1 ||
+      c_indices.size() < std::size_t(c_pointers[outer]) ||
+      c_values.size() < std::size_t(c_pointers[outer])) {
     throw std::invalid_argument(
         std::string(operation) +
         ": the output's pattern must be filled (e.g. by _fill_symbolic) "

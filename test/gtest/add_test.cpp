@@ -328,3 +328,23 @@ TEST(Add, NnzOverflowOfOutputOffsetTypeThrows) {
   spblas::csc_wrapper<T, I, O> c_t(256, 1);
   EXPECT_THROW(spblas::add_compute(state, a_t, b_t, c_t), std::overflow_error);
 }
+
+// _numeric accepts an output whose index array is longer than its stored
+// entries (spare capacity): rowptr = {0, 2}, colind = {0, 1, 0} and two
+// values hold the whole result (before, it threw because 2 < 3).
+TEST(Add, NumericWithSpareIndexCapacity) {
+  using T = double;
+  using I = spblas::index_t;
+
+  std::vector<T> a_values{1, 2}, b_values{3, 4};
+  std::vector<I> rowptr{0, 2}, colind{0, 1};
+  spblas::csr_wrapper<T, I> a(a_values, rowptr, colind, {1, 2}, 2);
+  spblas::csr_wrapper<T, I> b(b_values, rowptr, colind, {1, 2}, 2);
+
+  std::vector<T> c_values(2);
+  std::vector<I> c_rowptr{0, 2}, c_colind{0, 1, 0};
+  spblas::csr_wrapper<T, I> c(c_values, c_rowptr, c_colind, {1, 2}, 2);
+  spblas::operation_state state;
+  spblas::add_numeric(state, a, b, c);
+  EXPECT_EQ(c_values, (std::vector<T>{4, 6}));
+}

@@ -807,3 +807,24 @@ void spgemm_nnz_overflow_test() {
 TEST(SpGEMM, NnzOverflowOfOutputOffsetTypeThrows) {
   spgemm_nnz_overflow_test<std::uint16_t>();
 }
+
+// _numeric accepts an output whose index array is longer than its stored
+// entries (spare capacity): [2] * [3 4] into rowptr = {0, 2},
+// colind = {0, 1, 0} and two values (before, it threw because 2 < 3).
+TEST(SpGEMM, NumericWithSpareIndexCapacity) {
+  using T = double;
+  using I = spblas::index_t;
+
+  std::vector<T> a_values{2}, b_values{3, 4};
+  std::vector<I> a_rowptr{0, 1}, a_colind{0}, b_rowptr{0, 2}, b_colind{0, 1};
+  spblas::csr_wrapper<T, I> a(a_values, a_rowptr, a_colind, {1, 1}, 1);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {1, 2}, 2);
+
+  std::vector<T> c_values(2);
+  std::vector<I> c_rowptr{0, 2}, c_colind{0, 1, 0};
+  spblas::csr_wrapper<T, I> c(c_values, c_rowptr, c_colind, {1, 2}, 2);
+  spblas::operation_state state;
+  spblas::multiply_compute_symbolic(state, T(1), a, b, c);
+  spblas::multiply_numeric(state, T(1), a, b, c);
+  EXPECT_EQ(c_values, (std::vector<T>{6, 8}));
+}
