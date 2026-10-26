@@ -2,11 +2,13 @@
 
 #include <span>
 #include <spblas/detail/detail.hpp>
+#include <spblas/views/properties.hpp>
 #include <spblas/views/view_base.hpp>
 
 namespace spblas {
 
-// Non-owning wrapper around user-owned CSC arrays.
+// Non-owning wrapper around user-owned CSC arrays, with the properties of
+// the data they hold (properties.hpp).
 template <typename T, std::integral I = index_t, std::integral O = I>
 class csc_wrapper : public view_base {
 public:
@@ -15,9 +17,11 @@ public:
   using index_type = I;
   using offset_type = O;
 
-  csc_wrapper(T* values, O* colptr, I* rowind, index<I> shape, O nnz)
+  csc_wrapper(T* values, O* colptr, I* rowind, index<I> shape, O nnz,
+              property_list properties = {})
       : values_(values, nnz), colptr_(colptr, shape[1] + 1),
-        rowind_(rowind, nnz), shape_(shape), nnz_(nnz) {
+        rowind_(rowind, nnz), shape_(shape), nnz_(nnz),
+        properties_(properties) {
     if (colptr_.data() == nullptr) {
       colptr_ = std::span<O>((O*) nullptr, (O*) nullptr);
     }
@@ -25,11 +29,12 @@ public:
 
   template <__ranges::contiguous_range V, __ranges::contiguous_range R,
             __ranges::contiguous_range C>
-  csc_wrapper(V&& values, R&& colptr, C&& rowind, index<I> shape, O nnz)
+  csc_wrapper(V&& values, R&& colptr, C&& rowind, index<I> shape, O nnz,
+              property_list properties = {})
       : values_(__ranges::data(values), __ranges::size(values)),
         colptr_(__ranges::data(colptr), __ranges::size(colptr)),
         rowind_(__ranges::data(rowind), __ranges::size(rowind)), shape_(shape),
-        nnz_(nnz) {}
+        nnz_(nnz), properties_(properties) {}
 
   // Shape-only wrapper for an output matrix whose arrays are attached later
   // with `update()`, e.g. after reading `operation_state::get_result_nnz()`.
@@ -39,20 +44,37 @@ public:
   // Attach arrays; nnz becomes `rowind.size()`, so the arrays must be sized
   // exactly to the number of stored entries. `values` may still be empty
   // while only the sparsity pattern is being filled.
+  //
+  // The properties are kept if the pattern stays the same arrays (same
+  // colptr and rowind spans, shape and nnz), e.g. when attaching values to a
+  // pattern filled by a _fill_symbolic stage; otherwise they become unknown.
+  // The overloads taking a property_list set them instead.
   void update(std::span<T> values, std::span<O> colptr, std::span<I> rowind) {
-    values_ = values;
-    colptr_ = colptr;
-    rowind_ = rowind;
-    nnz_ = static_cast<O>(rowind.size());
+    update(values, colptr, rowind, shape_, static_cast<O>(rowind.size()));
   }
 
   void update(std::span<T> values, std::span<O> colptr, std::span<I> rowind,
               index<I> shape, O nnz) {
+    if (!same_pattern_(colptr, rowind, shape, nnz)) {
+      properties_ = {};
+    }
     values_ = values;
     colptr_ = colptr;
     rowind_ = rowind;
     shape_ = shape;
     nnz_ = nnz;
+  }
+
+  void update(std::span<T> values, std::span<O> colptr, std::span<I> rowind,
+              property_list properties) {
+    update(values, colptr, rowind);
+    properties_ = properties;
+  }
+
+  void update(std::span<T> values, std::span<O> colptr, std::span<I> rowind,
+              index<I> shape, O nnz, property_list properties) {
+    update(values, colptr, rowind, shape, nnz);
+    properties_ = properties;
   }
 
   std::span<T> values() const noexcept {
@@ -73,12 +95,33 @@ public:
     return nnz_;
   }
 
+  property_list properties() const noexcept {
+    return properties_;
+  }
+
+  // Sortedness of the row indices within every column.
+  spblas::sort_state sort_state() const noexcept {
+    return properties_.sort_state();
+  }
+
+  void set_sort_state(spblas::sort_state s) noexcept {
+    properties_.set_sort_state(s);
+  }
+
 private:
+  bool same_pattern_(std::span<O> colptr, std::span<I> rowind, index<I> shape,
+                     O nnz) const noexcept {
+    return colptr.data() == colptr_.data() && colptr.size() == colptr_.size() &&
+           rowind.data() == rowind_.data() && rowind.size() == rowind_.size() &&
+           shape == shape_ && nnz == nnz_;
+  }
+
   std::span<T> values_;
   std::span<O> colptr_;
   std::span<I> rowind_;
   index<I> shape_;
   O nnz_;
+  property_list properties_;
 };
 
 } // namespace spblas

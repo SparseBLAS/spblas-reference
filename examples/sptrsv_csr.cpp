@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   fmt::print("\n");
 
   auto&& [values, rowptr, colind, shape, nnz] =
-      generate_csr<T, spblas::index_t>(m, m, nnz_in);
+      generate_csr_sorted<T, spblas::index_t>(m, m, nnz_in);
 
   // scale values of matrix to make the implicit unit diagonal matrix
   // be diagonally dominant, so it is solveable
@@ -37,7 +37,9 @@ int main(int argc, char** argv) {
   std::transform(values.begin(), values.end(), values.begin(),
                  [scale_factor](T val) { return scale_factor * val; });
 
-  csr_wrapper<T, spblas::index_t> a(values, rowptr, colind, shape, nnz);
+  // Properties of the data the wrapper holds: its rows are sorted.
+  property_list props(sort_state::sorted);
+  csr_wrapper<T, spblas::index_t> a(values, rowptr, colind, shape, nnz, props);
   // Inputs are wrapped in a matrix_opt, where the library may keep
   // optimization data for them across calls.
   matrix_opt a_opt(a);

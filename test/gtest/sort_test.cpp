@@ -53,6 +53,7 @@ void sort_csr_test() {
 
     EXPECT_TRUE(util::sorted_slices(rowptr, colind));
     EXPECT_EQ(util::to_dense(a), before);
+    EXPECT_EQ(a.sort_state(), spblas::sort_state::sorted);
   }
 }
 
@@ -113,6 +114,7 @@ TEST(SortMatrix, AllocationFailureKeepsTheMatrix) {
       } catch (const std::bad_alloc&) {
         EXPECT_EQ(util::to_dense(a), before)
             << "after a failure with " << allowed << " allocations allowed";
+        EXPECT_NE(a.sort_state(), spblas::sort_state::sorted);
         spblas::operation_state retry;
         auto values_copy = values;
         auto colind_copy = colind;
@@ -136,6 +138,49 @@ TEST(SortMatrix, AllocationFailureKeepsTheMatrix) {
     util::shuffle_slices(rowptr, colind, values);
     check(values, rowptr, colind, shape);
   }
+}
+
+// A matrix claimed to be sorted is taken at its word.
+TEST(SortMatrix, SkipsSortedMatrix) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  util::shuffle_slices(rowptr, colind, values);
+  auto shuffled = colind;
+  spblas::csr_wrapper<T, I> a(
+      values, rowptr, colind, shape, nnz,
+      spblas::property_list{spblas::sort_state::sorted});
+
+  spblas::operation_state state;
+  spblas::sort_matrix(state, a);
+  EXPECT_EQ(colind, shuffled);
+}
+
+// Sorting through a matrix_opt records it in the wrapper its copies share.
+TEST(SortMatrix, MatrixOptRecordsSorted) {
+  using T = double;
+  using I = spblas::index_t;
+  using spblas::sort_state;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  util::shuffle_slices(rowptr, colind, values);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz,
+                              spblas::property_list{sort_state::unsorted});
+  spblas::matrix_opt a_opt(a);
+  auto copy = a_opt;
+
+  spblas::operation_state state;
+  spblas::sort_matrix(state, a_opt);
+  EXPECT_TRUE(util::sorted_slices(rowptr, colind));
+  EXPECT_EQ(a_opt.sort_state(), sort_state::sorted);
+  EXPECT_EQ(copy.sort_state(), sort_state::sorted);
+  // The user's wrapper is a separate copy, which still says unsorted.
+  EXPECT_EQ(a.sort_state(), sort_state::unsorted);
 }
 
 TEST(SortMatrix, MatrixOptStaysUsable) {
@@ -246,7 +291,7 @@ TEST(SortMatrix, SpGEMMAndSpADDOutput) {
                                                    a_shape, a_nnz));
     spblas::matrix_opt b(spblas::csr_wrapper<T, I>(b_values, b_rowptr, b_colind,
                                                    b_shape, b_nnz));
-    spblas::operation_state sort_state;
+    spblas::operation_state sorting;
 
     // 2-stage SpGEMM, then sort.
     {
@@ -259,7 +304,7 @@ TEST(SortMatrix, SpGEMMAndSpADDOutput) {
       spblas::multiply_fill(state, T(1), a, b, c);
       auto before = util::to_dense(c);
 
-      spblas::sort_matrix(sort_state, c);
+      spblas::sort_matrix(sorting, c);
       EXPECT_TRUE(util::sorted_slices(rowptr, colind));
       EXPECT_EQ(util::to_dense(c), before);
     }
@@ -274,7 +319,7 @@ TEST(SortMatrix, SpGEMMAndSpADDOutput) {
       std::vector<T> values;
       c.update(values, rowptr, colind);
       spblas::multiply_fill_symbolic(state, T(1), a, b, c);
-      spblas::sort_matrix(sort_state, c);
+      spblas::sort_matrix(sorting, c);
       EXPECT_TRUE(util::sorted_slices(rowptr, colind));
 
       values.resize(state.get_result_nnz());
@@ -309,7 +354,7 @@ TEST(SortMatrix, SpGEMMAndSpADDOutput) {
       spblas::add_fill(state, a, a, c);
       auto before = util::to_dense(c);
 
-      spblas::sort_matrix(sort_state, c);
+      spblas::sort_matrix(sorting, c);
       EXPECT_TRUE(util::sorted_slices(rowptr, colind));
       EXPECT_EQ(util::to_dense(c), before);
     }

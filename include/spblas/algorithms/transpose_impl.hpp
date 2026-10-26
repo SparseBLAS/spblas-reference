@@ -11,6 +11,8 @@
 #include <spblas/detail/operation_state.hpp>
 #include <spblas/detail/view_inspectors.hpp>
 
+#include "detail/sparse_output.hpp"
+
 namespace spblas {
 
 template <matrix A, matrix B>
@@ -98,12 +100,32 @@ void transpose(operation_info_t& info, A&& a, B&& b) {
 // allocates B's arrays up front. A: CSR, CSC, a matrix_opt of either, or a
 // view::conjugate of those; B: CSR.
 //
+// B's rows are sorted when A's entries are visited row by row (CSR A), or
+// column by column with sorted columns (CSC A whose sort_state() is
+// `sorted`); B.sort_state() is set accordingly (otherwise `unknown`).
+//
 
 namespace __detail {
 
 template <typename A>
 concept transpose_input =
     __backend::row_iterable<A> || __backend::column_iterable<A>;
+
+// The sort_state of the wrapper under `m`, through matrix_opt, conjugated
+// and scaled views, and transposed views (the columns of A^T are the rows of
+// A, so they are sorted alike).
+template <typename M>
+spblas::sort_state stored_sort_state(M&& m) {
+  if constexpr (requires { m.sort_state(); }) {
+    return m.sort_state();
+  } else if constexpr (is_transposed_view_v<M>) {
+    return stored_sort_state(m.matrix());
+  } else if constexpr (has_base<M>) {
+    return stored_sort_state(m.base());
+  } else {
+    return spblas::sort_state::unknown;
+  }
+}
 
 } // namespace __detail
 
@@ -119,6 +141,13 @@ template <matrix A, matrix B>
 void transpose(operation_state& state, A&& a, B&& b) {
   log_trace("");
   __detail::transpose_fill(a, b);
+
+  bool sorted = true;
+  if constexpr (!__backend::row_iterable<A>) {
+    sorted = __detail::stored_sort_state(a) == sort_state::sorted;
+  }
+  __detail::set_output_sort_state(b, sorted ? sort_state::sorted
+                                            : sort_state::unknown);
 }
 
 // Optional leading execution policy. The reference implementation runs

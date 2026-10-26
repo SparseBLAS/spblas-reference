@@ -86,6 +86,8 @@ void add_compute(operation_info_t& info, A&& a, B&& b, C&& c) {
 //   A, B, C all CSR or all CSC (matrix_opt inputs work too); kernels in
 //   detail/spadd.hpp. The reference implementation runs the full kernel in
 //   each 3-stage fill stage (into temporaries from the state's allocator).
+//   The kernel sorts each row (column) of C, so the fill stages set
+//   C.sort_state() to `sorted`.
 //
 // Note the stage names differ from the legacy API above, where add_inspect
 // counts and add_compute fills.
@@ -111,6 +113,7 @@ template <matrix A, matrix B, matrix C>
 void add_fill(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
   __detail::spadd_fill(a, b, c, state.get_allocator());
+  __detail::set_output_sort_state(c, sort_state::sorted);
 }
 
 template <matrix A, matrix B, matrix C>
@@ -129,6 +132,7 @@ void add_fill_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
   __detail::fill_pattern_only(state, c, "add_fill_symbolic", [&](auto&& t) {
     __detail::spadd_fill(a, b, t, state.get_allocator());
   });
+  __detail::set_output_sort_state(c, sort_state::sorted);
 }
 
 template <matrix A, matrix B, matrix C>

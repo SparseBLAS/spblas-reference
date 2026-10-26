@@ -89,13 +89,24 @@ bool sorted_slices(const P& pointers, const N& indices) {
 
 // Sorts a sparse output (whose order within rows / columns is
 // backend-defined) with sort_matrix, and checks it is sorted. Call before
-// validating the output.
+// validating the output. Also checks the output's sort_state() claim, which
+// a backend sets in the fill stages: `sorted` must hold before sorting.
 template <typename C>
 void sort_output(C&& c) {
+  auto pointers = spblas::__detail::outer_pointers(c);
+  auto indices = spblas::__detail::inner_indices(c);
+  if (c.sort_state() == spblas::sort_state::sorted) {
+    EXPECT_TRUE(sorted_slices(pointers, indices))
+        << "the output claims to be sorted, but is not";
+  } else if (c.sort_state() == spblas::sort_state::unsorted) {
+    EXPECT_FALSE(sorted_slices(pointers, indices))
+        << "the output claims to be unsorted, but is sorted";
+  }
+
   spblas::operation_state state;
   spblas::sort_matrix(state, c);
-  EXPECT_TRUE(sorted_slices(spblas::__detail::outer_pointers(c),
-                            spblas::__detail::inner_indices(c)));
+  EXPECT_TRUE(sorted_slices(pointers, indices));
+  EXPECT_EQ(c.sort_state(), spblas::sort_state::sorted);
 }
 
 // Shuffles the indices (and values) within every compressed slice.

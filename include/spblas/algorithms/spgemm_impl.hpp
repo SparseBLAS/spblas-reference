@@ -41,7 +41,8 @@
 //
 //   The supported A / B / C format combinations and their kernels are listed
 //   in detail/spgemm/spgemm.hpp. C's pattern is symbolic: entries that are
-//   numerically zero (e.g. alpha == 0) are kept.
+//   numerically zero (e.g. alpha == 0) are kept. Every kernel sorts each row
+//   (column) of C, so the fill stages set C.sort_state() to `sorted`.
 //
 //   Not supported: the [beta, D] term.
 //
@@ -101,6 +102,7 @@ template <__detail::scalar Alpha, matrix A, matrix B, matrix C>
 void multiply_fill(operation_state& state, Alpha alpha, A&& a, B&& b, C&& c) {
   log_trace("");
   __detail::spgemm_fill(a, b, c, state.get_allocator());
+  __detail::set_output_sort_state(c, sort_state::sorted);
 
   __detail::scale_values_(alpha, c);
 }
@@ -131,6 +133,7 @@ void multiply_fill_symbolic(operation_state& state, Alpha alpha, A&& a, B&& b,
   __detail::fill_pattern_only(
       state, c, "multiply_fill_symbolic",
       [&](auto&& t) { __detail::spgemm_fill(a, b, t, state.get_allocator()); });
+  __detail::set_output_sort_state(c, sort_state::sorted);
 }
 
 // 3-stage SpGEMM: fills C's values into the pattern from fill_symbolic.

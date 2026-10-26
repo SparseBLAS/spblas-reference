@@ -176,6 +176,100 @@ TEST(CscWrapper, ShapeOnlyAndUpdate) {
   EXPECT_EQ(c.size(), 3);
 }
 
+TEST(Properties, WrapperConstructionAndAccessors) {
+  using spblas::sort_state;
+  small_csr m;
+
+  EXPECT_EQ(m.wrapper().sort_state(), sort_state::unknown);
+  EXPECT_EQ(spblas::csr_wrapper<float>(2, 3).sort_state(), sort_state::unknown);
+
+  spblas::property_list props(sort_state::sorted);
+  spblas::csr_wrapper<float, spblas::index_t> a(m.values, m.rowptr, m.colind,
+                                                {3, 3}, 7, props);
+  EXPECT_EQ(a.sort_state(), sort_state::sorted);
+  EXPECT_EQ(a.properties(), props);
+
+  spblas::csr_wrapper<float, spblas::index_t> p(
+      m.values.data(), m.rowptr.data(), m.colind.data(), {3, 3}, 7,
+      spblas::property_list{sort_state::unsorted});
+  EXPECT_EQ(p.sort_state(), sort_state::unsorted);
+  p.set_sort_state(sort_state::sorted);
+  EXPECT_EQ(p.sort_state(), sort_state::sorted);
+
+  spblas::csc_wrapper<float, spblas::index_t> c(m.values, m.rowptr, m.colind,
+                                                {3, 3}, 7, props);
+  EXPECT_EQ(c.sort_state(), sort_state::sorted);
+}
+
+TEST(Properties, UpdateKeepsThemForTheSamePattern) {
+  using T = float;
+  using I = spblas::index_t;
+  using spblas::sort_state;
+
+  std::vector<I> rowptr(5), colind(6), other_colind(6);
+  std::vector<T> values(6);
+  spblas::csr_wrapper<T, I> c(4, 5);
+  c.update({}, rowptr, colind);
+  c.set_sort_state(sort_state::sorted);
+
+  // Attaching values to the same pattern (3-stage SpGEMM) keeps them.
+  c.update(values, rowptr, colind);
+  EXPECT_EQ(c.sort_state(), sort_state::sorted);
+  c.update(values, rowptr, colind, c.shape(), 6);
+  EXPECT_EQ(c.sort_state(), sort_state::sorted);
+
+  // Other pattern arrays, shape or nnz: unknown.
+  c.update(values, rowptr, other_colind);
+  EXPECT_EQ(c.sort_state(), sort_state::unknown);
+  c.set_sort_state(sort_state::sorted);
+  c.update(values, rowptr, other_colind, c.shape(), 5);
+  EXPECT_EQ(c.sort_state(), sort_state::unknown);
+
+  // Explicit properties replace them.
+  c.update(values, rowptr, colind, spblas::property_list{sort_state::sorted});
+  EXPECT_EQ(c.sort_state(), sort_state::sorted);
+  c.update(values, rowptr, colind, c.shape(), 6, spblas::property_list{});
+  EXPECT_EQ(c.sort_state(), sort_state::unknown);
+
+  spblas::csc_wrapper<T, I> d(5, 4);
+  d.update(values, rowptr, colind, spblas::property_list{sort_state::sorted});
+  d.update(values, rowptr, colind);
+  EXPECT_EQ(d.sort_state(), sort_state::sorted);
+  d.update(values, rowptr, other_colind);
+  EXPECT_EQ(d.sort_state(), sort_state::unknown);
+}
+
+TEST(Properties, MatrixOptCopiesShareThem) {
+  using spblas::sort_state;
+  small_csr m;
+  auto a = m.wrapper();
+  spblas::matrix_opt a_opt(a);
+  auto copy = a_opt;
+  auto view = spblas::view::transpose(a_opt);
+
+  EXPECT_EQ(a_opt.sort_state(), sort_state::unknown);
+  copy.set_sort_state(sort_state::sorted);
+  EXPECT_EQ(a_opt.sort_state(), sort_state::sorted);
+  EXPECT_EQ(a_opt.base().sort_state(), sort_state::sorted);
+  EXPECT_EQ(view.matrix().sort_state(), sort_state::sorted);
+  EXPECT_EQ(a_opt.properties().sort_state(), sort_state::sorted);
+
+  // The wrapper the matrix_opt was constructed from is a separate copy.
+  EXPECT_EQ(a.sort_state(), sort_state::unknown);
+}
+
+TEST(Properties, TransposeCarriesThem) {
+  using spblas::sort_state;
+  small_csr m;
+  auto a = m.wrapper();
+  a.set_sort_state(sort_state::sorted);
+
+  auto at = spblas::view::transpose(a);
+  static_assert(spblas::__detail::is_csc_wrapper_v<decltype(at)>);
+  EXPECT_EQ(at.sort_state(), sort_state::sorted);
+  EXPECT_EQ(spblas::view::transpose(at).sort_state(), sort_state::sorted);
+}
+
 TEST(View, Triangle) {
   small_csr m;
   auto a = m.wrapper();

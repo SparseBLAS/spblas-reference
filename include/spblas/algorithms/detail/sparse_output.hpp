@@ -3,11 +3,13 @@
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <spblas/concepts.hpp>
 #include <spblas/detail/operation_state.hpp>
 #include <spblas/views/inspectors.hpp>
+#include <spblas/views/properties.hpp>
 
 // Helpers for operations with sparse output whose pattern is not known up
 // front (SpGEMM, SpADD), used to build the 3-stage API
@@ -49,6 +51,16 @@ std::size_t outer_dimension(C&& c) {
 template <compressed_output C>
 std::size_t inner_dimension(C&& c) {
   return is_csr_wrapper_v<C> ? c.shape()[1] : c.shape()[0];
+}
+
+// Records what the backend knows about the order of output C's indices
+// within its rows (CSR) or columns (CSC). Fill stages set it, as C may carry
+// an older claim. (A const wrapper cannot record it.)
+template <compressed_output C>
+void set_output_sort_state(C&& c, spblas::sort_state s) {
+  if constexpr (!std::is_const_v<std::remove_reference_t<C>>) {
+    c.set_sort_state(s);
+  }
 }
 
 // A wrapper of C's format, types and shape over other arrays.
