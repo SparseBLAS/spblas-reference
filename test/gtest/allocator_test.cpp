@@ -220,8 +220,10 @@ void spadd_allocations_test() {
 
 } // namespace
 
-// Replaceable global allocation functions, counting while enabled. The
-// array, nothrow and sized forms default to these.
+// Replaceable global allocation functions, counting while enabled: the
+// plain and the aligned forms (the latter serve over-aligned types and
+// std::pmr::new_delete_resource with a large alignment). The array, nothrow
+// and sized forms default to these.
 void* operator new(std::size_t bytes) {
   if (counting_global_new) {
     global_new_calls++;
@@ -232,11 +234,32 @@ void* operator new(std::size_t bytes) {
   throw std::bad_alloc();
 }
 
+void* operator new(std::size_t bytes, std::align_val_t alignment) {
+  if (counting_global_new) {
+    global_new_calls++;
+  }
+  const std::size_t a = static_cast<std::size_t>(alignment);
+  // aligned_alloc needs a size that is a multiple of the alignment.
+  const std::size_t size = (bytes == 0 ? 1 : bytes + a - 1) / a * a;
+  if (void* p = std::aligned_alloc(a, size)) {
+    return p;
+  }
+  throw std::bad_alloc();
+}
+
 void operator delete(void* p) noexcept {
   std::free(p);
 }
 
 void operator delete(void* p, std::size_t) noexcept {
+  std::free(p);
+}
+
+void operator delete(void* p, std::align_val_t) noexcept {
+  std::free(p);
+}
+
+void operator delete(void* p, std::size_t, std::align_val_t) noexcept {
   std::free(p);
 }
 
@@ -255,12 +278,31 @@ TEST(Allocator, SpADDUsesStateResource) {
   spadd_allocations_test<true>();
 }
 
-// Global operator new is counted while enabled.
+// Global operator new is counted while enabled, in its plain and aligned
+// forms, so allocations that bypass the state's resource are detected.
 TEST(Allocator, CountsGlobalNew) {
   EXPECT_EQ(global_new_calls_during([] { std::vector<int> v(10); }), 1u);
+
+  struct alignas(64) over_aligned {
+    char c[64];
+  };
+  EXPECT_EQ(global_new_calls_during([] { std::vector<over_aligned> v(2); }),
+            1u);
+
   counting_resource resource;
   EXPECT_EQ(
       global_new_calls_during([&] { std::pmr::vector<int> v(10, &resource); }),
       0u);
   EXPECT_EQ(resource.allocations, 1u);
+
+  // A std::pmr allocation through another resource than the state's is seen,
+  // at the default and at a large alignment.
+  auto* other = std::pmr::new_delete_resource();
+  EXPECT_EQ(
+      global_new_calls_during([&] { std::pmr::vector<int> v(10, other); }), 1u);
+  EXPECT_EQ(global_new_calls_during([&] {
+              void* p = other->allocate(256, 128);
+              other->deallocate(p, 256, 128);
+            }),
+            1u);
 }
