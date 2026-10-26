@@ -12,16 +12,18 @@
 #include <spblas/detail/api_concepts.hpp>
 #include <spblas/detail/log.hpp>
 #include <spblas/detail/operation_state.hpp>
+#include <spblas/views/view.hpp>
 
 //
 // Reference matrix norms (SparseBLAS paper)
 //
 //   matrix_inf_norm([policy,] state, A)   max_i sum_j |a_ij|
+//   matrix_one_norm([policy,] state, A)   max_j sum_i |a_ij|, i.e. the
+//                                         inf-norm of A^T (not in the paper)
 //   matrix_frob_norm([policy,] state, A)  sqrt(sum_ij |a_ij|^2)
 //
 //   A: any matrix the CPOs can iterate -- CSR, CSC, a matrix_opt of either,
-//   and view::transpose / view::conjugate of those (so the 1-norm of A is
-//   matrix_inf_norm(state, view::transpose(A))). Each stored entry counts
+//   and view::transpose / view::conjugate of those. Each stored entry counts
 //   once; duplicate entries are not combined first. Returns the real type
 //   of A's values.
 //
@@ -63,6 +65,15 @@ __detail::norm_t<A> matrix_inf_norm(operation_state& state, A&& a) {
     norm = std::max(norm, s);
   }
   return norm;
+}
+
+// The inf-norm of A^T, so a vendor's inf-norm for transposed views serves
+// it too.
+template <matrix A>
+  requires(__backend::row_iterable<A> || __backend::column_iterable<A>)
+__detail::norm_t<A> matrix_one_norm(operation_state& state, A&& a) {
+  log_trace("");
+  return matrix_inf_norm(state, view::transpose(std::forward<A>(a)));
 }
 
 template <matrix A>
@@ -125,6 +136,12 @@ template <__detail::execution_policy P, typename... Args>
 auto matrix_inf_norm(P&& policy, operation_state& state, Args&&... args) {
   log_trace("");
   return matrix_inf_norm(state, std::forward<Args>(args)...);
+}
+
+template <__detail::execution_policy P, typename... Args>
+auto matrix_one_norm(P&& policy, operation_state& state, Args&&... args) {
+  log_trace("");
+  return matrix_one_norm(state, std::forward<Args>(args)...);
 }
 
 template <__detail::execution_policy P, typename... Args>

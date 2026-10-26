@@ -3,6 +3,7 @@
 #include <cmath>
 #include <complex>
 #include <limits>
+#include <tuple>
 
 #include "util.hpp"
 #include <spblas/spblas.hpp>
@@ -19,6 +20,19 @@ auto dense_inf_norm(const std::vector<T>& d, std::size_t m, std::size_t n) {
       row_sum += std::abs(d[i * n + j]);
     }
     norm = std::max(norm, row_sum);
+  }
+  return norm;
+}
+
+template <typename T>
+auto dense_one_norm(const std::vector<T>& d, std::size_t m, std::size_t n) {
+  decltype(std::abs(T{})) norm = 0;
+  for (std::size_t j = 0; j < n; j++) {
+    decltype(norm) column_sum = 0;
+    for (std::size_t i = 0; i < m; i++) {
+      column_sum += std::abs(d[i * n + j]);
+    }
+    norm = std::max(norm, column_sum);
   }
   return norm;
 }
@@ -81,17 +95,20 @@ TEST(Norm, CsrCscMatrixOptAndTranspose) {
       expect_norm_near(frob, actual);
     }
 
-    // inf-norm of the transpose is the 1-norm (max column sum) of A.
-    double one_norm = 0;
-    for (std::size_t j = 0; j < n; j++) {
-      double column_sum = 0;
-      for (std::size_t i = 0; i < m; i++) {
-        column_sum += std::abs(dense[i * n + j]);
-      }
-      one_norm = std::max(one_norm, column_sum);
+    // The 1-norm (max column sum) is the inf-norm of the transpose, and the
+    // inf-norm the 1-norm of the transpose.
+    auto one = dense_one_norm(dense, m, n);
+    for (auto actual :
+         {spblas::matrix_one_norm(state, a),
+          spblas::matrix_one_norm(state, a_csc),
+          spblas::matrix_one_norm(state, a_opt),
+          spblas::matrix_one_norm(state, a_csc_opt),
+          spblas::matrix_one_norm(util::test_policy{}, state, a),
+          spblas::matrix_inf_norm(state, spblas::view::transpose(a))}) {
+      expect_norm_near(one, actual);
     }
     expect_norm_near(
-        one_norm, spblas::matrix_inf_norm(state, spblas::view::transpose(a)));
+        inf, spblas::matrix_one_norm(state, spblas::view::transpose(a_opt)));
     // The Frobenius norm does not change under transposition.
     expect_norm_near(
         frob, spblas::matrix_frob_norm(state, spblas::view::transpose(a)));
@@ -114,6 +131,11 @@ TEST(Norm, ComplexAndConjugated) {
 
     expect_norm_near(dense_inf_norm(dense, m, n),
                      spblas::matrix_inf_norm(state, a));
+    expect_norm_near(dense_one_norm(dense, m, n),
+                     spblas::matrix_one_norm(state, a));
+    expect_norm_near(
+        dense_one_norm(dense, m, n),
+        spblas::matrix_one_norm(state, spblas::view::conjugate(a)));
     expect_norm_near(dense_frob_norm(dense),
                      spblas::matrix_frob_norm(state, a));
     expect_norm_near(
@@ -156,24 +178,27 @@ TEST(Norm, NanAndInfinity) {
     spblas::csr_wrapper<T, I> a(values, rowptr, colind,
                                 {I(values.size()), I(1)}, I(values.size()));
     spblas::operation_state state;
-    return std::pair(spblas::matrix_inf_norm(state, a),
-                     spblas::matrix_frob_norm(state, a));
+    return std::tuple(spblas::matrix_inf_norm(state, a),
+                      spblas::matrix_frob_norm(state, a),
+                      spblas::matrix_one_norm(state, a));
   };
 
   for (auto&& values :
        {std::vector<T>{nan}, std::vector<T>{1, nan}, std::vector<T>{nan, 1},
         std::vector<T>{inf, nan}, std::vector<T>{nan, inf},
         std::vector<T>{inf, nan, 1}}) {
-    auto [inf_norm, frob_norm] = norms(values);
+    auto [inf_norm, frob_norm, one_norm] = norms(values);
     EXPECT_TRUE(std::isnan(inf_norm));
     EXPECT_TRUE(std::isnan(frob_norm));
+    EXPECT_TRUE(std::isnan(one_norm));
   }
   for (auto&& values :
        {std::vector<T>{inf}, std::vector<T>{1, -inf}, std::vector<T>{inf, -inf},
         std::vector<T>{inf, 2, inf}}) {
-    auto [inf_norm, frob_norm] = norms(values);
+    auto [inf_norm, frob_norm, one_norm] = norms(values);
     EXPECT_EQ(inf_norm, inf);
     EXPECT_EQ(frob_norm, inf);
+    EXPECT_EQ(one_norm, inf);
   }
 
   // A complex entry whose components are both infinite.
@@ -184,6 +209,7 @@ TEST(Norm, NanAndInfinity) {
   spblas::operation_state state;
   EXPECT_EQ(spblas::matrix_frob_norm(state, a), inf);
   EXPECT_EQ(spblas::matrix_inf_norm(state, a), inf);
+  EXPECT_EQ(spblas::matrix_one_norm(state, a), inf);
 }
 
 TEST(Norm, EmptyMatrix) {
@@ -197,6 +223,7 @@ TEST(Norm, EmptyMatrix) {
   spblas::operation_state state;
   EXPECT_EQ(spblas::matrix_inf_norm(state, a), 0.0f);
   EXPECT_EQ(spblas::matrix_frob_norm(state, a), 0.0f);
+  EXPECT_EQ(spblas::matrix_one_norm(state, a), 0.0f);
 }
 
 TEST(Norm, TransposedMatrixOpt) {
