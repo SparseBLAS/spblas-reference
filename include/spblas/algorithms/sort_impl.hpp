@@ -66,6 +66,10 @@ auto sortable_base(M&& m) {
 // keys[offsets[s], offsets[s + 1]) into increasing order and applies the same
 // permutation to values (if `values` is non-empty). Already sorted segments
 // are left as they are.
+//
+// A segment's permuted keys and values are both gathered into scratch before
+// either is written back, so if an allocation throws, every segment is either
+// sorted or untouched: the matrix the arrays represent never changes.
 template <typename Offsets, typename Keys, typename Values>
 void batched_sort_by_key(Offsets&& offsets, Keys&& keys, Values&& values,
                          std::pmr::polymorphic_allocator<> allocator) {
@@ -88,17 +92,20 @@ void batched_sort_by_key(Offsets&& offsets, Keys&& keys, Values&& values,
     std::sort(order.begin(), order.end(),
               [&](std::size_t l, std::size_t r) { return keys[l] < keys[r]; });
 
+    // All allocations happen here, before the user's arrays are written.
     sorted_keys.resize(order.size());
-    for (std::size_t q = 0; q < order.size(); q++) {
-      sorted_keys[q] = keys[order[q]];
-    }
-    std::copy(sorted_keys.begin(), sorted_keys.end(), std::begin(keys) + first);
-
     if (with_values) {
       sorted_values.resize(order.size());
-      for (std::size_t q = 0; q < order.size(); q++) {
+    }
+    for (std::size_t q = 0; q < order.size(); q++) {
+      sorted_keys[q] = keys[order[q]];
+      if (with_values) {
         sorted_values[q] = values[order[q]];
       }
+    }
+
+    std::copy(sorted_keys.begin(), sorted_keys.end(), std::begin(keys) + first);
+    if (with_values) {
       std::copy(sorted_values.begin(), sorted_values.end(),
                 std::begin(values) + first);
     }

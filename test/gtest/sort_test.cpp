@@ -2,11 +2,42 @@
 
 #include <complex>
 #include <cstdint>
+#include <memory_resource>
+#include <new>
+#include <vector>
 
 #include "util.hpp"
 #include <spblas/spblas.hpp>
 
 namespace {
+
+// Forwards to new/delete, but throws std::bad_alloc once it has served
+// `allowed` allocations.
+class failing_resource : public std::pmr::memory_resource {
+public:
+  explicit failing_resource(std::size_t allowed) : allowed_(allowed) {}
+
+private:
+  void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+    if (allowed_ == 0) {
+      throw std::bad_alloc();
+    }
+    --allowed_;
+    return std::pmr::new_delete_resource()->allocate(bytes, alignment);
+  }
+
+  void do_deallocate(void* p, std::size_t bytes,
+                     std::size_t alignment) override {
+    std::pmr::new_delete_resource()->deallocate(p, bytes, alignment);
+  }
+
+  bool
+  do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    return this == &other;
+  }
+
+  std::size_t allowed_;
+};
 
 template <typename T, typename I>
 void sort_csr_test() {
@@ -49,6 +80,56 @@ TEST(SortMatrix, CscAndPolicy) {
 
     EXPECT_TRUE(util::sorted_slices(colptr, rowind));
     EXPECT_EQ(util::to_dense(a), before);
+  }
+}
+
+// If an allocation throws, the matrix the arrays represent is unchanged (each
+// row is sorted or untouched), and sorting again finishes the job. Before,
+// a row's indices could be written back before its value buffer was
+// allocated: indices {1, 0} with values {10, 20} became {0, 1} with
+// {10, 20}, and a retry skipped the now-sorted row.
+TEST(SortMatrix, AllocationFailureKeepsTheMatrix) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto check = [](std::vector<T> values, std::vector<I> rowptr,
+                  std::vector<I> colind, spblas::index<I> shape) {
+    const I nnz = I(colind.size());
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    const auto before = util::to_dense(a);
+
+    bool sorted = false;
+    for (std::size_t allowed = 0; !sorted; allowed++) {
+      failing_resource resource(allowed);
+      spblas::operation_state state(&resource);
+      try {
+        spblas::sort_matrix(state, a);
+        sorted = true;
+      } catch (const std::bad_alloc&) {
+        EXPECT_EQ(util::to_dense(a), before)
+            << "after a failure with " << allowed << " allocations allowed";
+        spblas::operation_state retry;
+        auto values_copy = values;
+        auto colind_copy = colind;
+        spblas::csr_wrapper<T, I> b(values_copy, rowptr, colind_copy, shape,
+                                    nnz);
+        spblas::sort_matrix(retry, b);
+        EXPECT_TRUE(util::sorted_slices(rowptr, colind_copy));
+        EXPECT_EQ(util::to_dense(b), before);
+      }
+    }
+    EXPECT_TRUE(util::sorted_slices(rowptr, colind));
+    EXPECT_EQ(util::to_dense(a), before);
+  };
+
+  // The reported case: one row, indices {1, 0}, values {10, 20}.
+  check({10, 20}, {0, 2}, {1, 0}, {1, 2});
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    util::shuffle_slices(rowptr, colind, values);
+    check(values, rowptr, colind, shape);
   }
 }
 
