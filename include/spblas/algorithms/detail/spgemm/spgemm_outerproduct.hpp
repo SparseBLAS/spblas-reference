@@ -7,7 +7,6 @@
 #include <spblas/detail/log.hpp>
 
 #include <spblas/algorithms/detail/sparse_dot_product.hpp>
-#include <spblas/algorithms/transposed.hpp>
 #include <spblas/backend/csr_builder.hpp>
 #include <spblas/backend/hash_accumulator.hpp>
 #include <spblas/views/view.hpp>
@@ -129,8 +128,9 @@ void spgemm_fill(A&& a, B&& b, C&& c,
     throw std::invalid_argument(
         "multiply: matrix dimensions are incompatible.");
   }
+  // C^T = B^T A^T, with C (a wrapper) read as the CSR arrays of C^T.
   spgemm_fill(spblas::view::transpose(b), spblas::view::transpose(a),
-              transposed(c), allocator);
+              spblas::view::transpose(c), allocator);
 }
 
 // C = AB
@@ -149,8 +149,9 @@ auto spgemm_nnz(A&& a, B&& b, C&& c,
         "multiply: matrix dimensions are incompatible.");
   }
 
+  // C^T = B^T A^T, with C (a wrapper) read as the CSR arrays of C^T.
   return spgemm_nnz(spblas::view::transpose(b), spblas::view::transpose(a),
-                    transposed(c), allocator);
+                    spblas::view::transpose(c), allocator);
 }
 
 } // namespace __detail

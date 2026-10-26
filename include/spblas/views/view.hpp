@@ -29,7 +29,7 @@ template <matrix M>
 auto transpose(M&& m) {
   if constexpr (__detail::is_csr_wrapper_v<M> ||
                 __detail::is_csc_wrapper_v<M>) {
-    return transposed(std::forward<M>(m));
+    return __detail::reinterpret_transposed(std::forward<M>(m));
   } else if constexpr (__detail::is_transposed_view_v<M>) {
     return m.matrix();
   } else {
