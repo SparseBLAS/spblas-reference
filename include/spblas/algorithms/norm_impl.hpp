@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <memory_resource>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -25,7 +26,7 @@
 //   A: any matrix the CPOs can iterate -- CSR, CSC, a matrix_opt of either,
 //   and view::transpose / view::conjugate of those. Each stored entry counts
 //   once; duplicate entries are not combined first. Returns the real type
-//   of A's values.
+//   of A's values, or double for integer value types.
 //
 //   The Frobenius norm uses LAPACK's scaled sum of squares (lassq), so it
 //   neither overflows nor underflows for representable results.
@@ -38,8 +39,14 @@ namespace spblas {
 
 namespace __detail {
 
+// The type the norms of M return and accumulate in: the real type of M's
+// values, or double for integer value types (as <cmath>'s integral
+// overloads), so that e.g. the Frobenius norm's scaling does not use integer
+// division.
 template <typename M>
-using norm_t = decltype(std::abs(std::declval<tensor_scalar_t<M>>()));
+using norm_t = std::conditional_t<
+    std::is_integral_v<decltype(std::abs(std::declval<tensor_scalar_t<M>>()))>,
+    double, decltype(std::abs(std::declval<tensor_scalar_t<M>>()))>;
 
 // |v|, but NaN if a component of v is NaN: for std::complex, std::abs is
 // hypot(re, im), which is infinite when one component is infinite even if

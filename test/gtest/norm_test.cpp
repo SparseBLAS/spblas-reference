@@ -228,6 +228,30 @@ TEST(Norm, NanAndInfinity) {
   }
 }
 
+// Integer value types: the norms are double, computed in double (the
+// Frobenius norm's scaling would otherwise use integer division).
+TEST(Norm, IntegerValues) {
+  using I = spblas::index_t;
+
+  for (auto [a_00, a_01] :
+       {std::pair(3, 4), std::pair(4, 3), std::pair(-3, 4)}) {
+    std::vector<int> values{a_00, a_01};
+    std::vector<I> rowptr{0, 2}, colind{0, 1};
+    spblas::csr_wrapper<int, I> a(values, rowptr, colind, {1, 2}, 2);
+
+    spblas::operation_state state;
+    static_assert(
+        std::is_same_v<decltype(spblas::matrix_frob_norm(state, a)), double>);
+    static_assert(
+        std::is_same_v<decltype(spblas::matrix_inf_norm(state, a)), double>);
+    static_assert(
+        std::is_same_v<decltype(spblas::matrix_one_norm(state, a)), double>);
+    EXPECT_EQ(spblas::matrix_frob_norm(state, a), 5.0);
+    EXPECT_EQ(spblas::matrix_inf_norm(state, a), 7.0);
+    EXPECT_EQ(spblas::matrix_one_norm(state, a), 4.0);
+  }
+}
+
 TEST(Norm, EmptyMatrix) {
   using T = float;
   using I = spblas::index_t;
