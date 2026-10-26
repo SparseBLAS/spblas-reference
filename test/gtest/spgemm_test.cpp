@@ -689,3 +689,72 @@ TEST(SpGEMM, ThreeStageMatrixOptValuesChange) {
     spgemm_ref(a_m, b_m, T(1)).expect_matches(util::to_dense(c));
   }
 }
+
+// An output constructed over preallocated arrays with nnz = 0: the fill
+// stages record C's nnz, and alpha scales its entries, for every format
+// combination and both stage APIs. Before, the CSC-output kernels set the
+// nnz of a reinterpreted wrapper only, so C [2] * [3] with alpha 4 stayed at
+// 6 with C.size() == 0.
+namespace {
+
+template <bool CscA, bool CscB, bool CscC>
+void spgemm_preallocated_nnz_zero_test() {
+  using T = double;
+  using I = spblas::index_t;
+  // A 1 x 1 matrix's arrays read as CSR and as CSC.
+  auto one_by_one = [](std::vector<T>& v, std::vector<I>& p,
+                       std::vector<I>& i) {
+    return std::pair(spblas::csr_wrapper<T, I>(v, p, i, {1, 1}, 1),
+                     spblas::csc_wrapper<T, I>(v, p, i, {1, 1}, 1));
+  };
+  std::vector<T> a_v{2}, b_v{3};
+  std::vector<I> a_p{0, 1}, a_i{0}, b_p{0, 1}, b_i{0};
+  auto [a_csr, a_csc] = one_by_one(a_v, a_p, a_i);
+  auto [b_csr, b_csc] = one_by_one(b_v, b_p, b_i);
+  auto a = [&] {
+    if constexpr (CscA) {
+      return a_csc;
+    } else {
+      return a_csr;
+    }
+  }();
+  auto b = [&] {
+    if constexpr (CscB) {
+      return b_csc;
+    } else {
+      return b_csr;
+    }
+  }();
+  using C = std::conditional_t<CscC, spblas::csc_wrapper<T, I>,
+                               spblas::csr_wrapper<T, I>>;
+
+  for (bool three_stage : {false, true}) {
+    std::vector<T> c_v(1, T(0));
+    std::vector<I> c_p(2, I(0)), c_i(1, I(0));
+    C c(c_v, c_p, c_i, {1, 1}, I(0));
+    spblas::operation_state state;
+    if (three_stage) {
+      spblas::multiply_compute_symbolic(state, T(4), a, b, c);
+      spblas::multiply_fill_symbolic(state, T(4), a, b, c);
+      spblas::multiply_numeric(state, T(4), a, b, c);
+    } else {
+      spblas::multiply_compute(state, T(4), a, b, c);
+      spblas::multiply_fill(state, T(4), a, b, c);
+    }
+    EXPECT_EQ(state.get_result_nnz(), 1);
+    EXPECT_EQ(c.size(), 1) << "three_stage = " << three_stage;
+    EXPECT_EQ(c_v[0], T(24)) << "three_stage = " << three_stage;
+  }
+}
+
+} // namespace
+
+TEST(SpGEMM, PreallocatedOutputWithNnzZero) {
+  spgemm_preallocated_nnz_zero_test<false, false, false>();
+  spgemm_preallocated_nnz_zero_test<false, false, true>();
+  spgemm_preallocated_nnz_zero_test<true, true, true>();
+  spgemm_preallocated_nnz_zero_test<false, true, false>();
+  spgemm_preallocated_nnz_zero_test<false, true, true>();
+  spgemm_preallocated_nnz_zero_test<true, false, false>();
+  spgemm_preallocated_nnz_zero_test<true, false, true>();
+}

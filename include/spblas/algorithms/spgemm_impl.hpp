@@ -52,14 +52,18 @@ namespace spblas {
 
 namespace __detail {
 
-// C's stored values *= alpha, skipped for alpha == 1.
+// C's stored values *= alpha, skipped for alpha == 1. The stored entries are
+// those C's pointer array covers (C.size() may not have been updated, e.g.
+// for an output constructed with nnz = 0).
 template <typename Alpha, compressed_output C>
 void scale_values_(Alpha alpha, C&& c) {
   using V = tensor_scalar_t<C>;
   const V alpha_v = static_cast<V>(alpha);
-  if (alpha_v != V(1)) {
+  const auto pointers = outer_pointers(c);
+  if (alpha_v != V(1) && pointers.size() == outer_dimension(c) + 1) {
     auto values = c.values();
-    const std::size_t n = std::min<std::size_t>(values.size(), c.size());
+    const std::size_t n =
+        std::min<std::size_t>(values.size(), pointers[outer_dimension(c)]);
     for (std::size_t i = 0; i < n; i++) {
       values[i] *= alpha_v;
     }

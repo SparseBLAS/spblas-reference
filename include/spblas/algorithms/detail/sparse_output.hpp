@@ -75,6 +75,11 @@ void fill_pattern_only(operation_state& state, C&& c, const char* operation,
 
   std::pmr::vector<T> values(inner_indices(c).size(), state.get_allocator());
   fill(rewrap(c, values, outer_pointers(c), inner_indices(c), c.size()));
+
+  // The kernel set the temporary wrapper's nnz; C's own follows its filled
+  // pointer array.
+  c.update(c.values(), outer_pointers(c), inner_indices(c), c.shape(),
+           outer_pointers(c)[outer_dimension(c)]);
 }
 
 // _numeric: run `fill(t)` into temporary arrays for a result with `nnz`

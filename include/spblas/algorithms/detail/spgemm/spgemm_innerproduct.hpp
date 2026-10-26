@@ -126,8 +126,12 @@ void spgemm_fill(A&& a, B&& b, C&& c,
   }
 
   // C^T = B^T A^T, with C (a wrapper) read as the CSR arrays of C^T.
-  return spgemm_fill(spblas::view::transpose(b), spblas::view::transpose(a),
-                     spblas::view::transpose(c), allocator);
+  spgemm_fill(spblas::view::transpose(b), spblas::view::transpose(a),
+              spblas::view::transpose(c), allocator);
+  // The CSR kernel set the nnz of the reinterpreted wrapper; C's own follows
+  // its filled pointer array.
+  c.update(c.values(), c.colptr(), c.rowind(), c.shape(),
+           c.colptr()[c.shape()[1]]);
 }
 
 // C = AB
