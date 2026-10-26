@@ -228,6 +228,32 @@ TEST(Multiply, SpMV_Conjugated) {
   }
 }
 
+// A real conjugated vector operand is the vector itself, used in place.
+TEST(Multiply, SpMV_ConjugateOfRealVector) {
+  using T = double;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+  std::vector<T> x(n, T(0));
+  auto x_conj = spblas::view::conjugate(x);
+  // Filled after the view was made: the view must see these values.
+  for (std::size_t j = 0; j < n; j++) {
+    x[j] = T(j + 1);
+  }
+  std::vector<T> y(m), y_ref(m);
+
+  spblas::operation_state state;
+  spblas::multiply(state, T(2), a, x_conj, y);
+  spblas::multiply(state, T(2), a, x, y_ref);
+  for (std::size_t i = 0; i < m; i++) {
+    EXPECT_EQ(y_ref[i], y[i]);
+  }
+}
+
 TEST(Multiply, SpMV_DimensionMismatchThrows) {
   using T = float;
   using I = spblas::index_t;

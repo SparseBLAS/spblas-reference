@@ -37,10 +37,19 @@ auto transpose(M&& m) {
   }
 }
 
-// Conjugated view of `t`; `t` itself for non-complex value types.
+// Conjugated view of `t`. For non-complex value types it is the identity,
+// still as a non-owning view: a range (e.g. a std::vector) through
+// views::all, as conjugated_view does for complex ones, so it refers to `t`
+// rather than copying it; other operands (wrappers, matrix_opt, mdspan) are
+// views already and are returned as they are.
 template <tensor T>
 auto conjugate(T&& t) {
-  return conjugated(std::forward<T>(t));
+  if constexpr (!__detail::is_std_complex_v<tensor_scalar_t<T>> &&
+                __ranges::range<T>) {
+    return __ranges::views::all(std::forward<T>(t));
+  } else {
+    return conjugated(std::forward<T>(t));
+  }
 }
 
 // The `u` triangle of `m` with diagonal handling `d`.

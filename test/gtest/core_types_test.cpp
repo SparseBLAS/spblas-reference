@@ -231,6 +231,24 @@ TEST(View, TransposeAndConjugate) {
   EXPECT_TRUE(spblas::__detail::is_conjugated(c_conj));
 }
 
+// view::conjugate of a real vector is a non-owning identity view: it refers
+// to the vector instead of copying it.
+TEST(View, ConjugateOfRealVectorRefersToIt) {
+  std::vector<double> x{1, 2, 3};
+  auto v = spblas::view::conjugate(x);
+  static_assert(spblas::__detail::__ranges::view<decltype(v)>);
+  EXPECT_EQ(v.data(), x.data());
+
+  x[1] = 20;
+  EXPECT_EQ(v[1], 20);
+
+  // Complex vectors were already views.
+  std::vector<std::complex<double>> z{{1, 2}};
+  auto w = spblas::view::conjugate(z);
+  z[0] = {3, 4};
+  EXPECT_EQ(w[0], std::complex<double>(3, -4));
+}
+
 TEST(View, TransposeOfMatrixOpt) {
   using T = float;
   using I = spblas::index_t;
