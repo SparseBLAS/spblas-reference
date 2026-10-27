@@ -28,7 +28,8 @@
 //   is then dropped, as the arrays it was built from were reordered). If A's
 //   values array is empty (pattern only), only the indices are sorted.
 //   The stored entries are those the pointer array covers; the index and
-//   value arrays may be longer.
+//   value arrays may be longer. The index and value types must not be
+//   const (a csr_wrapper<const T> does not match).
 //
 //   No operation guarantees sorted output: the order within rows (CSR) or
 //   columns (CSC) of SpGEMM / SpADD outputs is backend-defined, and
@@ -39,13 +40,19 @@ namespace spblas {
 
 namespace __detail {
 
+// A CSR / CSC wrapper whose index and value arrays can be written.
+template <typename W>
+concept writable_compressed =
+    compressed_output<W> && !std::is_const_v<tensor_scalar_t<W>> &&
+    !std::is_const_v<tensor_index_t<W>>;
+
 template <typename M>
 constexpr bool is_sortable_matrix() {
   using U = std::remove_cvref_t<M>;
   if constexpr (is_matrix_opt_v<U>) {
-    return compressed_output<decltype(std::declval<U>().base())>;
+    return writable_compressed<decltype(std::declval<U>().base())>;
   } else {
-    return compressed_output<U>;
+    return writable_compressed<U>;
   }
 }
 

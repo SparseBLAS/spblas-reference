@@ -56,6 +56,11 @@ void sort_csr_test() {
   }
 }
 
+template <typename A>
+concept can_sort = requires(spblas::operation_state& state, A a) {
+  spblas::sort_matrix(state, a);
+};
+
 } // namespace
 
 TEST(SortMatrix, Csr) {
@@ -173,6 +178,22 @@ TEST(SortMatrix, PatternOnly) {
   spblas::operation_state state;
   spblas::sort_matrix(state, a);
   EXPECT_EQ(colind, (std::vector<I>{0, 2, 4, 1, 3}));
+}
+
+// Arrays sort_matrix cannot write do not match (rather than failing to
+// compile inside the sort).
+TEST(SortMatrix, ConstArraysDoNotMatch) {
+  using T = float;
+  using I = spblas::index_t;
+
+  static_assert(can_sort<spblas::csr_wrapper<T, I>>);
+  static_assert(can_sort<spblas::csc_wrapper<T, I>>);
+  static_assert(can_sort<spblas::matrix_opt<spblas::csr_wrapper<T, I>>>);
+
+  static_assert(!can_sort<spblas::csr_wrapper<const T, I>>);
+  static_assert(!can_sort<spblas::csc_wrapper<const T, I>>);
+  static_assert(!can_sort<spblas::csr_wrapper<T, const I>>);
+  static_assert(!can_sort<spblas::matrix_opt<spblas::csr_wrapper<const T, I>>>);
 }
 
 // Arrays longer than the stored entries: the values still move with the
