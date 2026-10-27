@@ -19,7 +19,8 @@ namespace spblas {
 // The matrix_opt keeps its own copy of the wrapper, shared by all copies of
 // the matrix_opt (and the views over them), so properties set through any of
 // them (e.g. `sort_matrix(state, A_opt)` setting `sorted`) are seen by all.
-// The wrapper the matrix_opt was constructed from is not updated.
+// The wrapper the matrix_opt was constructed from is not updated;
+// `A.sync_properties(A_opt)` copies the properties back into it.
 template <matrix M>
   requires(__detail::view<M> &&
            (__detail::is_csr_view_v<M> || __detail::is_csc_view_v<M>) )

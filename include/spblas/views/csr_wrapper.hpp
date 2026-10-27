@@ -4,8 +4,12 @@
 #include <spblas/detail/detail.hpp>
 #include <spblas/views/properties.hpp>
 #include <spblas/views/view_base.hpp>
+#include <stdexcept>
 
 namespace spblas {
+
+template <typename T>
+class matrix_opt;
 
 template <typename T, typename I, typename O>
 class csr_builder;
@@ -109,6 +113,26 @@ public:
 
   void set_sort_state(spblas::sort_state s) noexcept {
     properties_.set_sort_state(s);
+  }
+
+  // Copies the properties from a matrix_opt's copy of this wrapper (e.g.
+  // `sorted` after `sort_matrix(state, A_opt)`); the arrays are not touched.
+  // The matrix_opt must be over the same rowptr and colind spans, shape and
+  // nnz, and the same values span unless either is empty (a pattern only).
+  // Otherwise its properties are claims about other data, and this throws
+  // std::invalid_argument.
+  void sync_properties(const matrix_opt<csr_wrapper>& m) {
+    csr_wrapper inner = m.base();
+    if (!same_pattern_(inner.rowptr_, inner.colind_, inner.shape_,
+                       inner.nnz_) ||
+        !(inner.values_.empty() || values_.empty() ||
+          (inner.values_.data() == values_.data() &&
+           inner.values_.size() == values_.size()))) {
+      throw std::invalid_argument(
+          "csr_wrapper::sync_properties: the matrix_opt is not over this "
+          "wrapper's arrays.");
+    }
+    properties_ = inner.properties_;
   }
 
   friend class csr_builder<T, I, O>;

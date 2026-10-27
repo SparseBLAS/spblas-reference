@@ -51,6 +51,10 @@ struct small_csr {
   }
 };
 
+template <typename W, typename M>
+concept can_sync_properties =
+    requires(W w, const M& m) { w.sync_properties(m); };
+
 } // namespace
 
 TEST(OperationState, DefaultResource) {
@@ -256,6 +260,92 @@ TEST(Properties, MatrixOptCopiesShareThem) {
 
   // The wrapper the matrix_opt was constructed from is a separate copy.
   EXPECT_EQ(a.sort_state(), sort_state::unknown);
+}
+
+TEST(Properties, SyncFromMatrixOpt) {
+  using T = float;
+  using I = spblas::index_t;
+  using spblas::sort_state;
+  small_csr m;
+  auto a = m.wrapper();
+  spblas::matrix_opt a_opt(a);
+
+  // sort_matrix through the matrix_opt records `sorted` in its own copy;
+  // sync_properties brings it back to the user's wrapper.
+  spblas::operation_state state;
+  spblas::sort_matrix(state, a_opt);
+  EXPECT_EQ(a.sort_state(), sort_state::unknown);
+  a.sync_properties(a_opt);
+  EXPECT_EQ(a.sort_state(), sort_state::sorted);
+  EXPECT_EQ(a.properties(), a_opt.properties());
+
+  // It copies whatever the matrix_opt holds, not just `sorted`.
+  a_opt.set_sort_state(sort_state::unsorted);
+  a.sync_properties(a_opt);
+  EXPECT_EQ(a.sort_state(), sort_state::unsorted);
+
+  // Another wrapper over the same arrays may sync too. A pattern-only
+  // wrapper (or matrix_opt) matches any values span.
+  spblas::csr_wrapper<T, I> same(m.values, m.rowptr, m.colind, {3, 3}, 7);
+  same.sync_properties(a_opt);
+  EXPECT_EQ(same.sort_state(), sort_state::unsorted);
+
+  spblas::csr_wrapper<T, I> pattern(std::span<T>{}, m.rowptr, m.colind, {3, 3},
+                                    7);
+  pattern.sync_properties(a_opt);
+  EXPECT_EQ(pattern.sort_state(), sort_state::unsorted);
+  EXPECT_TRUE(pattern.values().empty());
+
+  spblas::matrix_opt pattern_opt(pattern);
+  pattern_opt.set_sort_state(sort_state::sorted);
+  a.sync_properties(pattern_opt);
+  EXPECT_EQ(a.sort_state(), sort_state::sorted);
+  EXPECT_EQ(a.values().data(), m.values.data());
+
+  // Other arrays, shape or nnz: the properties would be claims about other
+  // data, so it throws and leaves this wrapper's properties as they are.
+  std::vector<I> other_colind(m.colind);
+  std::vector<I> other_rowptr(m.rowptr);
+  std::vector<T> other_values(m.values);
+  a.set_sort_state(sort_state::unknown);
+  for (auto other : {
+           spblas::csr_wrapper<T, I>(m.values, m.rowptr, other_colind, {3, 3},
+                                     7),
+           spblas::csr_wrapper<T, I>(m.values, other_rowptr, m.colind, {3, 3},
+                                     7),
+           spblas::csr_wrapper<T, I>(other_values, m.rowptr, m.colind, {3, 3},
+                                     7),
+           spblas::csr_wrapper<T, I>(m.values, m.rowptr, m.colind, {3, 4}, 7),
+           spblas::csr_wrapper<T, I>(m.values, m.rowptr, m.colind, {3, 3}, 6),
+           spblas::csr_wrapper<T, I>(3, 3),
+       }) {
+    spblas::matrix_opt other_opt(other);
+    other_opt.set_sort_state(sort_state::sorted);
+    EXPECT_THROW(a.sync_properties(other_opt), std::invalid_argument);
+    EXPECT_EQ(a.sort_state(), sort_state::unknown);
+  }
+
+  // CSC the same way.
+  spblas::csc_wrapper<T, I> c(m.values, m.rowptr, m.colind, {3, 3}, 7);
+  spblas::matrix_opt c_opt(c);
+  spblas::sort_matrix(state, c_opt);
+  c.sync_properties(c_opt);
+  EXPECT_EQ(c.sort_state(), sort_state::sorted);
+  spblas::csc_wrapper<T, I> c_other(m.values, m.rowptr, other_colind, {3, 3},
+                                    7);
+  EXPECT_THROW(c_other.sync_properties(c_opt), std::invalid_argument);
+
+  // Only from a matrix_opt of the wrapper's own type.
+  using csr = spblas::csr_wrapper<T, I>;
+  using csc = spblas::csc_wrapper<T, I>;
+  static_assert(can_sync_properties<csr, spblas::matrix_opt<csr>>);
+  static_assert(can_sync_properties<csc, spblas::matrix_opt<csc>>);
+  static_assert(!can_sync_properties<csr, spblas::matrix_opt<csc>>);
+  static_assert(!can_sync_properties<csc, spblas::matrix_opt<csr>>);
+  static_assert(!can_sync_properties<csr, csr>);
+  static_assert(
+      !can_sync_properties<csr,
+                           spblas::matrix_opt<spblas::csr_wrapper<double, I>>>);
 }
 
 TEST(Properties, TransposeCarriesThem) {

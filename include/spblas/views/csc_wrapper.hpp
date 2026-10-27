@@ -4,8 +4,12 @@
 #include <spblas/detail/detail.hpp>
 #include <spblas/views/properties.hpp>
 #include <spblas/views/view_base.hpp>
+#include <stdexcept>
 
 namespace spblas {
+
+template <typename T>
+class matrix_opt;
 
 // Non-owning wrapper around user-owned CSC arrays, with the properties of
 // the data they hold (properties.hpp).
@@ -106,6 +110,26 @@ public:
 
   void set_sort_state(spblas::sort_state s) noexcept {
     properties_.set_sort_state(s);
+  }
+
+  // Copies the properties from a matrix_opt's copy of this wrapper (e.g.
+  // `sorted` after `sort_matrix(state, A_opt)`); the arrays are not touched.
+  // The matrix_opt must be over the same colptr and rowind spans, shape and
+  // nnz, and the same values span unless either is empty (a pattern only).
+  // Otherwise its properties are claims about other data, and this throws
+  // std::invalid_argument.
+  void sync_properties(const matrix_opt<csc_wrapper>& m) {
+    csc_wrapper inner = m.base();
+    if (!same_pattern_(inner.colptr_, inner.rowind_, inner.shape_,
+                       inner.nnz_) ||
+        !(inner.values_.empty() || values_.empty() ||
+          (inner.values_.data() == values_.data() &&
+           inner.values_.size() == values_.size()))) {
+      throw std::invalid_argument(
+          "csc_wrapper::sync_properties: the matrix_opt is not over this "
+          "wrapper's arrays.");
+    }
+    properties_ = inner.properties_;
   }
 
 private:
