@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 #include "util.hpp"
 #include <spblas/spblas.hpp>
@@ -58,19 +60,23 @@ struct triangular_test_matrix {
   }
 
   // r = T * x, with T the selected triangle of the matrix.
-  std::vector<T> apply(const std::vector<T>& x, spblas::view::uplo uplo,
-                       spblas::view::diag diag) const {
+  template <typename Uplo, typename Diag>
+  std::vector<T> apply(const std::vector<T>& x, Uplo, Diag) const {
+    constexpr bool lower = std::is_same_v<Uplo, spblas::view::uplo::lower_t>;
+    constexpr bool explicit_diagonal =
+        std::is_same_v<Diag, spblas::view::diag::explicit_diagonal_t>;
+    constexpr bool implicit_unit =
+        std::is_same_v<Diag, spblas::view::diag::implicit_unit_t>;
     std::vector<T> r(n, T(0));
     for (std::size_t i = 0; i < n; i++) {
       for (auto p = rowptr[i]; p < rowptr[i + 1]; p++) {
         std::size_t j = colind[p];
-        bool in_triangle = uplo == spblas::view::uplo::lower ? j < i : j > i;
-        if (in_triangle ||
-            (j == i && diag == spblas::view::diag::explicit_diagonal)) {
+        bool in_triangle = lower ? j < i : j > i;
+        if (in_triangle || (j == i && explicit_diagonal)) {
           r[i] += values[p] * x[j];
         }
       }
-      if (diag == spblas::view::diag::implicit_unit) {
+      if (implicit_unit) {
         r[i] += x[i];
       }
     }
@@ -87,8 +93,8 @@ void expect_close(const std::vector<T>& expected,
   }
 }
 
-template <bool Csc>
-void triangular_solve_test(spblas::view::uplo uplo, spblas::view::diag diag) {
+template <bool Csc, typename Uplo, typename Diag>
+void triangular_solve_test(Uplo uplo, Diag diag) {
   using T = double;
   using I = spblas::index_t;
 
@@ -182,17 +188,21 @@ TEST(TriangularSolve, DefaultAlphaMatrixOptPolicyInPlace) {
                           spblas::view::diag::explicit_diagonal));
 }
 
-TEST(TriangularSolve, ImplicitZeroThrows) {
+// An implied zero diagonal (a singular triangle) is rejected at compile time;
+// triangular_solve with it is a static_assert.
+TEST(TriangularSolve, ImplicitZeroRejected) {
   using T = double;
   using I = spblas::index_t;
+  using A = spblas::csr_wrapper<T, I>;
 
-  triangular_test_matrix<T, I> a(10, 20);
-  std::vector<T> b(10, T(1)), x(10);
-  spblas::operation_state state;
-
-  auto t = spblas::view::triangle(a.csr(), spblas::view::uplo::lower,
-                                  spblas::view::diag::implicit_zero);
-  EXPECT_THROW(spblas::triangular_solve(state, t, b, x), std::invalid_argument);
+  using Zero = decltype(spblas::view::triangle(
+      std::declval<A>(), spblas::view::uplo::lower,
+      spblas::view::diag::implicit_zero));
+  using Unit = decltype(spblas::view::triangle(
+      std::declval<A>(), spblas::view::uplo::lower,
+      spblas::view::diag::implicit_unit));
+  static_assert(!spblas::__detail::triangular_structure<Zero>);
+  static_assert(spblas::__detail::triangular_structure<Unit>);
 }
 
 TEST(TriangularSolve, DimensionMismatchThrows) {
