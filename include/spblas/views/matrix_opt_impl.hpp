@@ -7,6 +7,7 @@
 #include <spblas/backend/cpos.hpp>
 #include <spblas/concepts.hpp>
 #include <spblas/detail/backend_state.hpp>
+#include <spblas/views/properties.hpp>
 
 namespace spblas {
 
@@ -14,6 +15,12 @@ namespace spblas {
 // Copies share the optimization data, which is released with the last copy.
 // The data is allocated from the memory resource given at construction, or
 // the backend's default resource if none is given.
+//
+// The matrix_opt keeps its own copy of the wrapper, shared by all copies of
+// the matrix_opt (and the views over them), so properties set through any of
+// them (e.g. `sort_matrix(state, A_opt)` setting `sorted`) are seen by all.
+// The wrapper the matrix_opt was constructed from is not updated;
+// `A.sync_properties(A_opt)` copies the properties back into it.
 template <matrix M>
   requires(__detail::view<M> &&
            (__detail::is_csr_view_v<M> || __detail::is_csc_view_v<M>) )
@@ -25,12 +32,14 @@ public:
   using offset_type = tensor_offset_t<M>;
 
   explicit matrix_opt(M matrix, std::pmr::memory_resource* resource = nullptr)
-      : matrix_(matrix),
-        resource_(resource != nullptr ? resource
-                                      : __detail::default_memory_resource()),
-        state_(std::allocate_shared<__detail::backend_matrix_opt_state_t>(
-            std::pmr::polymorphic_allocator<
-                __detail::backend_matrix_opt_state_t>(resource_))) {}
+      : resource_(resource != nullptr ? resource
+                                      : __detail::default_memory_resource()) {
+    auto data = std::allocate_shared<shared_data_>(
+        std::pmr::polymorphic_allocator<shared_data_>(resource_), matrix);
+    matrix_ = &data->matrix;
+    state_ = std::shared_ptr<__detail::backend_matrix_opt_state_t>(
+        data, &data->state);
+  }
 
   matrix_opt(M matrix, const std::pmr::polymorphic_allocator<>& allocator)
       : matrix_opt(matrix, allocator.resource()) {}
@@ -39,16 +48,25 @@ public:
     return __backend::shape(base());
   }
 
-  index_type size() const noexcept {
+  offset_type size() const noexcept {
     return __backend::size(base());
   }
 
-  auto base() {
-    return matrix_;
+  M base() const {
+    return *matrix_;
   }
 
-  auto base() const {
-    return matrix_;
+  property_list properties() const noexcept {
+    return matrix_->properties();
+  }
+
+  spblas::sort_state sort_state() const noexcept {
+    return matrix_->sort_state();
+  }
+
+  // Sets the property in the shared wrapper, for every copy.
+  void set_sort_state(spblas::sort_state s) const noexcept {
+    matrix_->set_sort_state(s);
   }
 
   std::pmr::polymorphic_allocator<> get_allocator() const noexcept {
@@ -97,11 +115,16 @@ private:
     return __backend::lookup_column(matrix.base(), column_index);
   }
 
-public:
-  M matrix_;
+  // The wrapper and the backend's optimization data, in one allocation.
+  struct shared_data_ {
+    explicit shared_data_(M m) : matrix(m) {}
 
-private:
+    M matrix;
+    __detail::backend_matrix_opt_state_t state;
+  };
+
   std::pmr::memory_resource* resource_;
+  M* matrix_; // into the shared data, which state_ keeps alive
 
 public:
   // For implementations only: backend-specific optimization data.

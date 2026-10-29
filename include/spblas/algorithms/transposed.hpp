@@ -9,13 +9,14 @@ namespace spblas {
 namespace __detail {
 
 // A CSR matrix's arrays as the CSC arrays of its transpose, and vice versa:
-// what view::transpose returns for a wrapper.
+// what view::transpose returns for a wrapper. The properties carry over:
+// sorted rows of A are sorted columns of A^T.
 template <matrix M>
   requires(is_csr_view_v<M>)
 auto reinterpret_transposed(M&& m) {
   return csc_view<tensor_scalar_t<M>, tensor_index_t<M>, tensor_offset_t<M>>(
       m.values(), m.rowptr(), m.colind(), {m.shape()[1], m.shape()[0]},
-      m.size());
+      m.size(), m.properties());
 }
 
 template <matrix M>
@@ -23,7 +24,7 @@ template <matrix M>
 auto reinterpret_transposed(M&& m) {
   return csr_view<tensor_scalar_t<M>, tensor_index_t<M>, tensor_offset_t<M>>(
       m.values(), m.colptr(), m.rowind(), {m.shape()[1], m.shape()[0]},
-      m.size());
+      m.size(), m.properties());
 }
 
 } // namespace __detail

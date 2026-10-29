@@ -23,6 +23,9 @@ void transpose_test(A&& a, const std::vector<T>& a_dense, std::size_t m,
   spblas::transpose(state, a, b);
 
   EXPECT_EQ(b.size(), nnz);
+  if (b.sort_state() == spblas::sort_state::sorted) {
+    EXPECT_TRUE(util::sorted_slices(b_rowptr, b_colind));
+  }
   auto b_dense = util::to_dense(b);
   for (std::size_t i = 0; i < m; i++) {
     for (std::size_t j = 0; j < n; j++) {
@@ -128,6 +131,43 @@ TEST(Transpose, CscInput) {
 
     transpose_test<T>(a, util::to_dense(a), m, n, nnz);
   }
+}
+
+// B's sort_state() says what the input order guarantees.
+TEST(Transpose, OutputSortState) {
+  using T = float;
+  using I = spblas::index_t;
+  using spblas::sort_state;
+
+  auto [m, n, nnz] = util::dims[1];
+  std::vector<T> b_values(nnz);
+  std::vector<I> b_rowptr(n + 1), b_colind(nnz);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {I(n), I(m)},
+                              I(nnz));
+  spblas::operation_state state;
+
+  // CSR input: visited row by row, so B's rows are sorted.
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  util::shuffle_slices(rowptr, colind, values);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  b.set_sort_state(sort_state::unsorted);
+  spblas::transpose(state, a, b);
+  EXPECT_EQ(b.sort_state(), sort_state::sorted);
+  EXPECT_TRUE(util::sorted_slices(b_rowptr, b_colind));
+
+  // CSC input of unknown order: unknown (B's earlier claim is replaced).
+  auto [c_values, colptr, rowind, c_shape, c_nnz] =
+      spblas::generate_csc<T, I>(m, n, nnz);
+  spblas::csc_wrapper<T, I> c(c_values, colptr, rowind, c_shape, c_nnz);
+  spblas::transpose(state, spblas::matrix_opt(c), b);
+  EXPECT_EQ(b.sort_state(), sort_state::unknown);
+
+  // CSC input known to be sorted: B's rows are its sorted columns.
+  spblas::sort_matrix(state, c);
+  spblas::transpose(state, c, b);
+  EXPECT_EQ(b.sort_state(), sort_state::sorted);
+  EXPECT_TRUE(util::sorted_slices(b_rowptr, b_colind));
 }
 
 TEST(Transpose, Errors) {

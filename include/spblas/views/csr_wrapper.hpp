@@ -2,14 +2,20 @@
 
 #include <span>
 #include <spblas/detail/detail.hpp>
+#include <spblas/views/properties.hpp>
 #include <spblas/views/view_base.hpp>
+#include <stdexcept>
 
 namespace spblas {
+
+template <typename T>
+class matrix_opt;
 
 template <typename T, typename I, typename O>
 class csr_builder;
 
-// Non-owning wrapper around user-owned CSR arrays.
+// Non-owning wrapper around user-owned CSR arrays, with the properties of
+// the data they hold (properties.hpp).
 template <typename T, std::integral I = index_t, std::integral O = I>
 class csr_wrapper : public view_base {
 public:
@@ -18,9 +24,11 @@ public:
   using index_type = I;
   using offset_type = O;
 
-  csr_wrapper(T* values, O* rowptr, I* colind, index<I> shape, O nnz)
+  csr_wrapper(T* values, O* rowptr, I* colind, index<I> shape, O nnz,
+              property_list properties = {})
       : values_(values, nnz), rowptr_(rowptr, shape[0] + 1),
-        colind_(colind, nnz), shape_(shape), nnz_(nnz) {
+        colind_(colind, nnz), shape_(shape), nnz_(nnz),
+        properties_(properties) {
     if (rowptr_.data() == nullptr) {
       rowptr_ = std::span<O>((O*) nullptr, (O*) nullptr);
     }
@@ -28,11 +36,12 @@ public:
 
   template <__ranges::contiguous_range V, __ranges::contiguous_range R,
             __ranges::contiguous_range C>
-  csr_wrapper(V&& values, R&& rowptr, C&& colind, index<I> shape, O nnz)
+  csr_wrapper(V&& values, R&& rowptr, C&& colind, index<I> shape, O nnz,
+              property_list properties = {})
       : values_(__ranges::data(values), __ranges::size(values)),
         rowptr_(__ranges::data(rowptr), __ranges::size(rowptr)),
         colind_(__ranges::data(colind), __ranges::size(colind)), shape_(shape),
-        nnz_(nnz) {}
+        nnz_(nnz), properties_(properties) {}
 
   // Shape-only wrapper for an output matrix whose arrays are attached later
   // with `update()`, e.g. after reading `operation_state::get_result_nnz()`.
@@ -42,20 +51,37 @@ public:
   // Attach arrays; nnz becomes `colind.size()`, so the arrays must be sized
   // exactly to the number of stored entries. `values` may still be empty
   // while only the sparsity pattern is being filled.
+  //
+  // The properties are kept if the pattern stays the same arrays (same
+  // rowptr and colind spans, shape and nnz), e.g. when attaching values to a
+  // pattern filled by a _fill_symbolic stage; otherwise they become unknown.
+  // The overloads taking a property_list set them instead.
   void update(std::span<T> values, std::span<O> rowptr, std::span<I> colind) {
-    values_ = values;
-    rowptr_ = rowptr;
-    colind_ = colind;
-    nnz_ = static_cast<O>(colind.size());
+    update(values, rowptr, colind, shape_, static_cast<O>(colind.size()));
   }
 
   void update(std::span<T> values, std::span<O> rowptr, std::span<I> colind,
               index<I> shape, O nnz) {
+    if (!same_pattern_(rowptr, colind, shape, nnz)) {
+      properties_ = {};
+    }
     values_ = values;
     rowptr_ = rowptr;
     colind_ = colind;
     shape_ = shape;
     nnz_ = nnz;
+  }
+
+  void update(std::span<T> values, std::span<O> rowptr, std::span<I> colind,
+              property_list properties) {
+    update(values, rowptr, colind);
+    properties_ = properties;
+  }
+
+  void update(std::span<T> values, std::span<O> rowptr, std::span<I> colind,
+              index<I> shape, O nnz, property_list properties) {
+    update(values, rowptr, colind, shape, nnz);
+    properties_ = properties;
   }
 
   std::span<T> values() const noexcept {
@@ -76,14 +102,55 @@ public:
     return nnz_;
   }
 
+  property_list properties() const noexcept {
+    return properties_;
+  }
+
+  // Sortedness of the column indices within every row.
+  spblas::sort_state sort_state() const noexcept {
+    return properties_.sort_state();
+  }
+
+  void set_sort_state(spblas::sort_state s) noexcept {
+    properties_.set_sort_state(s);
+  }
+
+  // Copies the properties from a matrix_opt's copy of this wrapper (e.g.
+  // `sorted` after `sort_matrix(state, A_opt)`); the arrays are not touched.
+  // The matrix_opt must be over the same rowptr and colind spans, shape and
+  // nnz, and the same values span unless either is empty (a pattern only).
+  // Otherwise its properties are claims about other data, and this throws
+  // std::invalid_argument.
+  void sync_properties(const matrix_opt<csr_wrapper>& m) {
+    csr_wrapper inner = m.base();
+    if (!same_pattern_(inner.rowptr_, inner.colind_, inner.shape_,
+                       inner.nnz_) ||
+        !(inner.values_.empty() || values_.empty() ||
+          (inner.values_.data() == values_.data() &&
+           inner.values_.size() == values_.size()))) {
+      throw std::invalid_argument(
+          "csr_wrapper::sync_properties: the matrix_opt is not over this "
+          "wrapper's arrays.");
+    }
+    properties_ = inner.properties_;
+  }
+
   friend class csr_builder<T, I, O>;
 
 private:
+  bool same_pattern_(std::span<O> rowptr, std::span<I> colind, index<I> shape,
+                     O nnz) const noexcept {
+    return rowptr.data() == rowptr_.data() && rowptr.size() == rowptr_.size() &&
+           colind.data() == colind_.data() && colind.size() == colind_.size() &&
+           shape == shape_ && nnz == nnz_;
+  }
+
   std::span<T> values_;
   std::span<O> rowptr_;
   std::span<I> colind_;
   index<I> shape_;
   O nnz_;
+  property_list properties_;
 };
 
 } // namespace spblas

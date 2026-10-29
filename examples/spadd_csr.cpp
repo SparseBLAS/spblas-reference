@@ -61,8 +61,12 @@ int main(int argc, char** argv) {
   add_fill(state, a_opt, b_opt, c);
 
   // The order within C's rows is backend-defined; sort them for printing.
-  operation_state sort_state;
-  sort_matrix(sort_state, c);
+  // C.sort_state() says what the backend knows; if it is already `sorted`,
+  // sort_matrix does nothing.
+  fmt::print("\tC is {}sorted\n",
+             c.sort_state() == sort_state::sorted ? "" : "not known to be ");
+  operation_state sorting;
+  sort_matrix(sorting, c);
 
   for (auto&& [i, row] : spblas::__backend::rows(c)) {
     fmt::print("{}: {}\n", i, row);

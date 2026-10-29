@@ -31,9 +31,14 @@
 //   value arrays may be longer. The index and value types must not be
 //   const (a csr_wrapper<const T> does not match).
 //
+//   A matrix whose sort_state() is `sorted` is left as it is; afterwards A's
+//   sort_state() is `sorted` (for a matrix_opt: in the wrapper its copies
+//   share).
+//
 //   No operation guarantees sorted output: the order within rows (CSR) or
-//   columns (CSC) of SpGEMM / SpADD outputs is backend-defined, and
-//   sort_matrix gives sorted output where it is needed.
+//   columns (CSC) of SpGEMM / SpADD outputs is backend-defined (the output's
+//   sort_state() says what the backend knows), and sort_matrix gives sorted
+//   output where it is needed.
 //
 
 namespace spblas {
@@ -143,13 +148,27 @@ void sort_slices(operation_state& state, W&& w) {
   batched_sort_by_key(pointers, indices, values, state.get_allocator());
 }
 
+// Records that `m` (a wrapper or a matrix_opt of one) is sorted; a const
+// wrapper cannot record it.
+template <sortable_matrix M>
+void mark_sorted(M&& m) {
+  if constexpr (is_matrix_opt_v<M> ||
+                !std::is_const_v<std::remove_reference_t<M>>) {
+    m.set_sort_state(spblas::sort_state::sorted);
+  }
+}
+
 } // namespace __detail
 
 template <matrix A>
   requires(__detail::sortable_matrix<A>)
 void sort_matrix(operation_state& state, A&& a) {
   log_trace("");
+  if (a.sort_state() == sort_state::sorted) {
+    return;
+  }
   __detail::sort_slices(state, __detail::sortable_base(a));
+  __detail::mark_sorted(a);
   if constexpr (__detail::is_matrix_opt_v<A>) {
     a.state_->invalidate();
   }
