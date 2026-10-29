@@ -1,87 +1,177 @@
 #include <gtest/gtest.h>
 
+#include <complex>
+
 #include "util.hpp"
-#include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/spblas.hpp>
 
-#include <fmt/core.h>
-#include <fmt/ranges.h>
+namespace {
 
-TEST(CsrView, Transpose) {
-  using T = float;
+template <typename T, typename A>
+void transpose_test(A&& a, const std::vector<T>& a_dense, std::size_t m,
+                    std::size_t n, std::size_t nnz) {
   using I = spblas::index_t;
-  using O = spblas::offset_t;
 
-  for (auto&& [m, k, nnz] : util::dims) {
-    // Generate CSR Matrix A.
-    auto [a_values, a_rowptr, a_colind, a_shape, a_nnz] =
-        spblas::generate_csr<T, I>(m, k, nnz);
+  std::vector<T> b_values(nnz);
+  std::vector<I> b_rowptr(n + 1);
+  std::vector<I> b_colind(nnz);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {I(n), I(m)},
+                              I(nnz));
 
-    spblas::csr_view<T, I, O> a(a_values, a_rowptr, a_colind, a_shape, a_nnz);
+  spblas::operation_state state;
+  spblas::transpose_inspect(state, a, b);
+  spblas::transpose(state, a, b);
 
-    // Transpose; B = A_T
-
-    spblas::index b_shape(a.shape()[1], a.shape()[0]);
-
-    std::vector<O> b_rowptr(b_shape[0] + 1);
-    std::vector<I> b_colind(a.size());
-    std::vector<T> b_values(a.size());
-
-    spblas::csr_view<T, I, O> b(b_values, b_rowptr, b_colind, b_shape,
-                                a.size());
-
-    auto info = spblas::transpose_inspect(a, b);
-    spblas::transpose(info, a, b);
-
-    // Create transposed COO for reference.
-    std::vector<T> ref_values;
-    std::vector<I> ref_rowind;
-    std::vector<I> ref_colind;
-
-    for (auto&& [i, row] : spblas::__backend::rows(a)) {
-      for (auto&& [j, v] : row) {
-        ref_values.push_back(v);
-        ref_rowind.push_back(j);
-        ref_colind.push_back(i);
-      }
-    }
-
-    // Create COO from transposed matrix for test.
-    std::vector<T> test_values;
-    std::vector<T> test_rowind;
-    std::vector<T> test_colind;
-
-    for (auto&& [i, row] : spblas::__backend::rows(b)) {
-      for (auto&& [j, v] : row) {
-        test_values.push_back(v);
-        test_rowind.push_back(i);
-        test_colind.push_back(j);
-      }
-    }
-
-    // Ensure both COO matrices are sorted.
-    spblas::__ranges::sort(
-        spblas::__ranges::views::zip(ref_rowind, ref_colind, ref_values));
-    spblas::__ranges::sort(
-        spblas::__ranges::views::zip(test_rowind, test_colind, test_values));
-
-    EXPECT_EQ(ref_values.size(), test_values.size());
-    EXPECT_EQ(ref_rowind.size(), test_rowind.size());
-    EXPECT_EQ(ref_colind.size(), test_colind.size());
-
-    for (auto&& [a, b] :
-         spblas::__ranges::views::zip(ref_values, test_values)) {
-      EXPECT_EQ_(a, b);
-    }
-
-    for (auto&& [a, b] :
-         spblas::__ranges::views::zip(ref_rowind, test_rowind)) {
-      EXPECT_EQ(a, b);
-    }
-
-    for (auto&& [a, b] :
-         spblas::__ranges::views::zip(ref_colind, test_colind)) {
-      EXPECT_EQ(a, b);
+  EXPECT_EQ(b.size(), nnz);
+  auto b_dense = util::to_dense(b);
+  for (std::size_t i = 0; i < m; i++) {
+    for (std::size_t j = 0; j < n; j++) {
+      EXPECT_EQ(a_dense[i * n + j], b_dense[j * m + i]);
     }
   }
+}
+
+} // namespace
+
+TEST(Transpose, Csr) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+    transpose_test<T>(a, util::to_dense(a), m, n, nnz);
+  }
+}
+
+TEST(Transpose, MatrixOptAndPolicy) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::matrix_opt a_opt(a);
+
+  transpose_test<T>(a_opt, util::to_dense(a), m, n, nnz);
+
+  std::vector<T> b_values(nnz);
+  std::vector<I> b_rowptr(n + 1);
+  std::vector<I> b_colind(nnz);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {I(n), I(m)},
+                              I(nnz));
+  spblas::operation_state state;
+  spblas::transpose_inspect(util::test_policy{}, state, a, b);
+  spblas::transpose(util::test_policy{}, state, a, b);
+  EXPECT_EQ(util::to_dense(spblas::view::transpose(a)), util::to_dense(b));
+}
+
+TEST(Transpose, ConjugateTranspose) {
+  using T = std::complex<double>;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, rowptr, colind, shape, _] =
+        spblas::generate_csr<T, I>(m, n, nnz);
+    spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+    auto a_dense = util::to_dense(a);
+    spblas::matrix_opt a_opt(a);
+
+    for (int use_opt = 0; use_opt < 2; use_opt++) {
+      std::vector<T> b_values(nnz);
+      std::vector<I> b_rowptr(n + 1), b_colind(nnz);
+      spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {I(n), I(m)},
+                                  nnz);
+
+      spblas::operation_state state;
+      if (use_opt) {
+        spblas::transpose(state, spblas::view::conjugate(a_opt), b);
+      } else {
+        spblas::transpose_inspect(state, spblas::view::conjugate(a), b);
+        spblas::transpose(state, spblas::view::conjugate(a), b);
+      }
+
+      // B = A^H
+      auto b_dense = util::to_dense(b);
+      for (std::size_t i = 0; i < m; i++) {
+        for (std::size_t j = 0; j < n; j++) {
+          EXPECT_EQ(std::conj(a_dense[i * n + j]), b_dense[j * m + i]);
+        }
+      }
+    }
+  }
+}
+
+TEST(Transpose, ConjugateOfRealIsTranspose) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[0];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+
+  transpose_test<T>(spblas::view::conjugate(a), util::to_dense(a), m, n, nnz);
+}
+
+TEST(Transpose, CscInput) {
+  using T = float;
+  using I = spblas::index_t;
+
+  for (auto&& [m, n, nnz] : util::dims) {
+    auto [values, colptr, rowind, shape, _] =
+        spblas::generate_csc<T, I>(m, n, nnz);
+    spblas::csc_wrapper<T, I> a(values, colptr, rowind, shape, nnz);
+
+    transpose_test<T>(a, util::to_dense(a), m, n, nnz);
+  }
+}
+
+TEST(Transpose, Errors) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [values, rowptr, colind, shape, nnz] =
+      spblas::generate_csr<T, I>(10, 20, 30);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::operation_state state;
+
+  std::vector<T> b_values(nnz);
+  std::vector<I> b_rowptr(21), b_colind(nnz), short_rowptr(20);
+  std::vector<T> small_values(nnz - 1);
+
+  spblas::csr_wrapper<T, I> wrong_shape(b_values, b_rowptr, b_colind,
+                                        {I(10), I(20)}, nnz);
+  EXPECT_THROW(spblas::transpose(state, a, wrong_shape), std::invalid_argument);
+
+  spblas::csr_wrapper<T, I> bad_rowptr(b_values, short_rowptr, b_colind,
+                                       {I(20), I(10)}, nnz);
+  EXPECT_THROW(spblas::transpose(state, a, bad_rowptr), std::invalid_argument);
+
+  spblas::csr_wrapper<T, I> too_small(small_values, b_rowptr, b_colind,
+                                      {I(20), I(10)}, nnz);
+  EXPECT_THROW(spblas::transpose(state, a, too_small), std::runtime_error);
+}
+
+TEST(Transpose, OfTransposedMatrixOpt) {
+  using T = float;
+  using I = spblas::index_t;
+
+  auto [m, n, nnz] = util::dims[1];
+  auto [values, rowptr, colind, shape, _] =
+      spblas::generate_csr<T, I>(m, n, nnz);
+  spblas::csr_wrapper<T, I> a(values, rowptr, colind, shape, nnz);
+  spblas::matrix_opt a_opt(a);
+
+  // B = (A^T)^T = A
+  std::vector<T> b_values(nnz);
+  std::vector<I> b_rowptr(m + 1), b_colind(nnz);
+  spblas::csr_wrapper<T, I> b(b_values, b_rowptr, b_colind, {I(m), I(n)}, nnz);
+  spblas::operation_state state;
+  spblas::transpose(state, spblas::view::transpose(a_opt), b);
+
+  EXPECT_EQ(util::to_dense(a), util::to_dense(b));
 }

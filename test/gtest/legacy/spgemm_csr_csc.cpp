@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "util.hpp"
+#include "../util.hpp"
 #include <spblas/backend/spa_accumulator.hpp>
 #include <spblas/spblas.hpp>
 

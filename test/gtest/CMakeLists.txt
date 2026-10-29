@@ -5,17 +5,34 @@ set(TEST_SOURCES)
 # CPU tests
 if (SPBLAS_CPU_BACKEND)
   list(APPEND TEST_SOURCES
-       spmv_test.cpp
-       spmm_test.cpp
-       spgemm_test.cpp
-       spgemm_csr_csc.cpp
-       add_test.cpp
-       transpose_test.cpp
-       triangular_solve_test.cpp
-       mdspan_overlays.cpp)
+       mdspan_overlays.cpp
+       core_types_test.cpp)
 
-  if (ENABLE_ONEMKL_SYCL OR SPBLAS_REFERENCE_BACKEND)
-    list(APPEND TEST_SOURCES conjugate_test.cpp)
+  if (SPBLAS_PAPER_API)
+    list(APPEND TEST_SOURCES
+         spmv_test.cpp
+         spmm_test.cpp
+         spgemm_test.cpp
+         add_test.cpp
+         transpose_test.cpp
+         triangular_solve_test.cpp
+         scale_test.cpp
+         norm_test.cpp
+         sort_test.cpp
+         allocator_test.cpp)
+  else()
+    list(APPEND TEST_SOURCES
+         legacy/spmv_test.cpp
+         legacy/spmm_test.cpp
+         legacy/spgemm_test.cpp
+         legacy/spgemm_csr_csc.cpp
+         legacy/add_test.cpp
+         legacy/transpose_test.cpp
+         legacy/triangular_solve_test.cpp)
+
+    if (ENABLE_ONEMKL_SYCL)
+      list(APPEND TEST_SOURCES legacy/conjugate_test.cpp)
+    endif()
   endif()
 endif()
 

@@ -5,19 +5,19 @@
 
 int main(int argc, char** argv) {
   using namespace spblas;
-  namespace md = spblas::__mdspan;
 
   using T = float;
 
-  spblas::index_t m = 10;
+  spblas::index_t m = 100;
   spblas::index_t n = 10;
-  spblas::index_t k = 10;
-  spblas::index_t nnz_in = 20;
+  spblas::index_t k = 100;
+  spblas::index_t nnz_in = 10;
 
   fmt::print("\n\t###########################################################"
              "######################");
-  fmt::print("\n\t### Running Advanced SpMM Example:");
+  fmt::print("\n\t### Running SpMM Example:");
   fmt::print("\n\t###");
+  fmt::print("\n\t###   Y = alpha * A * X");
   fmt::print("\n\t###");
   fmt::print("\n\t### with ");
   fmt::print("\n\t### A, in CSR format, of size ({}, {}) with nnz = {}", m, k,
@@ -32,18 +32,20 @@ int main(int argc, char** argv) {
 
   auto&& [values, rowptr, colind, shape, nnz] = generate_csr<T>(m, k, nnz_in);
 
-  csr_view<T> a(values, rowptr, colind, shape, nnz);
+  csr_wrapper<T> a(values, rowptr, colind, shape, nnz);
+  // Inputs are wrapped in a matrix_opt, where the library may keep
+  // optimization data for them across calls.
   matrix_opt a_opt(a);
 
   std::vector<T> x_values(k * n, 1);
   std::vector<T> y_values(m * n, 0);
 
-  md::mdspan x(x_values.data(), k, n);
-  md::mdspan y(y_values.data(), m, n);
+  mdspan_row_major<T, spblas::index_t> x(x_values.data(), k, n);
+  mdspan_row_major<T, spblas::index_t> y(y_values.data(), m, n);
 
-  // Y = A * X
-  auto state = multiply_inspect(a_opt, x, y);
-  multiply(state, a_opt, x, y);
+  // y = alpha * A * x
+  operation_state state;
+  multiply(state, 4.f, a_opt, x, y);
 
   fmt::print("{}\n", spblas::__backend::values(y));
 

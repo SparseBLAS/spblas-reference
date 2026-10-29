@@ -33,7 +33,10 @@ int main(int argc, char** argv) {
 
   auto&& [values, colptr, rowind, shape, nnz] = generate_csc<T>(m, k, nnz_in);
 
-  csc_view<T> a(values, colptr, rowind, shape, nnz);
+  csc_wrapper<T> a(values, colptr, rowind, shape, nnz);
+  // Inputs are wrapped in a matrix_opt, where the library may keep
+  // optimization data for them across calls.
+  matrix_opt a_opt(a);
 
   std::vector<T> x_values(k * n, 1);
   std::vector<T> y_values(m * n, 0);
@@ -41,8 +44,9 @@ int main(int argc, char** argv) {
   mdspan_row_major<T, spblas::index_t> x(x_values.data(), k, n);
   mdspan_row_major<T, spblas::index_t> y(y_values.data(), m, n);
 
-  // y = A * (alpha * x)
-  multiply(a, scaled(2.f, x), y);
+  // y = alpha * A * x
+  operation_state state;
+  multiply(state, 2.f, a_opt, x, y);
 
   fmt::print("{}\n", spblas::__backend::values(y));
 

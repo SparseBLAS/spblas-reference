@@ -3,10 +3,15 @@
 #include <spblas/views/conjugated_view.hpp>
 #include <spblas/views/conjugated_view_impl.hpp>
 #include <spblas/views/csc_view.hpp>
+#include <spblas/views/csc_wrapper.hpp>
 #include <spblas/views/csr_view.hpp>
+#include <spblas/views/csr_wrapper.hpp>
 #include <spblas/views/inspectors.hpp>
 #include <spblas/views/matrix_opt.hpp>
 #include <spblas/views/matrix_opt_impl.hpp>
 #include <spblas/views/scaled_view.hpp>
 #include <spblas/views/scaled_view_impl.hpp>
+#include <spblas/views/transposed_view.hpp>
+#include <spblas/views/triangle_view.hpp>
+#include <spblas/views/view.hpp>
 #include <spblas/views/view_base.hpp>

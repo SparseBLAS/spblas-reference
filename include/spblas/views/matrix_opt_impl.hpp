@@ -1,18 +1,21 @@
 #pragma once
 
+#include <memory>
+#include <memory_resource>
+
 #include <spblas/backend/concepts.hpp>
 #include <spblas/backend/cpos.hpp>
 #include <spblas/concepts.hpp>
-
-#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-#include <oneapi/mkl.hpp>
-#include <sycl/sycl.hpp>
-#endif
+#include <spblas/detail/backend_state.hpp>
 
 namespace spblas {
 
+// A matrix wrapper plus opaque, library-owned optimization data for it.
+// Copies share the optimization data, which is released with the last copy.
+// The data is allocated from the memory resource given at construction, or
+// the backend's default resource if none is given.
 template <matrix M>
-  requires(view<M> &&
+  requires(__detail::view<M> &&
            (__detail::is_csr_view_v<M> || __detail::is_csc_view_v<M>) )
 class matrix_opt<M> : public view_base {
 public:
@@ -21,23 +24,16 @@ public:
   using index_type = tensor_index_t<M>;
   using offset_type = tensor_offset_t<M>;
 
-  matrix_opt(M matrix) : matrix_(matrix) {
-#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-    matrix_handle_ = nullptr;
-#endif
-  }
+  explicit matrix_opt(M matrix, std::pmr::memory_resource* resource = nullptr)
+      : matrix_(matrix),
+        resource_(resource != nullptr ? resource
+                                      : __detail::default_memory_resource()),
+        state_(std::allocate_shared<__detail::backend_matrix_opt_state_t>(
+            std::pmr::polymorphic_allocator<
+                __detail::backend_matrix_opt_state_t>(resource_))) {}
 
-  ~matrix_opt() {
-#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-    if (matrix_handle_) {
-      // q here needs to be on same context as queue in operations,
-      // idealy from execution policy
-      sycl::queue q(sycl::cpu_selector_v);
-      oneapi::mkl::sparse::release_matrix_handle(q, &matrix_handle_, {}).wait();
-      matrix_handle_ = nullptr;
-    }
-#endif
-  }
+  matrix_opt(M matrix, const std::pmr::polymorphic_allocator<>& allocator)
+      : matrix_opt(matrix, allocator.resource()) {}
 
   auto shape() const noexcept {
     return __backend::shape(base());
@@ -53,6 +49,10 @@ public:
 
   auto base() const {
     return matrix_;
+  }
+
+  std::pmr::polymorphic_allocator<> get_allocator() const noexcept {
+    return std::pmr::polymorphic_allocator<>(resource_);
   }
 
 private:
@@ -84,15 +84,50 @@ private:
     return __backend::lookup_row(matrix.base(), row_index);
   }
 
+  friend auto tag_invoke(__backend::columns_fn_, matrix_opt matrix)
+    requires(__backend::column_iterable<M>)
+  {
+    return __backend::columns(matrix.base());
+  }
+
+  friend auto tag_invoke(__backend::lookup_column_fn_, matrix_opt matrix,
+                         index_type column_index)
+    requires(__backend::column_lookupable<M>)
+  {
+    return __backend::lookup_column(matrix.base(), column_index);
+  }
+
 public:
   M matrix_;
 
-#ifdef SPBLAS_ENABLE_ONEMKL_SYCL
-  oneapi::mkl::sparse::matrix_handle_t matrix_handle_;
-#endif
+private:
+  std::pmr::memory_resource* resource_;
+
+public:
+  // For implementations only: backend-specific optimization data.
+  std::shared_ptr<__detail::backend_matrix_opt_state_t> state_;
 };
 
 template <typename T>
 matrix_opt(T t) -> matrix_opt<T>;
+
+template <typename T>
+matrix_opt(T t, std::pmr::memory_resource*) -> matrix_opt<T>;
+
+template <typename T>
+matrix_opt(T t, const std::pmr::polymorphic_allocator<>&) -> matrix_opt<T>;
+
+// Tells the library that the user changed the *values* of the matrix `m`
+// wraps, in place. Only values may change: the sparsity pattern (row/column
+// pointers and indices) must stay as it is -- for a new pattern, create a new
+// wrapper and matrix_opt. Values inside a matrix_opt may only be changed this
+// way, or by library functions such as scale(): the library's optimization
+// data for the matrix is derived from them and is dropped here, to be rebuilt
+// on next use. Applies to every copy of `m`, which share that data. Operations
+// whose later stages rely on the pattern (e.g. multiply_numeric) remain valid.
+template <typename M>
+void update_matrix(matrix_opt<M>& m) {
+  m.state_->invalidate();
+}
 
 } // namespace spblas

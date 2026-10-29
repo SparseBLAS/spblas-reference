@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory_resource>
 #include <span>
 #include <tuple>
 #include <vector>
@@ -11,10 +12,15 @@ namespace spblas {
 
 namespace __backend {
 
+// Dense (sparse accumulator, SPA) row accumulators. Their storage comes from
+// `allocator`; algorithms pass their operation_state's.
+
 template <typename T, std::integral I>
 class spa_accumulator {
 public:
-  spa_accumulator(I count) : data_(count), set_(count, false) {}
+  spa_accumulator(I count, std::pmr::polymorphic_allocator<> allocator = {})
+      : data_(count, allocator), set_(count, false, allocator),
+        stored_(allocator) {}
 
   T& operator[](I pos) {
     if (!set_[pos]) {
@@ -58,15 +64,16 @@ public:
   }
 
 private:
-  std::vector<T> data_;
-  std::vector<bool> set_;
-  std::vector<I> stored_;
+  std::pmr::vector<T> data_;
+  std::pmr::vector<bool> set_;
+  std::pmr::vector<I> stored_;
 };
 
 template <std::integral T>
 class spa_set {
 public:
-  spa_set(T count) : set_(count, false) {}
+  spa_set(T count, std::pmr::polymorphic_allocator<> allocator = {})
+      : set_(count, false, allocator), stored_(allocator) {}
 
   void insert(T key) {
     if (!set_[key]) {
@@ -99,8 +106,8 @@ public:
   }
 
 private:
-  std::vector<bool> set_;
-  std::vector<T> stored_;
+  std::pmr::vector<bool> set_;
+  std::pmr::vector<T> stored_;
 };
 
 } // namespace __backend

@@ -11,37 +11,45 @@ namespace spblas {
 
 namespace __detail {
 
-// Inspector for csr_view
+// Inspector for csr_wrapper
 
 template <typename T>
-struct is_instantiation_of_csr_view {
+struct is_instantiation_of_csr_wrapper {
   static constexpr bool value = false;
 };
 
 template <typename T, std::integral I, std::integral O>
-struct is_instantiation_of_csr_view<csr_view<T, I, O>> {
+struct is_instantiation_of_csr_wrapper<csr_wrapper<T, I, O>> {
   static constexpr bool value = true;
 };
 
 template <typename T>
-static constexpr bool is_csr_view_v =
-    is_instantiation_of_csr_view<std::remove_cvref_t<T>>::value;
+static constexpr bool is_csr_wrapper_v =
+    is_instantiation_of_csr_wrapper<std::remove_cvref_t<T>>::value;
 
-// Inspector for csc_view
+// Deprecated name, kept until every backend has migrated.
+template <typename T>
+static constexpr bool is_csr_view_v = is_csr_wrapper_v<T>;
+
+// Inspector for csc_wrapper
 
 template <typename T>
-struct is_instantiation_of_csc_view {
+struct is_instantiation_of_csc_wrapper {
   static constexpr bool value = false;
 };
 
 template <typename T, std::integral I, std::integral O>
-struct is_instantiation_of_csc_view<csc_view<T, I, O>> {
+struct is_instantiation_of_csc_wrapper<csc_wrapper<T, I, O>> {
   static constexpr bool value = true;
 };
 
 template <typename T>
-static constexpr bool is_csc_view_v =
-    is_instantiation_of_csc_view<std::remove_cvref_t<T>>::value;
+static constexpr bool is_csc_wrapper_v =
+    is_instantiation_of_csc_wrapper<std::remove_cvref_t<T>>::value;
+
+// Deprecated name, kept until every backend has migrated.
+template <typename T>
+static constexpr bool is_csc_view_v = is_csc_wrapper_v<T>;
 
 // Inspector for mdspan
 

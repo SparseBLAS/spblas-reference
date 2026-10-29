@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spblas/views/csr_view.hpp>
+#include <spblas/views/view.hpp>
 
 namespace spblas {
 
@@ -54,7 +55,8 @@ private:
 template <typename T, std::integral I = index_t, std::integral O = I>
 class csc_builder {
 public:
-  csc_builder(csc_view<T, I, O> view) : builder_(transposed(view)) {}
+  // C's arrays as the CSR arrays of C^T.
+  csc_builder(csc_view<T, I, O> c) : builder_(spblas::view::transpose(c)) {}
 
   template <__ranges::forward_range Column>
   void insert_column(I column_index, Column&& column) {
@@ -66,7 +68,7 @@ public:
   }
 
 private:
-  csr_builder<T, I> builder_;
+  csr_builder<T, I, O> builder_;
 };
 
 } // namespace __backend
