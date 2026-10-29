@@ -250,7 +250,7 @@ TEST(Multiply, SpMV_ConjugateOfRealVector) {
   spblas::multiply(state, T(2), a, x_conj, y);
   spblas::multiply(state, T(2), a, x, y_ref);
   for (std::size_t i = 0; i < m; i++) {
-    EXPECT_EQ(y_ref[i], y[i]);
+    EXPECT_EQ_(y_ref[i], y[i]);
   }
 }
 
