@@ -19,6 +19,12 @@
 //
 // Backends that have not provided a hook get the reference default.
 
+#ifdef SPBLAS_ENABLE_ONEMKL_IESPBLAS
+#include <spblas/vendor/onemkl_iespblas/matrix_opt_state_t.hpp>
+#include <spblas/vendor/onemkl_iespblas/memory_resource.hpp>
+#include <spblas/vendor/onemkl_iespblas/operation_state_t.hpp>
+#endif
+
 #ifdef SPBLAS_ENABLE_ONEMKL_SYCL
 #include <spblas/vendor/onemkl_sycl/matrix_opt_state_t.hpp>
 #endif
@@ -40,7 +46,14 @@ struct empty_matrix_opt_state_t {
   void invalidate() noexcept {}
 };
 
-#if defined(SPBLAS_ENABLE_ONEMKL_SYCL)
+#if defined(SPBLAS_ENABLE_ONEMKL_IESPBLAS)
+using backend_operation_state_t = __mkl_iespblas::operation_state_t;
+using backend_matrix_opt_state_t = __mkl_iespblas::matrix_opt_state_t;
+
+inline std::pmr::memory_resource* default_memory_resource() noexcept {
+  return __mkl_iespblas::default_memory_resource();
+}
+#elif defined(SPBLAS_ENABLE_ONEMKL_SYCL)
 using backend_operation_state_t = empty_operation_state_t;
 using backend_matrix_opt_state_t = __mkl::matrix_opt_state_t;
 
