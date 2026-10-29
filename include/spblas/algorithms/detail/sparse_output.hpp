@@ -85,7 +85,8 @@ void fill_pattern_only(operation_state& state, C&& c, const char* operation,
         "entries.");
   }
 
-  std::pmr::vector<T> values(inner_indices(c).size(), state.get_allocator());
+  std::pmr::vector<T> values(inner_indices(c).size(),
+                             state.get_allocator().host());
   fill(rewrap(c, values, outer_pointers(c), inner_indices(c), c.size()));
 
   // The kernel set the temporary wrapper's nnz; C's own follows its filled
@@ -121,7 +122,7 @@ void fill_values_only(operation_state& state, C&& c, std::size_t nnz,
         "and its values array allocated.");
   }
 
-  auto allocator = state.get_allocator();
+  auto allocator = state.get_allocator().host();
   std::pmr::vector<T> t_values(nnz, allocator);
   std::pmr::vector<O> t_pointers(outer + 1, allocator);
   std::pmr::vector<I> t_indices(nnz, allocator);

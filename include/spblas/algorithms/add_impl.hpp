@@ -104,7 +104,8 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_compute(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spadd_nnz(a, b, c, state.get_allocator()));
+  state.update_impl_(
+      __detail::spadd_nnz(a, b, c, state.get_allocator().host()));
 }
 
 template <matrix A, matrix B, matrix C>
@@ -112,7 +113,7 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_fill(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  __detail::spadd_fill(a, b, c, state.get_allocator());
+  __detail::spadd_fill(a, b, c, state.get_allocator().host());
   __detail::set_output_sort_state(c, sort_state::sorted);
 }
 
@@ -121,7 +122,8 @@ template <matrix A, matrix B, matrix C>
            __detail::spadd_by_columns<A, B, C>)
 void add_compute_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
-  state.update_impl_(__detail::spadd_nnz(a, b, c, state.get_allocator()));
+  state.update_impl_(
+      __detail::spadd_nnz(a, b, c, state.get_allocator().host()));
 }
 
 template <matrix A, matrix B, matrix C>
@@ -130,7 +132,7 @@ template <matrix A, matrix B, matrix C>
 void add_fill_symbolic(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
   __detail::fill_pattern_only(state, c, "add_fill_symbolic", [&](auto&& t) {
-    __detail::spadd_fill(a, b, t, state.get_allocator());
+    __detail::spadd_fill(a, b, t, state.get_allocator().host());
   });
   __detail::set_output_sort_state(c, sort_state::sorted);
 }
@@ -141,9 +143,10 @@ template <matrix A, matrix B, matrix C>
 void add_numeric(operation_state& state, A&& a, B&& b, C&& c) {
   log_trace("");
   __detail::fill_values_only(
-      state, c, __detail::spadd_nnz(a, b, c, state.get_allocator()),
-      "add_numeric",
-      [&](auto&& t) { __detail::spadd_fill(a, b, t, state.get_allocator()); });
+      state, c, __detail::spadd_nnz(a, b, c, state.get_allocator().host()),
+      "add_numeric", [&](auto&& t) {
+        __detail::spadd_fill(a, b, t, state.get_allocator().host());
+      });
 }
 
 template <__detail::execution_policy P, typename... Args>

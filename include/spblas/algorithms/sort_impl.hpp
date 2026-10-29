@@ -145,7 +145,7 @@ void sort_slices(operation_state& state, W&& w) {
         "sort_matrix: the index and value arrays must cover every stored "
         "entry (or the value array be empty).");
   }
-  batched_sort_by_key(pointers, indices, values, state.get_allocator());
+  batched_sort_by_key(pointers, indices, values, state.get_allocator().host());
 }
 
 // Records that `m` (a wrapper or a matrix_opt of one) is sorted; a const
